@@ -8,7 +8,6 @@ export default function Dashboard() {
         >
             <Head title="Dashboard" />
             <BoardLayout></BoardLayout>
-
         </AuthenticatedLayout>
 
     );
