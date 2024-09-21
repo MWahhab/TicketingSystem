@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BoardConfig;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BoardConfigController extends Controller
 {
@@ -28,7 +29,19 @@ class BoardConfigController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'title'     => 'required|string|min:2|max:255',
+            'columns'   => 'required|array|min:1',
+            'columns.*' => 'string|min:1|max:255',
+        ]);
+
+        BoardConfig::create([
+            'title'    => $validated['title'],
+            'columns'  => $validated['columns'],
+            'fid_user' => Auth::id()
+        ]);
+
+        return redirect()->back()->with('success', 'Board created successfully!');
     }
 
     /**
