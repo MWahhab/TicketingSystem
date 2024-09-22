@@ -1,10 +1,17 @@
 "use client";
 
 import React from "react";
-import {User as UserIcon} from "lucide-react"; // Renamed to UserIcon
-import {Card, CardContent, CardHeader, CardTitle,} from "@/components/ui/card";
-import {Avatar, AvatarFallback} from "@/components/ui/avatar";
-import {Task} from "../types";
+import { User as UserIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+interface Task {
+    title: string;
+    priority: "high" | "med" | "low";
+    assignee: {
+        name: string;
+    };
+}
 
 interface TaskCardProps {
     task: Task;
@@ -23,24 +30,28 @@ function getInitials(name: string) {
 
 export function TaskCard({ task }: TaskCardProps) {
     return (
-        <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="p-3">
+        <Card className="mb-4 shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-gray-50 to-white border border-gray-200">
+            <CardHeader className="p-4">
                 <div className="flex justify-between items-center">
                     <div
-                        className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`}
+                        className={`w-3 h-3 rounded-full ${priorityColors[task.priority]} ring-2 ring-offset-2 ring-opacity-50 ${
+                            task.priority === 'high' ? 'ring-red-200' :
+                                task.priority === 'med' ? 'ring-yellow-200' : 'ring-green-200'
+                        }`}
                     />
+                    <span className="text-xs font-medium text-gray-500 uppercase">{task.priority} Priority</span>
                 </div>
-                <CardTitle className="text-sm font-medium mt-2">
+                <CardTitle className="text-lg font-semibold mt-3 text-gray-800">
                     {task.title}
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 pt-0">
-                <div className="flex justify-between items-center text-sm text-muted-foreground">
-                    <div className="flex items-center">
-                        <UserIcon className="w-4 h-4 mr-1" />
+            <CardContent className="p-4 pt-0">
+                <div className="flex justify-between items-center text-sm">
+                    <div className="flex items-center text-gray-600">
+                        <UserIcon className="w-4 h-4 mr-2 text-gray-400" />
                         <span>{task.assignee.name}</span>
                     </div>
-                    <Avatar className="w-6 h-6">
+                    <Avatar className="w-8 h-8 bg-gradient-to-br from-gray-700 to-gray-900 text-stone-800 font-bold">
                         <AvatarFallback>{getInitials(task.assignee.name)}</AvatarFallback>
                     </Avatar>
                 </div>
