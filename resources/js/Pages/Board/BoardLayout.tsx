@@ -1,34 +1,47 @@
-"use client";
+import React, {useCallback, useState} from 'react';
+import {DragDropContext, DropResult,} from 'react-beautiful-dnd';
+import {Plus, Search} from 'lucide-react';
 
-import React, { useState, useRef, useCallback } from "react";
-import {
-    DragDropContext,
-    DropResult,
-} from "react-beautiful-dnd";
-import { Search, Plus } from "lucide-react";
+import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
+import {ScrollArea} from '@/components/ui/scroll-area';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-import { Column } from "./components/Column";
-import { Board, Columns, Tasks, ColumnType } from "./types";
-import { boards, initialColumns, initialTasks } from "./data/initialData";
-import {BoardFormDialog} from "@/Pages/Board/components/BoardFormDialog";
+import {Column} from './components/Column';
+import {Columns, Task, Tasks} from './types';
+import {BoardFormDialog} from '@/Pages/Board/components/BoardFormDialog';
+import {usePage} from '@inertiajs/react';
 
 export function BoardLayout() {
-    const [columns, setColumns] = useState<Columns>(initialColumns);
-    const [tasks, setTasks] = useState<Tasks>(initialTasks);
-    const [isCooldown, setIsCooldown] = useState<boolean>(false);
-    const cooldownRef = useRef<boolean>(false);
-    const dragCooldown = 500;
+    const { columns: columnsArray, posts: postsArray } = usePage().props;
+
+    const [columns, setColumns] = useState<Columns>(() => {
+        return columnsArray.reduce((acc: Columns, columnTitle: string) => {
+            const columnId = columnTitle.toString();
+            acc[columnId] = {
+                id: columnId,
+                title: columnTitle,
+                taskIds: [],
+            };
+            return acc;
+        }, {});
+    });
+
+    const [tasks, setTasks] = useState<Tasks>(() => {
+        const initialTasks: Tasks = {};
+        postsArray.forEach((task: Task) => {
+            const taskId = task.id.toString();
+            initialTasks[taskId] = { ...task, id: taskId };
+
+            const columnId = task.column.toString();
+            if (columns[columnId]) {
+                columns[columnId].taskIds.push(taskId);
+            }
+        });
+        return initialTasks;
+    });
 
     const onDragEnd = useCallback(
         (result: DropResult) => {
-            if (cooldownRef.current) {
-                return;
-            }
-
             const { destination, source, draggableId } = result;
 
             if (!destination) return;
@@ -40,20 +53,25 @@ export function BoardLayout() {
                 return;
             }
 
-            cooldownRef.current = true;
-            setIsCooldown(true);
+            setTasks((prevTasks) => ({
+                ...prevTasks,
+                [draggableId]: {
+                    ...prevTasks[draggableId],
+                    column: destination.droppableId,
+                },
+            }));
 
             setColumns((prevColumns) => {
-                const start = prevColumns[source.droppableId];
-                const finish = prevColumns[destination.droppableId];
+                const startColumn = prevColumns[source.droppableId];
+                const finishColumn = prevColumns[destination.droppableId];
 
-                if (start === finish) {
-                    const newTaskIds = Array.from(start.taskIds);
+                if (startColumn === finishColumn) {
+                    const newTaskIds = Array.from(startColumn.taskIds);
                     newTaskIds.splice(source.index, 1);
                     newTaskIds.splice(destination.index, 0, draggableId);
 
-                    const newColumn: ColumnType = {
-                        ...start,
+                    const newColumn = {
+                        ...startColumn,
                         taskIds: newTaskIds,
                     };
 
@@ -63,33 +81,50 @@ export function BoardLayout() {
                     };
                 }
 
-                const startTaskIds = Array.from(start.taskIds);
+                const startTaskIds = Array.from(startColumn.taskIds);
                 startTaskIds.splice(source.index, 1);
-                const newStart: ColumnType = {
-                    ...start,
-                    taskIds: startTaskIds,
-                };
 
-                const finishTaskIds = Array.from(finish.taskIds);
+                const finishTaskIds = Array.from(finishColumn.taskIds);
                 finishTaskIds.splice(destination.index, 0, draggableId);
-                const newFinish: ColumnType = {
-                    ...finish,
-                    taskIds: finishTaskIds,
-                };
 
                 return {
                     ...prevColumns,
-                    [newStart.id]: newStart,
-                    [newFinish.id]: newFinish,
+                    [startColumn.id]: {
+                        ...startColumn,
+                        taskIds: startTaskIds,
+                    },
+                    [finishColumn.id]: {
+                        ...finishColumn,
+                        taskIds: finishTaskIds,
+                    },
                 };
             });
 
-            setTimeout(() => {
-                cooldownRef.current = false;
-                setIsCooldown(false);
-            }, dragCooldown);
+            fetch(`/posts/${draggableId}`, {
+                method: 'POST', // Use POST method for method spoofing
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                    _method: 'PUT', // Include method override
+                    column: destination.droppableId,
+                }),
+                credentials: 'same-origin', // Include cookies
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status}`);
+                    }
+                    // Do nothing, optimistic UI update remains
+                })
+                .catch((error) => {
+                    console.error('Error during fetch:', error);
+                    // Optionally, revert the optimistic update if the request fails
+                });
         },
-        [dragCooldown]
+        [setTasks, setColumns]
     );
 
     return (
@@ -97,15 +132,16 @@ export function BoardLayout() {
             <div className="w-64 border-r p-4 flex flex-col">
                 <h2 className="mb-4 text-lg font-semibold">Boards</h2>
                 <ScrollArea className="flex-grow h-[calc(100vh-8rem)]">
-                    {boards.map((board) => (
-                        <Button
-                            key={board.id}
-                            variant="ghost"
-                            className="w-full justify-start"
-                        >
-                            {board.name}
-                        </Button>
-                    ))}
+                    {/* Assuming you have a boards array */}
+                    {/* {boards.map((board) => (
+              <Button
+                  key={board.id}
+                  variant="ghost"
+                  className="w-full justify-start"
+              >
+                  {board.name}
+              </Button>
+          ))} */}
                 </ScrollArea>
                 <div className="pb-16">
                     <BoardFormDialog />

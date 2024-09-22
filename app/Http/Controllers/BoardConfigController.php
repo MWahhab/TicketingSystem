@@ -5,15 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\BoardConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class BoardConfigController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(): Response
     {
-        //
+        $boards = BoardConfig::with('posts.assignee')->first();
+
+        return Inertia::render(
+            'Board/Index',
+            [
+                'columns' => $boards?->columns ?? [],
+                'posts'   => $boards?->posts   ?? [],
+            ]
+        );
     }
 
     /**

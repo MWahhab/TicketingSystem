@@ -21,11 +21,6 @@ class BoardConfig extends Model
         return $this->belongsTo(User::class, 'fid_user');
     }
 
-    public function columns(): HasMany
-    {
-        return $this->hasMany(Column::class, 'fid_board');
-    }
-
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class, 'fid_board');

@@ -24,7 +24,7 @@ export function Column({ column, tasks }: ColumnProps) {
                 <CardTitle className="text-sm font-medium">{column.title}</CardTitle>
             </CardHeader>
             <CardContent className="p-2">
-                <Droppable droppableId={column.id}>
+                <Droppable droppableId={column.id.toString()}>
                     {(provided) => (
                         <div
                             {...provided.droppableProps}
@@ -37,10 +37,10 @@ export function Column({ column, tasks }: ColumnProps) {
                                         <div
                                             ref={provided.innerRef}
                                             {...provided.draggableProps}
-                                            {...provided.   dragHandleProps}
+                                            {...provided.dragHandleProps}
                                             className={snapshot.isDragging ? "opacity-50" : ""}
                                         >
-                                            <TaskCard task={task} />
+                                            <TaskCard key={task.id.toString()} task={task} />
                                         </div>
                                     )}
                                 </Draggable>

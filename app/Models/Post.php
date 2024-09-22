@@ -12,8 +12,8 @@ class Post extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title', 'desc', 'priority', 'status', 'assignee_id', 'deadline',
-        'fid_board', 'fid_column', 'fid_user'
+        'title', 'desc', 'priority', 'column', 'assignee_id', 'deadline',
+        'fid_board', 'fid_user'
     ];
 
     protected $casts = [
@@ -33,11 +33,6 @@ class Post extends Model
     public function board(): BelongsTo
     {
         return $this->belongsTo(BoardConfig::class, 'fid_board');
-    }
-
-    public function column(): BelongsTo
-    {
-        return $this->belongsTo(Column::class, 'fid_column');
     }
 
     public function comments(): HasMany

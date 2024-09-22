@@ -16,11 +16,10 @@ return new class extends Migration
             $table->string('title');
             $table->text('desc');
             $table->string('priority');
-            $table->string('status');
+            $table->string('column');
             $table->foreignId('assignee_id')->constrained('users');
             $table->date('deadline')->nullable();
             $table->foreignId('fid_board')->constrained('board_configs');
-            $table->foreignId('fid_column')->constrained('columns');
             $table->foreignId('fid_user')->constrained('users');
             $table->timestamps();
         });

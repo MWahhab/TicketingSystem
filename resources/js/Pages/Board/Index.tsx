@@ -6,7 +6,7 @@ export default function Dashboard() {
     return (
         <AuthenticatedLayout
         >
-            <Head title="Boards" />
+            <Head title="Dashboard" />
             <BoardLayout></BoardLayout>
         </AuthenticatedLayout>
 

@@ -1,16 +1,10 @@
 "use client";
 
 import React from "react";
-import { Bug, Bookmark, User } from "lucide-react";
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Task } from "../types";
+import {User as UserIcon} from "lucide-react"; // Renamed to UserIcon
+import {Card, CardContent, CardHeader, CardTitle,} from "@/components/ui/card";
+import {Avatar, AvatarFallback} from "@/components/ui/avatar";
+import {Task} from "../types";
 
 interface TaskCardProps {
     task: Task;
@@ -22,22 +16,16 @@ const priorityColors: { [key in Task["priority"]]: string } = {
     low: "bg-green-500",
 };
 
+function getInitials(name: string) {
+    const names = name.split(' ');
+    return names.map(n => n.charAt(0).toUpperCase()).join('');
+}
+
 export function TaskCard({ task }: TaskCardProps) {
     return (
         <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="p-3">
                 <div className="flex justify-between items-center">
-                    <Badge
-                        variant={task.type === "bug" ? "destructive" : "secondary"}
-                        className="text-xs flex items-center"
-                    >
-                        {task.type === "bug" ? (
-                            <Bug className="w-3 h-3 mr-1" />
-                        ) : (
-                            <Bookmark className="w-3 h-3 mr-1" />
-                        )}
-                        {task.type}
-                    </Badge>
                     <div
                         className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`}
                     />
@@ -49,11 +37,11 @@ export function TaskCard({ task }: TaskCardProps) {
             <CardContent className="p-3 pt-0">
                 <div className="flex justify-between items-center text-sm text-muted-foreground">
                     <div className="flex items-center">
-                        <User className="w-4 h-4 mr-1" />
-                        <span>{task.assignee}</span>
+                        <UserIcon className="w-4 h-4 mr-1" />
+                        <span>{task.assignee.name}</span>
                     </div>
                     <Avatar className="w-6 h-6">
-                        <AvatarFallback>{task.assigneeInitials}</AvatarFallback>
+                        <AvatarFallback>{getInitials(task.assignee.name)}</AvatarFallback>
                     </Avatar>
                 </div>
             </CardContent>

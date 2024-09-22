@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class PostController extends Controller
 {
@@ -48,12 +49,23 @@ class PostController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * @param Request $request
+     * @param Post $post
+     * @return Response
      */
     public function update(Request $request, Post $post)
     {
-        //
+        $request->validate([
+            'column' => 'required|string',
+        ]);
+
+        $post->column = $request->input('column');
+        $post->save();
+
+        return response()->noContent();
     }
+
+
 
     /**
      * Remove the specified resource from storage.
