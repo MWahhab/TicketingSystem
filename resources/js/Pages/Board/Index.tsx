@@ -1,14 +1,15 @@
+// resources/js/Pages/Board/Index.tsx
+
+import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import {BoardLayout} from "@/Pages/Board/BoardLayout";
+import { BoardLayout } from "@/Pages/Board/BoardLayout";
 
-export default function Dashboard() {
+const Index = () => {
     return (
-        <AuthenticatedLayout
-        >
-            <Head title="Dashboard" />
-            <BoardLayout></BoardLayout>
+        <AuthenticatedLayout>
+            <BoardLayout />
         </AuthenticatedLayout>
-
     );
-}
+};
+
+export default Index;

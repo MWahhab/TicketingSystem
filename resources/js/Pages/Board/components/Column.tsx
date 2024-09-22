@@ -19,9 +19,9 @@ interface ColumnProps {
 
 export function Column({ column, tasks }: ColumnProps) {
     return (
-        <Card className="h-full">
+        <Card className="h-full bg-zinc-800 border-zinc-700">
             <CardHeader className="p-3">
-                <CardTitle className="text-sm font-medium">{column.title}</CardTitle>
+                <CardTitle className="text-sm font-medium text-white">{column.title}</CardTitle>
             </CardHeader>
             <CardContent className="p-2">
                 <Droppable droppableId={column.id.toString()}>

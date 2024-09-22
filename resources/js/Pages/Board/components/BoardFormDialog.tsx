@@ -34,7 +34,10 @@ const formSchema = z.object({
         .min(5, { message: "Columns must be at least 5 characters." })
         .transform((val) =>
             val.split(',').map(col => col.trim()).filter(col => col.length > 0)
-        ),
+        )
+        .refine((columns) => new Set(columns).size === columns.length, {
+            message: "Column names must be unique.",
+        }),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -89,15 +92,15 @@ export function BoardFormDialog() {
     }
 
     return (
-        <div className="flex justify-center">
-            <Button className="mt-4 w-full max-w-md" onClick={() => setIsDialogOpen(true)}>
+        <div className="flex justify-center pb-24">
+            <Button className="mt-4 w-full max-w-md bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => setIsDialogOpen(true)}>
                 Add new board
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[550px]">
+                <DialogContent className="sm:max-w-[550px] bg-zinc-800 text-white border border-zinc-700">
                     <DialogHeader>
                         <DialogTitle>New Board</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-zinc-300">
                             Create a new board.
                         </DialogDescription>
                     </DialogHeader>
@@ -108,11 +111,11 @@ export function BoardFormDialog() {
                                 name="title"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Title</FormLabel>
+                                        <FormLabel className="text-white">Title</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Project Name" {...field} className="w-full" />
+                                            <Input placeholder="Project Name" {...field} className="w-full bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white" />
                                         </FormControl>
-                                        <FormMessage />
+                                        <FormMessage className="text-red-400" />
                                     </FormItem>
                                 )}
                             />
@@ -121,18 +124,18 @@ export function BoardFormDialog() {
                                 name="columns"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Columns</FormLabel>
-                                        <FormDescription>
+                                        <FormLabel className="text-white">Columns</FormLabel>
+                                        <FormDescription className="text-zinc-300">
                                             Please enter columns as comma-separated values!
                                         </FormDescription>
                                         <FormControl>
-                                            <Input placeholder="Backlog, Estimated, In Progress, Review" {...field} className="w-full" />
+                                            <Input placeholder="Backlog, Estimated, In Progress, Review" {...field} className="w-full bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white" />
                                         </FormControl>
-                                        <FormMessage />
+                                        <FormMessage className="text-red-400" />
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                            <Button type="submit" className="w-full bg-white text-zinc-900 hover:bg-zinc-100" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting ? 'Saving...' : 'Save'}
                             </Button>
                         </form>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BoardConfig;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -13,17 +14,24 @@ class BoardConfigController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $boards = BoardConfig::with('posts.assignee')->first();
+        $boardId = $request->input('board_id');
 
-        return Inertia::render(
-            'Board/Index',
-            [
-                'columns' => $boards?->columns ?? [],
-                'posts'   => $boards?->posts   ?? [],
-            ]
-        );
+        $board = BoardConfig::with('posts.assignee:id,name')
+            ->when($boardId, function ($query) use ($boardId) {
+                return $query->find($boardId);
+            }, function ($query) {
+                return $query->first();
+            });
+
+        $boardLinks = BoardConfig::select('id', 'title')->get();
+
+        return Inertia::render('Board/Index', [
+            'columns' => $board->columns ?? [],
+            'posts'   => $board->posts ?? [],
+            'boards'  => $boardLinks,
+        ]);
     }
 
     /**
@@ -35,13 +43,18 @@ class BoardConfigController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * @param Request $request
+     * @return RedirectResponse
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'title'     => 'required|string|min:2|max:255',
-            'columns'   => 'required|array|min:1',
+            'columns'   => ['required', 'array', 'min:1', function ($attribute, $value, $fail) {
+                if (count($value) !== count(array_unique($value))) {
+                    $fail('Column names must be unique.');
+                }
+            }],
             'columns.*' => 'string|min:1|max:255',
         ]);
 
