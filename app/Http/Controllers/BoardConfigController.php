@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PrioritiesEnum;
 use App\Models\BoardConfig;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,8 +19,7 @@ class BoardConfigController extends Controller
     public function index(Request $request): Response
     {
         $boardId = $request->input('board_id');
-
-        $board = BoardConfig::with('posts.assignee:id,name')
+        $board   = BoardConfig::with('posts.assignee:id,name')
             ->when($boardId, function ($query) use ($boardId) {
                 return $query->find($boardId);
             }, function ($query) {
@@ -26,11 +27,16 @@ class BoardConfigController extends Controller
             });
 
         $boardLinks = BoardConfig::select('id', 'title')->get();
+        $boards     = BoardConfig::all('id', 'title', 'columns');
+        $assignees  = User::all('id', 'name');
 
         return Inertia::render('Board/Index', [
-            'columns' => $board->columns ?? [],
-            'posts'   => $board->posts ?? [],
-            'boards'  => $boardLinks,
+            'columns'       => $board->columns ?? [],
+            'posts'         => $board->posts ?? [],
+            'boards'        => $boardLinks,
+            'boardsColumns' => $boards,
+            'assignees'     => $assignees,
+            'priorities'    => PrioritiesEnum::cases(),
         ]);
     }
 
