@@ -3,6 +3,8 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { BoardLayout } from "@/Pages/Board/BoardLayout";
+import {TipTapTextArea} from "@/Pages/Board/components/TipTapTextArea";
+
 
 const Index = () => {
     return (

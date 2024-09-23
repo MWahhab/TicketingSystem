@@ -97,7 +97,7 @@ export function BoardFormDialog() {
                 Add new board
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[550px] bg-zinc-800 text-white border border-zinc-700">
+                <DialogContent className="sm:max-w-[550px] bg-zinc-800 text-white border border-zinc-700" aria-describedby="dialog-description">
                     <DialogHeader>
                         <DialogTitle>New Board</DialogTitle>
                         <DialogDescription className="text-zinc-300">

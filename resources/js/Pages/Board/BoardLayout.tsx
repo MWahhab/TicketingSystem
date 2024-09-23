@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {router, usePage} from '@inertiajs/react';
 import {
     DragDropContext,
@@ -12,14 +12,29 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
+import {PostFormDialog} from "@/Pages/Board/components/PostFormDialog";
+import { useToast } from "@/hooks/use-toast";
 
 export function BoardLayout() {
-    const { columns: columnsArray, posts: postsArray, boards } = usePage().props;
+    const { columns: columnsArray, posts: postsArray, boards, assignees, boardsColumns, priorities } = usePage().props;
+    const { flash } = usePage().props;
 
     const [columns, setColumns] = useState({});
-    const [tasks, setTasks] = useState({});
+    const [tasks, setTasks]     = useState({});
+
+    const { toast } = useToast();
+
+    const memoizedBoards    = useMemo(() => boardsColumns, [boardsColumns]);
+    const memoizedAssignees = useMemo(() => assignees, [assignees]);
 
     useEffect(() => {
+        if (flash.success) {
+            toast({
+                variant: "success",
+                title: flash.success,
+            });
+        }
+
         const initialColumns = columnsArray.reduce((acc, columnTitle) => {
             const columnId = columnTitle.toString();
             acc[columnId] = {
@@ -43,9 +58,7 @@ export function BoardLayout() {
 
         setColumns(initialColumns);
         setTasks(initialTasks);
-        console.log('Processed Columns:', initialColumns);
-        console.log('Processed Tasks:', initialTasks);
-    }, [columnsArray, postsArray]);
+    }, [columnsArray, postsArray, flash]);
 
     const handleBoardClick = (boardId) => {
         router.get(`/boards?board_id=${boardId}`);
@@ -162,10 +175,11 @@ export function BoardLayout() {
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
                         <h1 className="text-2xl font-bold text-white">Current Board</h1>
                         <div className="flex items-center space-x-2">
-                            <Button size="sm" className="bg-white text-zinc-900 hover:bg-zinc-100">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add
-                            </Button>
+                            <PostFormDialog
+                                boards    ={memoizedBoards}
+                                assignees ={memoizedAssignees}
+                                priorities={priorities}
+                            />
                             <div className="relative">
                                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-zinc-400" />
                                 <Input

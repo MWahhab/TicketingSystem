@@ -29,6 +29,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('boards', BoardConfigController::class);
     Route::resource('boards.posts', PostController::class)->shallow();
+    Route::resource('posts', PostController::class);
 });
 
 require __DIR__.'/auth.php';
