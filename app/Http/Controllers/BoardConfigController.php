@@ -29,10 +29,22 @@ class BoardConfigController extends Controller
         $boardLinks = BoardConfig::select('id', 'title')->get();
         $boards     = BoardConfig::all('id', 'title', 'columns');
         $assignees  = User::all('id', 'name');
+        $columns    = [];
+        $posts      = [];
+
+        if ($board instanceof BoardConfig) {
+            if ($board->relationLoaded('posts') && $board->posts->isNotEmpty()) {
+                $posts = $board->posts;
+            }
+
+            if (!empty($board->columns)) {
+                $columns = $board->columns;
+            }
+        }
 
         return Inertia::render('Board/Index', [
-            'columns'       => $board->columns ?? [],
-            'posts'         => $board->posts ?? [],
+            'columns'       => $columns,
+            'posts'         => $posts,
             'boards'        => $boardLinks,
             'boardsColumns' => $boards,
             'assignees'     => $assignees,
