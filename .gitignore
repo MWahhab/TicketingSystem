@@ -4,3 +4,4 @@
 /public/storage
 /storage/*.key
 /vendor
+.env
