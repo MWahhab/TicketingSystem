@@ -1,10 +1,7 @@
-import React, {useState, useEffect, useCallback, useMemo} from 'react';
-import {router, usePage} from '@inertiajs/react';
-import {
-    DragDropContext,
-    DropResult,
-} from 'react-beautiful-dnd';
-import { Plus, Search } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { router, usePage } from '@inertiajs/react';
+import { DragDropContext, DropResult } from 'react-beautiful-dnd';
+import { Search } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,29 +9,27 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
-import {PostFormDialog} from "@/Pages/Board/components/PostFormDialog";
-import { useToast } from "@/hooks/use-toast";
+import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
+import { useToast } from '@/hooks/use-toast';
 
 export function BoardLayout() {
-    const { columns: columnsArray, posts: postsArray, boards, assignees, boardsColumns, priorities } = usePage().props;
-    const { flash } = usePage().props;
+    const {
+        columns: columnsArray,
+        posts: postsArray,
+        boards,
+        assignees,
+        boardsColumns,
+        priorities,
+        boardTitle,
+    } = usePage().props;
 
     const [columns, setColumns] = useState({});
-    const [tasks, setTasks]     = useState({});
+    const [tasks, setTasks] = useState({});
 
-    const { toast } = useToast();
-
-    const memoizedBoards    = useMemo(() => boardsColumns, [boardsColumns]);
+    const memoizedBoards = useMemo(() => boardsColumns, [boardsColumns]);
     const memoizedAssignees = useMemo(() => assignees, [assignees]);
 
     useEffect(() => {
-        if (flash.success) {
-            toast({
-                variant: "success",
-                title: flash.success,
-            });
-        }
-
         const initialColumns = columnsArray.reduce((acc, columnTitle) => {
             const columnId = columnTitle.toString();
             acc[columnId] = {
@@ -58,7 +53,7 @@ export function BoardLayout() {
 
         setColumns(initialColumns);
         setTasks(initialTasks);
-    }, [columnsArray, postsArray, flash]);
+    }, [columnsArray, postsArray]);
 
     const handleBoardClick = (boardId) => {
         router.get(`/boards?board_id=${boardId}`);
@@ -124,15 +119,17 @@ export function BoardLayout() {
                 };
             });
 
-            fetch(`/posts/${draggableId}`, {
+            fetch(`/move/${draggableId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify({
-                    _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
-                    _method: 'PUT',
+                    _token: document
+                        .querySelector('meta[name="csrf-token"]')
+                        ?.getAttribute('content'),
+                    _method: 'POST',
                     column: destination.droppableId,
                 }),
                 credentials: 'same-origin',
@@ -149,10 +146,19 @@ export function BoardLayout() {
         [setTasks, setColumns]
     );
 
+    // State for selected task and dialog visibility
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+    const handleTaskClick = (task) => {
+        setSelectedTask(task);
+        setIsEditDialogOpen(true);
+    };
+
     return (
         <div className="flex h-screen overflow-hidden bg-neutral-900 text-white">
             <div className="w-64 border-r border-zinc-700 p-4 flex flex-col">
-                <h2 className="mb-4 text-lg font-semibold text-white">Boards</h2>
+                <h2 className="mb-4 text-lg font-semibold text-white">Projects</h2>
                 <ScrollArea className="flex-grow h-[calc(100vh-8rem)]">
                     {boards.map((board) => (
                         <Button
@@ -173,11 +179,11 @@ export function BoardLayout() {
             <div className="flex-1 overflow-hidden">
                 <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
-                        <h1 className="text-2xl font-bold text-white">Current Board</h1>
+                        <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
                         <div className="flex items-center space-x-2">
                             <PostFormDialog
-                                boards    ={memoizedBoards}
-                                assignees ={memoizedAssignees}
+                                boards={memoizedBoards}
+                                assignees={memoizedAssignees}
                                 priorities={priorities}
                             />
                             <div className="relative">
@@ -199,12 +205,30 @@ export function BoardLayout() {
                                 );
                                 return (
                                     <div key={column.id} className="flex-1 min-w-[250px]">
-                                        <Column column={column} tasks={columnTasks} />
+                                        <Column
+                                            column={column}
+                                            tasks={columnTasks}
+                                            onTaskClick={handleTaskClick}
+                                        />
                                     </div>
                                 );
                             })}
                         </div>
                     </DragDropContext>
+
+                    {/* Edit Form Dialog */}
+                    {isEditDialogOpen && selectedTask && (
+                        <PostFormDialog
+                            boards={memoizedBoards}
+                            assignees={memoizedAssignees}
+                            priorities={priorities}
+                            task={selectedTask}
+                            onClose={() => {
+                                setIsEditDialogOpen(false);
+                                setSelectedTask(null);
+                            }}
+                        />
+                    )}
                 </div>
             </div>
         </div>

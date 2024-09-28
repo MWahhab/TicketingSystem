@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class PostController extends Controller
 {
@@ -31,9 +30,9 @@ class PostController extends Controller
      * Store a newly created post in storage.
      *
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @return Response
      */
-    public function store(Request $request): \Symfony\Component\HttpFoundation\Response
+    public function store(Request $request): Response
     {
         $validated = $request->validate([
             'title'        => 'required|string|max:255',
@@ -75,15 +74,13 @@ class PostController extends Controller
      */
     public function edit(Post $post)
     {
-        //
     }
 
     /**
      * @param Request $request
-     * @param Post $post
      * @return Response
      */
-    public function update(Request $request, Post $post)
+    public function move(Post $post, Request $request): Response
     {
         $request->validate([
             'column' => 'required|string',
@@ -95,13 +92,36 @@ class PostController extends Controller
         return response()->noContent();
     }
 
+    /**
+     * @param Request $request
+     * @param Post $post
+     * @return Response
+     */
+    public function update(Request $request, Post $post): Response
+    {
+        $validated = $request->validate([
+            'title'        => 'required|string|max:255',
+            'desc'         => 'required|string',
+            'priority'     => 'required|string|max:255',
+            'column'       => 'required|string|max:255',
+            'assignee_id'  => 'required|exists:users,id',
+            'deadline'     => 'nullable|date',
+            'fid_board'    => 'required|exists:board_configs,id'
+        ]);
 
+        $post->update($validated);
+
+        return Inertia::location('/boards/?board_id=' . $validated['fid_board']);
+    }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Post $post)
+    public function destroy(Post $post): Response
     {
-        //
+        $boardFid = $post->fid_board;
+        $post->delete();
+
+        return Inertia::location('/boards/?board_id=' . $boardFid);
     }
 }

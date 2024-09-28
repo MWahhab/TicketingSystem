@@ -31,6 +31,7 @@ class BoardConfigController extends Controller
         $assignees  = User::all('id', 'name');
         $columns    = [];
         $posts      = [];
+        $boardTitle = '';
 
         if ($board instanceof BoardConfig) {
             if ($board->relationLoaded('posts') && $board->posts->isNotEmpty()) {
@@ -39,6 +40,10 @@ class BoardConfigController extends Controller
 
             if (!empty($board->columns)) {
                 $columns = $board->columns;
+            }
+
+            if (!empty($board->title)) {
+                $boardTitle = $board->title;
             }
         }
 
@@ -49,6 +54,7 @@ class BoardConfigController extends Controller
             'boardsColumns' => $boards,
             'assignees'     => $assignees,
             'priorities'    => PrioritiesEnum::cases(),
+            'boardTitle'     => $boardTitle
         ]);
     }
 
