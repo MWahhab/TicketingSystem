@@ -30,7 +30,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CalendarIcon, Trash2Icon } from 'lucide-react';
+import { CalendarIcon, Trash2Icon, MessageSquareIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import {format} from 'date-fns';
 import {cn} from '@/lib/utils';
 import {Calendar} from '@/components/ui/calendar';
@@ -74,6 +74,7 @@ interface Task {
     assignee_id: string;
     deadline: string | null;
     fid_board: string;
+    comments?: Comment[];
 }
 
 interface PostFormDialogProps {
@@ -82,6 +83,13 @@ interface PostFormDialogProps {
     assignees: Assignee[];
     task?: Task;
     onClose?: () => void;
+}
+
+interface Comment {
+    id: string;
+    content: string;
+    author: string;
+    createdAt: string;
 }
 
 export function PostFormDialog({
@@ -93,6 +101,10 @@ export function PostFormDialog({
                                }: PostFormDialogProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(!!task);
     const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+
+    const [comments, setComments] = useState<Comment[]>(task?.comments || []);
+    const [newComment, setNewComment] = useState('');
+    const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
 
     const {toast} = useToast();
 
@@ -195,6 +207,19 @@ export function PostFormDialog({
         }
     }
 
+    function addComment() {
+        if (newComment.trim()) {
+            const comment: Comment = {
+                id: Date.now().toString(),
+                content: newComment,
+                author: 'Current User', // Replace with actual user name
+                createdAt: new Date().toISOString(),
+            };
+            setComments([...comments, comment]);
+            setNewComment('');
+        }
+    }
+
     return (
         <Dialog
             open={isDialogOpen}
@@ -214,8 +239,7 @@ export function PostFormDialog({
                 </DialogTrigger>
             )}
             <DialogContent
-                aria-describedby="dialog-description"
-                className="sm:max-w-[900px] bg-zinc-800 text-white border border-zinc-700"
+                className="sm:max-w-[1000px] bg-zinc-800 text-white border border-zinc-700"
             >
                 <DialogHeader className="flex flex-row items-center space-x-2">
                     <DialogTitle className="text-white text-2xl flex items-center">
@@ -235,57 +259,61 @@ export function PostFormDialog({
                 <div className="max-h-[calc(100vh-200px)] overflow-y-auto pr-4">
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                            <FormField
-                                control={form.control}
-                                name="title"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Title</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="Enter title"
-                                                {...field}
-                                                className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white"
-                                            />
-                                        </FormControl>
-                                        <FormMessage className="text-red-400" />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="desc"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Description</FormLabel>
-                                        <FormControl>
-                                            <TipTapTextArea
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white"
-                                            />
-                                        </FormControl>
-                                        <FormMessage className="text-red-400" />
-                                    </FormItem>
-                                )}
-                            />
-                            <div className="grid grid-cols-3 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="fid_board"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">Board</FormLabel>
-                                            <FormControl>
+                            <div className="grid grid-cols-[2fr_1fr] gap-6">
+                                <div className="space-y-8">
+                                    <FormField
+                                        control={form.control}
+                                        name="title"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Title</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="Enter title"
+                                                        {...field}
+                                                        className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="desc"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Description</FormLabel>
+                                                <FormControl>
+                                                    <TipTapTextArea
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white h-60"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="fid_board"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Board</FormLabel>
                                                 <Select
                                                     onValueChange={(value) => {
                                                         field.onChange(value);
                                                     }}
                                                     value={field.value || ""}
                                                 >
-                                                    <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
-                                                        <SelectValue placeholder="Select board" />
-                                                    </SelectTrigger>
+                                                    <FormControl>
+                                                        <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                            <SelectValue placeholder="Select board" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
                                                     <SelectContent className="bg-zinc-700 text-white border-zinc-600">
                                                         {boards.map((board) => (
                                                             <SelectItem
@@ -298,26 +326,26 @@ export function PostFormDialog({
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                            </FormControl>
-                                            <FormMessage className="text-red-400" />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="column"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">Column</FormLabel>
-                                            <FormControl>
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="column"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Column</FormLabel>
                                                 <Select
                                                     onValueChange={field.onChange}
                                                     value={field.value || ""}
                                                     disabled={!availableColumns.length}
                                                 >
-                                                    <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
-                                                        <SelectValue placeholder={availableColumns.length ? "Select column" : "Select a board first"} />
-                                                    </SelectTrigger>
+                                                    <FormControl>
+                                                        <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                            <SelectValue placeholder={availableColumns.length ? "Select column" : "Select a board first"} />
+                                                        </SelectTrigger>
+                                                    </FormControl>
                                                     <SelectContent className="bg-zinc-700 text-white border-zinc-600">
                                                         {availableColumns.map((column, index) => (
                                                             <SelectItem
@@ -330,22 +358,22 @@ export function PostFormDialog({
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                            </FormControl>
-                                            <FormMessage className="text-red-400" />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="priority"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">Priority</FormLabel>
-                                            <FormControl>
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="priority"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Priority</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                    <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
-                                                        <SelectValue placeholder="Select priority" />
-                                                    </SelectTrigger>
+                                                    <FormControl>
+                                                        <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                            <SelectValue placeholder="Select priority" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
                                                     <SelectContent className="bg-zinc-700 text-white border-zinc-600">
                                                         {priorities.map((priority) => (
                                                             <SelectItem
@@ -358,20 +386,16 @@ export function PostFormDialog({
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                            </FormControl>
-                                            <FormMessage className="text-red-400" />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="assignee_id"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">Assignee</FormLabel>
-                                            <FormControl>
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="assignee_id"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Assignee</FormLabel>
                                                 <Select
                                                     onValueChange={(value) => {
                                                         console.log("Assignee selected:", value);
@@ -379,9 +403,11 @@ export function PostFormDialog({
                                                     }}
                                                     value={field.value || ""}
                                                 >
-                                                    <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
-                                                        <SelectValue placeholder="Select assignee" />
-                                                    </SelectTrigger>
+                                                    <FormControl>
+                                                        <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                            <SelectValue placeholder="Select assignee" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
                                                     <SelectContent className="bg-zinc-700 text-white border-zinc-600">
                                                         {assignees.map((assignee) => (
                                                             <SelectItem
@@ -394,56 +420,95 @@ export function PostFormDialog({
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                            </FormControl>
-                                            <FormMessage className="text-red-400" />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="deadline"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col mt-2">
-                                            <FormLabel className="text-white">Deadline</FormLabel>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl>
-                                                        <Button
-                                                            variant="outline"
-                                                            className={cn(
-                                                                "w-full pl-3 text-left font-normal bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white",
-                                                                !field.value && "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {field.value ? (
-                                                                format(new Date(field.value), "PPP")
-                                                            ) : (
-                                                                <span>Pick a date</span>
-                                                            )}
-                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                        </Button>
-                                                    </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0 bg-zinc-700" align="start">
-                                                    <Calendar
-                                                        mode="single"
-                                                        selected={field.value ? new Date(field.value) : undefined}
-                                                        onSelect={field.onChange}
-                                                        disabled={(date) =>
-                                                            date < new Date() || date < new Date("1900-01-01")
-                                                        }
-                                                        initialFocus
-                                                        className="bg-zinc-700 text-white"
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
-                                            <FormMessage className="text-red-400" />
-                                        </FormItem>
-                                    )}
-                                />
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="deadline"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col mt-2">
+                                                <FormLabel className="text-white">Deadline</FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button
+                                                                variant={"outline"}
+                                                                className={cn(
+                                                                    "w-full pl-3 text-left font-normal bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white",
+                                                                    !field.value && "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {field.value ? (
+                                                                    format(field.value, "PPP")
+                                                                ) : (
+                                                                    <span>Pick a date</span>
+                                                                )}
+                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 bg-zinc-700" align="start">
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value}
+                                                            onSelect={field.onChange}
+                                                            disabled={(date) =>
+                                                                date < new Date() || date < new Date("1900-01-01")
+                                                            }
+                                                            initialFocus
+                                                            className="bg-zinc-700 text-white"
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                             </div>
                         </form>
                     </Form>
+                    {task && (
+                        <div className="mt-8">
+                            <Button
+                                onClick={() => setIsCommentsExpanded(!isCommentsExpanded)}
+                                variant="outline"
+                                className="w-full justify-between bg-zinc-700 text-white hover:bg-zinc-600"
+                            >
+                                <span>Comments ({comments.length})</span>
+                                {isCommentsExpanded ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+                            </Button>
+                            {isCommentsExpanded && (
+                                <div className="mt-4 space-y-4 max-h-60 overflow-y-auto">
+                                    {comments.map((comment) => (
+                                        <div key={comment.id} className="bg-zinc-700 p-3 rounded-md">
+                                            <p className="text-sm text-zinc-300">{comment.content}</p>
+                                            <div className="mt-2 text-xs text-zinc-400">
+                                                {comment.author} - {new Date(comment.createdAt).toLocaleString()}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="mt-4">
+                                <TipTapTextArea
+                                    value={newComment}
+                                    onChange={setNewComment}
+                                    className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white min-h-[60px]"
+                                    placeholder="Add a comment..."
+                                />
+                                <Button
+                                    onClick={addComment}
+                                    className="mt-2 bg-zinc-600 text-white hover:bg-zinc-500"
+                                >
+                                    <MessageSquareIcon className="w-4 h-4 mr-2" />
+                                    Add Comment
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="mt-6">
                     <Button

@@ -77,6 +77,7 @@ class PostController extends Controller
     }
 
     /**
+     * @param Post $post
      * @param Request $request
      * @return Response
      */
