@@ -6,7 +6,8 @@ import * as z from 'zod';
 import {useForm, useWatch} from 'react-hook-form';
 import {Inertia} from '@inertiajs/inertia';
 import {Button} from '@/components/ui/button';
-import {TipTapTextArea} from '@/Pages/Board/components/TipTapTextArea';
+import { ExpandableTipTapTextArea } from './ExpandableTipTapTextArea';
+
 import {
     Dialog,
     DialogContent,
@@ -30,7 +31,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CalendarIcon, Trash2Icon, MessageSquareIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+import {
+    CalendarIcon,
+    Trash2Icon,
+    EyeIcon,
+    EditIcon,
+} from 'lucide-react';
 import {format} from 'date-fns';
 import {cn} from '@/lib/utils';
 import {Calendar} from '@/components/ui/calendar';
@@ -40,7 +46,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import {useToast} from '@/hooks/use-toast';
-import {usePage} from '@inertiajs/react';
+import CommentsSection from "@/Pages/Board/components/CommentSection";
 
 const formSchema = z.object({
     title: z.string().min(1, 'Title is required'),
@@ -99,12 +105,11 @@ export function PostFormDialog({
                                    task,
                                    onClose,
                                }: PostFormDialogProps) {
-    const [isDialogOpen, setIsDialogOpen] = useState(!!task);
+    const [isDialogOpen,     setIsDialogOpen]     = useState(!!task);
     const [availableColumns, setAvailableColumns] = useState<string[]>([]);
 
-    const [comments, setComments] = useState<Comment[]>(task?.comments || []);
-    const [newComment, setNewComment] = useState('');
-    const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
+    const [comments,  setComments] = useState<Comment[]>(task?.comments || []);
+    const [isPreview, setIsPreview] = useState(!!task);
 
     const {toast} = useToast();
 
@@ -131,6 +136,17 @@ export function PostFormDialog({
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues,
+    });
+
+    const commentSchema = z.object({
+        content: z.string().min(3, 'Comment is required and must be longer than 3 characters.'),
+    });
+
+    const commentForm = useForm({
+        resolver: zodResolver(commentSchema),
+        defaultValues: {
+            content: '',
+        },
     });
 
     const selectedBoardId = useWatch({
@@ -160,6 +176,10 @@ export function PostFormDialog({
         }
     }, [selectedBoardId, boards]);
 
+    useEffect(() => {
+        console.log('Comments updated:', comments);
+    }, [comments]);
+
     function onSubmit(values: FormData) {
         if (task) {
             Inertia.put(`/posts/${task.id}`, values, {
@@ -172,17 +192,19 @@ export function PostFormDialog({
                     console.error(errors);
                 },
             });
-        } else {
-            Inertia.post('/posts', values, {
-                onSuccess: () => {
-                    form.reset();
-                    setIsDialogOpen(false);
-                },
-                onError: (errors) => {
-                    console.error(errors);
-                },
-            });
+
+            return;
         }
+
+        Inertia.post('/posts', values, {
+            onSuccess: () => {
+                form.reset();
+                setIsDialogOpen(false);
+            },
+            onError: (errors) => {
+                console.error(errors);
+            },
+        });
     }
 
     function onDelete() {
@@ -204,19 +226,6 @@ export function PostFormDialog({
                     });
                 },
             });
-        }
-    }
-
-    function addComment() {
-        if (newComment.trim()) {
-            const comment: Comment = {
-                id: Date.now().toString(),
-                content: newComment,
-                author: 'Current User', // Replace with actual user name
-                createdAt: new Date().toISOString(),
-            };
-            setComments([...comments, comment]);
-            setNewComment('');
         }
     }
 
@@ -283,12 +292,27 @@ export function PostFormDialog({
                                         name="desc"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-white">Description</FormLabel>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <FormLabel className="text-white">Description</FormLabel>
+                                                    <Button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setIsPreview(!isPreview);
+                                                        }}
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-white hover:text-zinc-300"
+                                                    >
+                                                        {isPreview ? <EditIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                                    </Button>
+                                                </div>
                                                 <FormControl>
-                                                    <TipTapTextArea
+                                                    <ExpandableTipTapTextArea
                                                         value={field.value}
                                                         onChange={field.onChange}
-                                                        className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white h-60"
+                                                        className="bg-zinc-700 text-white border border-zinc-600 rounded-md focus-within:border-white focus-within:ring-1 focus-within:ring-white"
+                                                        isPreview={isPreview}
                                                     />
                                                 </FormControl>
                                                 <FormMessage className="text-red-400" />
@@ -470,45 +494,10 @@ export function PostFormDialog({
                             </div>
                         </form>
                     </Form>
-                    {task && (
-                        <div className="mt-8">
-                            <Button
-                                onClick={() => setIsCommentsExpanded(!isCommentsExpanded)}
-                                variant="outline"
-                                className="w-full justify-between bg-zinc-700 text-white hover:bg-zinc-600"
-                            >
-                                <span>Comments ({comments.length})</span>
-                                {isCommentsExpanded ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
-                            </Button>
-                            {isCommentsExpanded && (
-                                <div className="mt-4 space-y-4 max-h-60 overflow-y-auto">
-                                    {comments.map((comment) => (
-                                        <div key={comment.id} className="bg-zinc-700 p-3 rounded-md">
-                                            <p className="text-sm text-zinc-300">{comment.content}</p>
-                                            <div className="mt-2 text-xs text-zinc-400">
-                                                {comment.author} - {new Date(comment.createdAt).toLocaleString()}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <div className="mt-4">
-                                <TipTapTextArea
-                                    value={newComment}
-                                    onChange={setNewComment}
-                                    className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white min-h-[60px]"
-                                    placeholder="Add a comment..."
-                                />
-                                <Button
-                                    onClick={addComment}
-                                    className="mt-2 bg-zinc-600 text-white hover:bg-zinc-500"
-                                >
-                                    <MessageSquareIcon className="w-4 h-4 mr-2" />
-                                    Add Comment
-                                </Button>
-                            </div>
-                        </div>
+                    {task && task.comments && (
+                        <CommentsSection taskId={task.id} initialComments={task.comments} />
                     )}
+
                 </div>
                 <div className="mt-6">
                     <Button

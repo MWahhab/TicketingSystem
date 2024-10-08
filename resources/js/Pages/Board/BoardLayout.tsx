@@ -10,7 +10,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
 import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
-import { useToast } from '@/hooks/use-toast';
 
 export function BoardLayout() {
     const {
@@ -146,8 +145,7 @@ export function BoardLayout() {
         [setTasks, setColumns]
     );
 
-    // State for selected task and dialog visibility
-    const [selectedTask, setSelectedTask] = useState(null);
+    const [selectedTask, setSelectedTask]         = useState(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
     const handleTaskClick = (task) => {
@@ -156,10 +154,10 @@ export function BoardLayout() {
     };
 
     return (
-        <div className="flex h-screen overflow-hidden bg-neutral-900 text-white">
-            <div className="w-64 border-r border-zinc-700 p-4 flex flex-col">
+        <div className="flex flex-1 overflow-hidden bg-neutral-900 text-white">
+            <div className="w-64 border-r border-zinc-700 p-4 flex flex-col min-h-0">
                 <h2 className="mb-4 text-lg font-semibold text-white">Projects</h2>
-                <ScrollArea className="flex-grow h-[calc(100vh-8rem)]">
+                <ScrollArea className="flex-1 overflow-y-auto">
                     {boards.map((board) => (
                         <Button
                             key={board.id}
@@ -171,8 +169,8 @@ export function BoardLayout() {
                         </Button>
                     ))}
                 </ScrollArea>
-                <div className="pb-4">
-                    <BoardFormDialog />
+                <div className="">
+                    <BoardFormDialog/>
                 </div>
             </div>
 
@@ -187,7 +185,8 @@ export function BoardLayout() {
                                 priorities={priorities}
                             />
                             <div className="relative">
-                                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-zinc-400" />
+                                <Search
+                                    className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-zinc-400"/>
                                 <Input
                                     type="search"
                                     placeholder="Search..."
@@ -198,13 +197,13 @@ export function BoardLayout() {
                     </div>
 
                     <DragDropContext onDragEnd={onDragEnd}>
-                        <div className="flex flex-1 space-x-4 overflow-auto p-4">
+                        <div className="flex flex-1 overflow-x-auto p-4 space-x-4">
                             {Object.values(columns).map((column) => {
                                 const columnTasks = column.taskIds.map(
                                     (taskId) => tasks[taskId]
                                 );
                                 return (
-                                    <div key={column.id} className="flex-1 min-w-[250px]">
+                                    <div key={column.id} className="flex flex-col w-64 h-full max-h-[83vh]">
                                         <Column
                                             column={column}
                                             tasks={columnTasks}
