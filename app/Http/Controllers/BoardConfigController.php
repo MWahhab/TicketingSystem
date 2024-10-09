@@ -54,7 +54,8 @@ class BoardConfigController extends Controller
             'boardsColumns' => $boards,
             'assignees'     => $assignees,
             'priorities'    => PrioritiesEnum::cases(),
-            'boardTitle'     => $boardTitle
+            'boardTitle'    => $boardTitle,
+            'boardId'       => $boardId
         ]);
     }
 
@@ -110,16 +111,34 @@ class BoardConfigController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, BoardConfig $boardConfig)
+    public function update(Request $request, BoardConfig $board): RedirectResponse
     {
-        //
+        $validatedReq = $request->validate([
+            'title'     => 'required|string|min:2|max:255',
+            'columns'   => ['required', 'array', 'min:1', function ($attribute, $value, $fail) {
+                if (count($value) !== count(array_unique($value))) {
+                    $fail('Column names must be unique.');
+                }
+            }],
+            'columns.*' => 'string|min:1|max:255'
+        ]);
+
+        $tempId = $board->id;
+
+        $board->update($validatedReq);
+
+        return redirect()->back()->with("Success! ", "Board updated");
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(BoardConfig $boardConfig)
+    public function destroy(BoardConfig $board):RedirectResponse
     {
-        //
+        $tempId = $board->id;
+
+        $board->delete();
+
+        return redirect()->back()->with("Success! ", "Board deleted");
     }
 }

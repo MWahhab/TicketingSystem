@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
-import { Search } from 'lucide-react';
+import {Edit, MoreVertical, Search, Trash2} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
 import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
 import { useToast } from '@/hooks/use-toast';
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
+import BoardAmendment from "@/Pages/Board/components/BoardAmendment";
 
 export function BoardLayout() {
     const {
@@ -21,10 +23,11 @@ export function BoardLayout() {
         boardsColumns,
         priorities,
         boardTitle,
+        boardId
     } = usePage().props;
 
     const [columns, setColumns] = useState({});
-    const [tasks, setTasks] = useState({});
+    const [tasks, setTasks]     = useState({});
 
     const memoizedBoards = useMemo(() => boardsColumns, [boardsColumns]);
     const memoizedAssignees = useMemo(() => assignees, [assignees]);
@@ -179,7 +182,10 @@ export function BoardLayout() {
             <div className="flex-1 overflow-hidden">
                 <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
-                        <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
+                        <div className="flex items-center space-x-2">
+                            <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
+                            <BoardAmendment boardTitle={boardTitle} boardCols={columnsArray.join(", ")} boardId={boardId} />
+                        </div>
                         <div className="flex items-center space-x-2">
                             <PostFormDialog
                                 boards={memoizedBoards}

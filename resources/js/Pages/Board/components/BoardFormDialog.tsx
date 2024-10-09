@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import {useEffect, useState} from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useForm } from "react-hook-form"
@@ -42,7 +42,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export function BoardFormDialog() {
+export function BoardFormDialog({isBeingEdited = false, boardName = "", cols = "", boardId = null}) {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
     const { toast } = useToast();
@@ -50,23 +50,24 @@ export function BoardFormDialog() {
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            title: "",
-            columns: "",
+            title: boardName,
+            columns: cols,
         },
     })
 
     async function onSubmit(values: FormData) {
         try {
             const payload = {
-                title: values.title,
+                title  : values.title,
                 columns: values.columns, // Array of strings
             }
 
-            const response = await axios.post('/boards', payload);
+            const response = isBeingEdited ?
+                await axios.put(`/boards/${boardId}`, payload) : await axios.post('/boards', payload);
 
             toast({
                 variant: "success",
-                title: "New board has been created!",
+                title: isBeingEdited ? `${values.title} board has been edited!` : "New board has been created!",
                 description: response.data.message,
             });
 
@@ -91,17 +92,26 @@ export function BoardFormDialog() {
         }
     }
 
+    useEffect(() => {
+        if (isBeingEdited) {
+            setIsDialogOpen(true);
+        }
+    }, [isBeingEdited]);
+
     return (
         <div className="flex justify-center pb-24">
-            <Button className="mt-4 w-full max-w-md bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => setIsDialogOpen(true)}>
-                Add new board
-            </Button>
+            {!isBeingEdited && (
+                <Button className="mt-4 w-full max-w-md bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => setIsDialogOpen(true)}>
+                    Add new board
+                </Button>
+            )}
+
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-[550px] bg-zinc-800 text-white border border-zinc-700" aria-describedby="dialog-description">
                     <DialogHeader>
-                        <DialogTitle>New Board</DialogTitle>
+                        <DialogTitle>{isBeingEdited ? `${boardName} Board` : "New Board"}</DialogTitle>
                         <DialogDescription className="text-zinc-300">
-                            Create a new board.
+                            {isBeingEdited ? `Edit Board.` : "Create a new board."}
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -129,7 +139,7 @@ export function BoardFormDialog() {
                                             Please enter columns as comma-separated values!
                                         </FormDescription>
                                         <FormControl>
-                                            <Input placeholder="Backlog, Estimated, In Progress, Review" {...field} className="w-full bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white" />
+                                            <Input value={isBeingEdited ? cols : ""} placeholder="Backlog, Estimated, In Progress, Review" {...field} className="w-full bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white" />
                                         </FormControl>
                                         <FormMessage className="text-red-400" />
                                     </FormItem>
