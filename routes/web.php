@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BoardConfigController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -21,7 +22,6 @@ Route::get('/', function () {
     ]);
 });
 
-
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [BoardConfigController::class, 'index'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -31,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('boards', BoardConfigController::class);
     Route::resource('boards.posts', PostController::class)->shallow();
     Route::resource('posts', PostController::class);
+    Route::resource('comments', CommentController::class);
 
     Route::post('/move/{post}', [PostController::class, 'move']);
 });

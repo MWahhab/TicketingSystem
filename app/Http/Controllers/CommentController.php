@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CommentController extends Controller
 {
@@ -26,9 +28,18 @@ class CommentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        $validatedData = $request->validate([
+            'content'  => 'required|string',
+            'fid_post' => 'required|exists:posts,id',
+        ]);
+        $validatedData['fid_user'] = Auth::id();
+        $comment                   = Comment::create($validatedData);
+
+        $comment->load('creator');
+
+        return response()->json($comment);
     }
 
     /**

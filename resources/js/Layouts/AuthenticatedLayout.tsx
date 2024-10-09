@@ -10,7 +10,7 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
 
     return (
-        <div className="min-h-screen bg-neutral-900">
+        <div className="h-screen bg-neutral-900 flex flex-col">
             <nav className="bg-zinc-800 border-b border-zinc-700">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
@@ -124,7 +124,7 @@ export default function Authenticated({ header, children }: PropsWithChildren<{ 
                 </header>
             )}
 
-            <main className="py-12">{children}</main>
+            <main className="flex-1 overflow-hidden">{children}</main>
         </div>
     );
 }
