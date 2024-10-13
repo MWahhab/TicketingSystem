@@ -10,8 +10,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
 import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
-import { useToast } from '@/hooks/use-toast';
-import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 import BoardAmendment from "@/Pages/Board/components/BoardAmendment";
 
 export function BoardLayout() {
@@ -23,6 +21,7 @@ export function BoardLayout() {
         boardsColumns,
         priorities,
         boardTitle,
+        boardId
     } = usePage().props;
 
     const [columns, setColumns] = useState({});
@@ -183,8 +182,9 @@ export function BoardLayout() {
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
                         <div className="flex items-center space-x-2">
                             <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
-                            <BoardAmendment boardTitle={boardTitle} boardCols={columnsArray.join(", ")}
-                                            boardId={boardId}/>
+                            {boardId && (
+                                <BoardAmendment boardTitle={boardTitle} boardCols={columnsArray.join(", ")} boardId={boardId}/>
+                            )}
                         </div>
                         <div className="flex items-center space-x-2">
                             <PostFormDialog
@@ -223,7 +223,6 @@ export function BoardLayout() {
                         </div>
                     </DragDropContext>
 
-                    {/* Edit Form Dialog */}
                     {isEditDialogOpen && selectedTask && (
                         <PostFormDialog
                             boards={memoizedBoards}

@@ -26,6 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 
 import axios from 'axios';
+import {router} from "@inertiajs/react";
 
 const formSchema = z.object({
     title: z.string().min(2, { message: "Title must be at least 2 characters." }),
@@ -63,13 +64,17 @@ export function BoardFormDialog({isBeingEdited = false, boardName = "", cols = "
             }
 
             const response = isBeingEdited ?
-                await axios.put(`/boards/${boardId}`, payload) : await axios.post('/boards', payload);
+                await router.put(`/boards/${boardId}`, payload) : await axios.post('/boards', payload);
+
+            console.log("Form submitted with values:", values.title, values.columns);
 
             toast({
                 variant: "success",
                 title: isBeingEdited ? `${values.title} board has been edited!` : "New board has been created!",
-                description: response.data.message,
+                //description: response.data.message,
             });
+
+            console.log(response);
 
             form.reset();
             setIsDialogOpen(false);

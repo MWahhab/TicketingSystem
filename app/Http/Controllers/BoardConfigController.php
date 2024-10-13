@@ -33,7 +33,7 @@ class BoardConfigController extends Controller
             'assignees'     => $assignees,
             'priorities'    => PrioritiesEnum::cases(),
             'boardTitle'    => $boardData['boardTitle'],
-            'boardId'       => $boardId
+            'boardId'       => $boardData['id']
         ]);
     }
 
@@ -100,8 +100,6 @@ class BoardConfigController extends Controller
             }],
             'columns.*' => 'string|min:1|max:255'
         ]);
-
-        $tempId = $board->id;
 
         $board->update($validatedReq);
 
