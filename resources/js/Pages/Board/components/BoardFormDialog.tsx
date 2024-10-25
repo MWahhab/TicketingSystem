@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useState} from "react"
+import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useForm } from "react-hook-form"
@@ -26,7 +26,6 @@ import {
 import { useToast } from "@/hooks/use-toast"
 
 import axios from 'axios';
-import {router} from "@inertiajs/react";
 
 const formSchema = z.object({
     title: z.string().min(2, { message: "Title must be at least 2 characters." }),
@@ -43,7 +42,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export function BoardFormDialog({isBeingEdited = false, boardName = "", cols = "", boardId = null}) {
+export function BoardFormDialog() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
     const { toast } = useToast();
@@ -51,30 +50,25 @@ export function BoardFormDialog({isBeingEdited = false, boardName = "", cols = "
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            title: boardName,
-            columns: cols,
+            title: "",
+            columns: "",
         },
     })
 
     async function onSubmit(values: FormData) {
         try {
             const payload = {
-                title  : values.title,
+                title: values.title,
                 columns: values.columns, // Array of strings
             }
 
-            const response = isBeingEdited ?
-                await router.put(`/boards/${boardId}`, payload) : await axios.post('/boards', payload);
-
-            console.log("Form submitted with values:", values.title, values.columns);
+            const response = await axios.post('/boards', payload);
 
             toast({
                 variant: "success",
-                title: isBeingEdited ? `${values.title} board has been edited!` : "New board has been created!",
-                //description: response.data.message,
+                title: "New board has been created!",
+                description: response.data.message,
             });
-
-            console.log(response);
 
             form.reset();
             setIsDialogOpen(false);
@@ -97,26 +91,17 @@ export function BoardFormDialog({isBeingEdited = false, boardName = "", cols = "
         }
     }
 
-    useEffect(() => {
-        if (isBeingEdited) {
-            setIsDialogOpen(true);
-        }
-    }, [isBeingEdited]);
-
     return (
         <div className="flex justify-center pb-24">
-            {!isBeingEdited && (
-                <Button className="mt-4 w-full max-w-md bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => setIsDialogOpen(true)}>
-                    Add new board
-                </Button>
-            )}
-
+            <Button className="mt-4 w-full max-w-md bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => setIsDialogOpen(true)}>
+                Add new board
+            </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-[550px] bg-zinc-800 text-white border border-zinc-700" aria-describedby="dialog-description">
                     <DialogHeader>
-                        <DialogTitle>{isBeingEdited ? `${boardName} Board` : "New Board"}</DialogTitle>
+                        <DialogTitle>New Board</DialogTitle>
                         <DialogDescription className="text-zinc-300">
-                            {isBeingEdited ? `Edit Board.` : "Create a new board."}
+                            Create a new board.
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -144,7 +129,7 @@ export function BoardFormDialog({isBeingEdited = false, boardName = "", cols = "
                                             Please enter columns as comma-separated values!
                                         </FormDescription>
                                         <FormControl>
-                                            <Input value={isBeingEdited ? cols : ""} placeholder="Backlog, Estimated, In Progress, Review" {...field} className="w-full bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white" />
+                                            <Input placeholder="Backlog, Estimated, In Progress, Review" {...field} className="w-full bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white" />
                                         </FormControl>
                                         <FormMessage className="text-red-400" />
                                     </FormItem>

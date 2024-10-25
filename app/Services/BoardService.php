@@ -10,13 +10,11 @@ class BoardService
      * Gets each board with their respective posts and each post with their respective comments. If $boardId is null -
      * assumed this is the first render and attempts to retrieve the first board config found in the table.
      *
-     * @param $boardId
+     * @param  $boardId
      * @return array|null
      */
     public function getBoardData($boardId = null): ?array
     {
-        BoardConfig::find($boardId) ?? $boardId = null;
-
         $board = BoardConfig::with([
             'posts.assignee:id,name',
             'posts.comments.creator:id,name',

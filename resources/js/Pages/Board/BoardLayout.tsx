@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
 import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
-import BoardAmendment from "@/Pages/Board/components/BoardAmendment";
+import BoardDeleteButton from "@/Pages/Board/components/BoardDeleteButton";
 
 export function BoardLayout() {
     const {
@@ -182,9 +182,7 @@ export function BoardLayout() {
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
                         <div className="flex items-center space-x-2">
                             <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
-                            {boardId && (
-                                <BoardAmendment boardTitle={boardTitle} boardCols={columnsArray.join(", ")} boardId={boardId}/>
-                            )}
+                            {boardId && <BoardDeleteButton boardId={boardId} />}
                         </div>
                         <div className="flex items-center space-x-2">
                             <PostFormDialog
