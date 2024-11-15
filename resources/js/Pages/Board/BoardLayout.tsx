@@ -147,7 +147,6 @@ export function BoardLayout() {
         [setTasks, setColumns]
     );
 
-    // State for selected task and dialog visibility
     const [selectedTask, setSelectedTask] = useState(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 

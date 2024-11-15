@@ -62,11 +62,13 @@ class BoardConfigController extends Controller
             'columns.*' => 'string|min:1|max:255',
         ]);
 
-        $boardId = DB::table("board_configs")->insertGetId([
+        $board = BoardConfig::create([
             'title'    => $validated['title'],
-            'columns'  => json_encode($validated['columns']),
+            'columns'  => $validated['columns'],
             'fid_user' => Auth::id()
         ]);
+
+        $boardId = $board->id;
 
         return redirect()->route("boards.index", ["board_id" => $boardId])->with('success', 'Board created successfully!');
     }
