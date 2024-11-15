@@ -7,9 +7,10 @@ use App\Models\BoardConfig;
 class BoardService
 {
     /**
-     * Gets each board with their respective posts and each post with their respective comments.
+     * Gets each board with their respective posts and each post with their respective comments. If $boardId is null -
+     * assumed this is the first render and attempts to retrieve the first board config found in the table.
      *
-     * @param $boardId
+     * @param  $boardId
      * @return array|null
      */
     public function getBoardData($boardId = null): ?array
@@ -24,11 +25,12 @@ class BoardService
                 return $query->first();
             });
 
-        if (!$board) {
+        if (!$board->exists()) {
             return [
                 'columns'    => [],
                 'posts'      => [],
                 'boardTitle' => 'No Board Found',
+                'id'         => null
             ];
         }
 
@@ -63,6 +65,7 @@ class BoardService
             'columns'    => $columns,
             'posts'      => $posts,
             'boardTitle' => $board->title ?? 'Untitled Board',
+            'id'         => $board->id
         ];
     }
 }

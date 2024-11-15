@@ -9,6 +9,7 @@ use App\Services\BoardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,6 +34,7 @@ class BoardConfigController extends Controller
             'assignees'     => $assignees,
             'priorities'    => PrioritiesEnum::cases(),
             'boardTitle'    => $boardData['boardTitle'],
+            'boardId'       => $boardData['id']
         ]);
     }
 
@@ -45,7 +47,7 @@ class BoardConfigController extends Controller
     }
 
     /**
-     * @param Request $request
+     * @param  Request          $request
      * @return RedirectResponse
      */
     public function store(Request $request): RedirectResponse
@@ -60,13 +62,15 @@ class BoardConfigController extends Controller
             'columns.*' => 'string|min:1|max:255',
         ]);
 
-        BoardConfig::create([
+        $board = BoardConfig::create([
             'title'    => $validated['title'],
             'columns'  => $validated['columns'],
             'fid_user' => Auth::id()
         ]);
 
-        return redirect()->back()->with('success', 'Board created successfully!');
+        $boardId = $board->id;
+
+        return redirect()->route("boards.index", ["board_id" => $boardId])->with('success', 'Board created successfully!');
     }
 
     /**
@@ -88,7 +92,7 @@ class BoardConfigController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, BoardConfig $boardConfig)
+    public function update(Request $request, BoardConfig $board)
     {
         //
     }
@@ -96,8 +100,10 @@ class BoardConfigController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(BoardConfig $boardConfig)
+    public function destroy(BoardConfig $board):RedirectResponse
     {
-        //
+        $board->delete();
+
+        return redirect()->route("boards.index", ["board_id" => null])->with("Success! ", "Board deleted");
     }
 }

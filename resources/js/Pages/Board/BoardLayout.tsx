@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
-import { Search } from 'lucide-react';
+import {Edit, MoreVertical, Search, Trash2} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
 import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
+import BoardDeleteButton from "@/Pages/Board/components/BoardDeleteButton";
 
 export function BoardLayout() {
     const {
@@ -20,6 +21,7 @@ export function BoardLayout() {
         boardsColumns,
         priorities,
         boardTitle,
+        boardId
     } = usePage().props;
 
     const [columns, setColumns] = useState({});
@@ -145,7 +147,7 @@ export function BoardLayout() {
         [setTasks, setColumns]
     );
 
-    const [selectedTask, setSelectedTask]         = useState(null);
+    const [selectedTask, setSelectedTask] = useState(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
     const handleTaskClick = (task) => {
@@ -154,7 +156,7 @@ export function BoardLayout() {
     };
 
     return (
-        <div className="flex flex-1 overflow-hidden bg-neutral-900 text-white">
+        <div className="flex h-screen overflow-hidden bg-neutral-900 text-white">
             <div className="w-64 border-r border-zinc-700 p-4 flex flex-col min-h-0">
                 <h2 className="mb-4 text-lg font-semibold text-white">Projects</h2>
                 <ScrollArea className="flex-1 overflow-y-auto">
@@ -169,15 +171,18 @@ export function BoardLayout() {
                         </Button>
                     ))}
                 </ScrollArea>
-                <div className="">
-                    <BoardFormDialog/>
+                <div className="pb-4">
+                    <BoardFormDialog />
                 </div>
             </div>
 
             <div className="flex-1 overflow-hidden">
                 <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
-                        <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
+                        <div className="flex items-center space-x-2">
+                            <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
+                            {boardId && <BoardDeleteButton boardId={boardId} />}
+                        </div>
                         <div className="flex items-center space-x-2">
                             <PostFormDialog
                                 boards={memoizedBoards}
@@ -215,7 +220,6 @@ export function BoardLayout() {
                         </div>
                     </DragDropContext>
 
-                    {/* Edit Form Dialog */}
                     {isEditDialogOpen && selectedTask && (
                         <PostFormDialog
                             boards={memoizedBoards}
