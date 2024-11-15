@@ -68,12 +68,6 @@ class BoardConfigController extends Controller
             'fid_user' => Auth::id()
         ]);
 
-//        BoardConfig::create([
-//            'title'    => $validated['title'],
-//            'columns'  => $validated['columns'],
-//            'fid_user' => Auth::id()
-//        ]);
-
         return redirect()->route("boards.index", ["board_id" => $boardId])->with('success', 'Board created successfully!');
     }
 
