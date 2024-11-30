@@ -17,7 +17,9 @@ class BoardService
     {
         $board = BoardConfig::with([
             'posts.assignee:id,name',
-            'posts.comments.creator:id,name',
+            'posts.comments' => function ($query) {
+                $query->orderBy('created_at', 'desc')->with('creator:id,name');
+            },
         ])
             ->when($boardId, function ($query) use ($boardId) {
                 return $query->find($boardId);

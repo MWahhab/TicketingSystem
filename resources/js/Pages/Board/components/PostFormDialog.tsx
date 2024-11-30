@@ -501,7 +501,6 @@ export function PostFormDialog({
                         {task && task.comments && (
                             <CommentsSection taskId={task.id} initialComments={task.comments}/>
                         )}
-
                     </div>
                     <div className="mt-6">
                         <Button
