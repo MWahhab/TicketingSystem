@@ -34,7 +34,7 @@ const commentSchema = z.object({
 const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialComments }) => {
     const [comments, setComments] = useState<Comment[]>(initialComments || []);
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isCommentsExpanded, setIsCommentsExpanded] = useState(true);
+    const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
 
     const commentForm = useForm({
         resolver: zodResolver(commentSchema),
