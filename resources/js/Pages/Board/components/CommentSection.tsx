@@ -20,6 +20,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import axios from 'axios';
 
+<style jsx>{`
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+`}</style>
+
 interface Comment {
     id: string;
     content: string;
@@ -42,11 +52,26 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
     const [isExpanded, setIsExpanded] = useState(false);
     const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
     const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+    const [visibleComments, setVisibleComments] = useState<Comment[]>([]);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [showAllComments, setShowAllComments] = useState(false);
+    const commentsPerPage = 4;
 
     useEffect(() => {
+        setComments([]);
+        setVisibleComments([]);
+        setPage(1);
+        setHasMore(true);
+        setShowAllComments(false);
+        loadComments();
+    }, [taskId, page, commentsPerPage]);
+
+    const loadComments = () => {
         axios
             .get(`/comments?fid_post=${taskId}`)
             .then((response) => {
+                console.log(response)
                 const fetchedComments = response.data.map((comment: any) => ({
                     id: comment.id.toString(),
                     content: comment.content.toString(),
@@ -55,11 +80,13 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                     createdAt: comment.created_at.toString(),
                 }));
                 setComments(fetchedComments);
+                setVisibleComments(fetchedComments.slice(0, commentsPerPage));
+                setHasMore(fetchedComments.length > commentsPerPage);
             })
             .catch((error) => {
                 console.error(error);
             });
-    }, [taskId]);
+    };
 
     const commentForm = useForm({
         resolver: zodResolver(commentSchema),
@@ -82,16 +109,15 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                     const newComment = response.data;
 
                     if (newComment.content) {
-                        setComments((prevComments) => [
-                            {
-                                id: newComment.id.toString(),
-                                content: newComment.content.toString(),
-                                author: newComment.creator.name.toString(),
-                                authorId: newComment.creator.id.toString(),
-                                createdAt: newComment.created_at.toString(),
-                            },
-                            ...prevComments,
-                        ]);
+                        const formattedNewComment = {
+                            id: newComment.id.toString(),
+                            content: newComment.content.toString(),
+                            author: newComment.creator.name.toString(),
+                            authorId: newComment.creator.id.toString(),
+                            createdAt: newComment.created_at.toString(),
+                        };
+                        setComments(prevComments => [formattedNewComment, ...prevComments]);
+                        setVisibleComments(prevVisible => [formattedNewComment, ...prevVisible.slice(0, commentsPerPage - 1)]);
                     }
                     commentForm.reset();
                     setIsExpanded(false);
@@ -107,6 +133,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
             .delete(`/comments/${commentId}`)
             .then(() => {
                 setComments((prevComments) => prevComments.filter((comment) => comment.id !== commentId));
+                setVisibleComments((prevVisible) => prevVisible.filter((comment) => comment.id !== commentId));
             })
             .catch((error) => {
                 if (error.response && error.response.status === 403) {
@@ -132,13 +159,14 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                 axios.put(`/comments/${editingCommentId}`, { content })
                     .then((response) => {
                         const updatedComment = response.data;
-                        setComments(prevComments =>
-                            prevComments.map(comment =>
+                        const updateCommentList = (comments: Comment[]) =>
+                            comments.map(comment =>
                                 comment.id === editingCommentId
                                     ? { ...comment, content: updatedComment.content }
                                     : comment
-                            )
-                        );
+                            );
+                        setComments(updateCommentList);
+                        setVisibleComments(updateCommentList);
                         setEditingCommentId(null);
                         commentForm.reset();
                     })
@@ -150,6 +178,17 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                     });
             }
         }
+    };
+
+    const handleLoadMore = () => {
+        setPage(prevPage => prevPage + 1);
+        loadComments();
+    };
+
+    const handleShowAllComments = () => {
+        setVisibleComments(comments);
+        setShowAllComments(true);
+        setHasMore(false);
     };
 
     return (
@@ -238,9 +277,9 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
 
                     <Separator className="bg-zinc-700" />
 
-                    <ScrollArea className="pr-4 -mr-4 max-h-[400px]">
+                    <ScrollArea className="pr-4 -mr-4 max-h-[400px] overflow-y-auto hide-scrollbar">
                         <div className="space-y-4">
-                            {comments.map((comment) => (
+                            {visibleComments.map((comment) => (
                                 <div key={comment.id} className="flex items-start space-x-3">
                                     <Avatar className="h-8 w-8 bg-zinc-800 text-zinc-800">
                                         <AvatarFallback>
@@ -312,7 +351,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                                             className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
                                                                             disabled={commentForm.formState.isSubmitting}
                                                                         >
-                                                                            <SendIcon className="h-4 w-4 mr-2" />
                                                                             {commentForm.formState.isSubmitting ? 'Updating...' : 'Update'}
                                                                         </Button>
                                                                     </div>
@@ -333,6 +371,18 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                     </div>
                                 </div>
                             ))}
+                            {hasMore && (
+                                <div className="mt-4 text-center">
+                                    <Button
+                                        onClick={showAllComments ? handleLoadMore : handleShowAllComments}
+                                        variant="secondary"
+                                        size="sm"
+                                        className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                                    >
+                                        {showAllComments ? 'Load More Comments' : 'Show All Comments'}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </ScrollArea>
                 </CardContent>
