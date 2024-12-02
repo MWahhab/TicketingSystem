@@ -210,7 +210,7 @@ export function BoardLayout() {
                                     (taskId) => tasks[taskId]
                                 );
                                 return (
-                                    <div key={column.id} className="flex flex-col w-64 h-full max-h-[83vh]">
+                                    <div key={column.id} className="flex-1 min-w-[250px] max-w-screen">
                                         <Column
                                             column={column}
                                             tasks={columnTasks}

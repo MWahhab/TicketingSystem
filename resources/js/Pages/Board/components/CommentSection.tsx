@@ -277,7 +277,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
 
                     <Separator className="bg-zinc-700" />
 
-                    <ScrollArea className="pr-4 -mr-4 max-h-[400px] overflow-y-auto hide-scrollbar">
+                    <ScrollArea className="pr-4 -mr-4 max-h-[440px] overflow-y-auto hide-scrollbar">
                         <div className="space-y-4">
                             {visibleComments.map((comment) => (
                                 <div key={comment.id} className="flex items-start space-x-3">
@@ -377,7 +377,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                         onClick={showAllComments ? handleLoadMore : handleShowAllComments}
                                         variant="secondary"
                                         size="sm"
-                                        className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                                        className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
                                     >
                                         {showAllComments ? 'Load More Comments' : 'Show All Comments'}
                                     </Button>
