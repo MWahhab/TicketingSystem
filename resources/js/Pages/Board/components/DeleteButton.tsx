@@ -1,11 +1,9 @@
 import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
-import { router } from "@inertiajs/react"
 import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmation";
 import {useState} from "react";
 
-export default function BoardDeleteButton({ boardId }: { boardId: string }) {
+export default function DeleteButton({resourceId, type}: { resourceId: string, type: string }) {
     const [showDialog, setShowDialog] = useState(false);
 
     const onDelete = () => {
@@ -25,13 +23,13 @@ export default function BoardDeleteButton({ boardId }: { boardId: string }) {
                 className="text-red-500 hover:text-red-700 hover:bg-red-100"
             >
                 <Trash2 className="h-4 w-4" />
-                <span className="sr-only">Delete board</span>
+                <span className="sr-only">Delete {type}</span>
             </Button>
 
             {showDialog && (
                 <DeleteConfirmationDialog
-                    id={boardId}
-                    type="Board"
+                    id={resourceId}
+                    type={type}
                     isOpen={true}
                     onClose={handleDialogClose}
                 />

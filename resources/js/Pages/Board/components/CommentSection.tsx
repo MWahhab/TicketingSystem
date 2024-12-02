@@ -1,40 +1,71 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useForm } from 'react-hook-form';
 import { TipTapTextArea } from '@/Pages/Board/components/TipTapTextArea';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
-import { MessageSquareIcon, SendIcon, PlusIcon, ChevronUpIcon, ChevronDownIcon, MoreVerticalIcon } from 'lucide-react';
+import {
+    MessageSquareIcon,
+    SendIcon,
+    PlusIcon,
+    ChevronUpIcon,
+    ChevronDownIcon,
+    MoreVerticalIcon,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import axios from 'axios';
 
 interface Comment {
     id: string;
     content: string;
     author: string;
+    authorId: string;
     createdAt: string;
 }
 
 interface CommentsSectionProps {
     taskId: string;
-    initialComments: Comment[];
+    currentUserId: string;
 }
 
 const commentSchema = z.object({
     content: z.string().min(3, 'Comment is required and must be longer than 3 characters.'),
 });
 
-const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialComments }) => {
-    const [comments, setComments] = useState<Comment[]>(initialComments || []);
+const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId }) => {
+    const [comments, setComments] = useState<Comment[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
     const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
+
+    useEffect(() => {
+        axios
+            .get(`/comments?fid_post=${taskId}`)
+            .then((response) => {
+                const fetchedComments = response.data.map((comment: any) => ({
+                    id: comment.id.toString(),
+                    content: comment.content.toString(),
+                    author: comment.creator.name.toString(),
+                    authorId: comment.creator.id.toString(),
+                    createdAt: comment.created_at.toString(),
+                }));
+                setComments(fetchedComments);
+            })
+            .catch((error) => {
+                console.error(error);
+            });
+    }, [taskId]);
 
     const commentForm = useForm({
         resolver: zodResolver(commentSchema),
@@ -54,7 +85,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialCommen
             axios
                 .post('/comments', data)
                 .then((response) => {
-                    const newComment = response.data.comment || response.data;
+                    const newComment = response.data;
 
                     if (newComment.content) {
                         setComments((prevComments) => [
@@ -62,6 +93,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialCommen
                                 id: newComment.id.toString(),
                                 content: newComment.content.toString(),
                                 author: newComment.creator.name.toString(),
+                                authorId: newComment.creator.id.toString(),
                                 createdAt: newComment.created_at.toString(),
                             },
                             ...prevComments,
@@ -77,8 +109,18 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialCommen
     };
 
     const deleteComment = (commentId: string) => {
-        // Implement delete functionality here
-        console.log(`Delete comment with id: ${commentId}`);
+        axios
+            .delete(`/comments/${commentId}`)
+            .then(() => {
+                setComments((prevComments) => prevComments.filter((comment) => comment.id !== commentId));
+            })
+            .catch((error) => {
+                if (error.response && error.response.status === 403) {
+                    alert('You are not authorized to delete this comment.');
+                } else {
+                    console.error(error);
+                }
+            });
     };
 
     const editComment = (commentId: string) => {
@@ -100,7 +142,11 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialCommen
                             {comments.length}
                         </div>
                     </div>
-                    {isCommentsExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+                    {isCommentsExpanded ? (
+                        <ChevronUpIcon className="h-5 w-5" />
+                    ) : (
+                        <ChevronDownIcon className="h-5 w-5" />
+                    )}
                 </div>
             </CardHeader>
             {isCommentsExpanded && (
@@ -154,9 +200,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialCommen
                                                             disabled={commentForm.formState.isSubmitting}
                                                         >
                                                             <SendIcon className="h-4 w-4 mr-2" />
-                                                            {commentForm.formState.isSubmitting
-                                                                ? 'Sending...'
-                                                                : 'Send'}
+                                                            {commentForm.formState.isSubmitting ? 'Sending...' : 'Send'}
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -187,21 +231,26 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialCommen
                                                     {new Date(comment.createdAt).toLocaleString()}
                                                 </span>
                                             </div>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                        <MoreVerticalIcon className="h-4 w-4 text-zinc-300" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-zinc-800 text-zinc-300 border-zinc-700">
-                                                    <DropdownMenuItem onClick={() => editComment(comment.id)}>
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => deleteComment(comment.id)}>
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            {comment.authorId == currentUserId && (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                            <MoreVerticalIcon className="h-4 w-4 text-zinc-300" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent
+                                                        align="end"
+                                                        className="bg-zinc-800 text-zinc-300 border-zinc-700"
+                                                    >
+                                                        <DropdownMenuItem onClick={() => editComment(comment.id)}>
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => deleteComment(comment.id)}>
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
                                         </div>
                                         <div className="rounded-lg bg-zinc-800 p-3 text-sm text-zinc-300">
                                             <div
@@ -221,4 +270,3 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, initialCommen
 };
 
 export default CommentsSection;
-

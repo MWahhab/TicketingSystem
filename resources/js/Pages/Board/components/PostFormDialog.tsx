@@ -47,7 +47,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import {useToast} from '@/hooks/use-toast';
-import CommentsSection from "@/Pages/Board/components/CommentSection";
+import CommentSection from "@/Pages/Board/components/CommentSection";
 import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmation";
 
 const formSchema = z.object({
@@ -106,11 +106,11 @@ export function PostFormDialog({
                                    priorities = [],
                                    task,
                                    onClose,
+                                   authUserId,
                                }: PostFormDialogProps) {
     const [isDialogOpen,     setIsDialogOpen]     = useState(!!task);
     const [availableColumns, setAvailableColumns] = useState<string[]>([]);
 
-    const [comments,  setComments] = useState<Comment[]>(task?.comments || []);
     const [isPreview, setIsPreview] = useState(!!task);
 
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -179,10 +179,6 @@ export function PostFormDialog({
             form.setValue('column', '');
         }
     }, [selectedBoardId, boards]);
-
-    useEffect(() => {
-        console.log('Comments updated:', comments);
-    }, [comments]);
 
     function onSubmit(values: FormData) {
         if (task) {
@@ -499,7 +495,7 @@ export function PostFormDialog({
                             </form>
                         </Form>
                         {task && task.comments && (
-                            <CommentsSection taskId={task.id} initialComments={task.comments}/>
+                            <CommentSection taskId={task.id} currentUserId={authUserId}/>
                         )}
                     </div>
                     <div className="mt-6">

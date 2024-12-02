@@ -34,7 +34,8 @@ class BoardConfigController extends Controller
             'assignees'     => $assignees,
             'priorities'    => PrioritiesEnum::cases(),
             'boardTitle'    => $boardData['boardTitle'],
-            'boardId'       => $boardData['id']
+            'boardId'       => $boardData['id'],
+            'authUserId'    => Auth::id(),
         ]);
     }
 

@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
 import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
-import BoardDeleteButton from "@/Pages/Board/components/BoardDeleteButton";
+import DeleteButton from "@/Pages/Board/components/DeleteButton";
 
 export function BoardLayout() {
     const {
@@ -21,7 +21,8 @@ export function BoardLayout() {
         boardsColumns,
         priorities,
         boardTitle,
-        boardId
+        boardId,
+        authUserId
     } = usePage().props;
 
     const [columns, setColumns] = useState({});
@@ -181,13 +182,14 @@ export function BoardLayout() {
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
                         <div className="flex items-center space-x-2">
                             <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
-                            {boardId && <BoardDeleteButton boardId={boardId} />}
+                            {boardId && <DeleteButton resourceId={boardId} type="Board" />}
                         </div>
                         <div className="flex items-center space-x-2">
                             <PostFormDialog
                                 boards={memoizedBoards}
                                 assignees={memoizedAssignees}
                                 priorities={priorities}
+                                authUserId={authUserId}
                             />
                             <div className="relative">
                                 <Search
@@ -230,6 +232,7 @@ export function BoardLayout() {
                                 setIsEditDialogOpen(false);
                                 setSelectedTask(null);
                             }}
+                            authUserId={authUserId}
                         />
                     )}
                 </div>

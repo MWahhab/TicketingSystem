@@ -12,10 +12,18 @@ class CommentController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        //
+        $taskId  = $request->input('fid_post');
+
+        $comments = Comment::where('fid_post', $taskId)
+            ->with('creator')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($comments);
     }
+
 
     /**
      * Show the form for creating a new resource.
@@ -69,8 +77,14 @@ class CommentController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Comment $comment)
+    public function destroy(Comment $comment): JsonResponse
     {
-        //
+        if ($comment->fid_user !== Auth::id()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $comment->delete();
+
+        return response()->json(['message' => 'Comment deleted successfully']);
     }
 }
