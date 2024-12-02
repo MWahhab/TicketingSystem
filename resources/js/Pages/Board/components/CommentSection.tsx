@@ -7,14 +7,7 @@ import { useForm } from 'react-hook-form';
 import { TipTapTextArea } from '@/Pages/Board/components/TipTapTextArea';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
-import {
-    MessageSquareIcon,
-    SendIcon,
-    PlusIcon,
-    ChevronUpIcon,
-    ChevronDownIcon,
-    MoreVerticalIcon,
-} from 'lucide-react';
+import { MessageSquareIcon, SendIcon, PlusIcon, ChevronUpIcon, ChevronDownIcon, MoreVerticalIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -48,6 +41,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
     const [comments, setComments] = useState<Comment[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
     const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
     useEffect(() => {
         axios
@@ -124,8 +118,38 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
     };
 
     const editComment = (commentId: string) => {
-        // Implement edit functionality here
-        console.log(`Edit comment with id: ${commentId}`);
+        setEditingCommentId(commentId);
+        const commentToEdit = comments.find(comment => comment.id === commentId);
+        if (commentToEdit) {
+            commentForm.setValue('content', commentToEdit.content);
+        }
+    };
+
+    const updateComment = (values: { content: string }) => {
+        if (editingCommentId) {
+            const { content } = values;
+            if (content.trim()) {
+                axios.put(`/comments/${editingCommentId}`, { content })
+                    .then((response) => {
+                        const updatedComment = response.data;
+                        setComments(prevComments =>
+                            prevComments.map(comment =>
+                                comment.id === editingCommentId
+                                    ? { ...comment, content: updatedComment.content }
+                                    : comment
+                            )
+                        );
+                        setEditingCommentId(null);
+                        commentForm.reset();
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        if (error.response && error.response.status === 403) {
+                            alert('You are not authorized to edit this comment.');
+                        }
+                    });
+            }
+        }
     };
 
     return (
@@ -152,7 +176,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
             {isCommentsExpanded && (
                 <CardContent className="space-y-3">
                     <Form {...commentForm}>
-                        <form onSubmit={commentForm.handleSubmit(addComment)}>
+                        <form onSubmit={commentForm.handleSubmit(editingCommentId ? updateComment : addComment)}>
                             <FormField
                                 control={commentForm.control}
                                 name="content"
@@ -252,12 +276,60 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                 </DropdownMenu>
                                             )}
                                         </div>
-                                        <div className="rounded-lg bg-zinc-800 p-3 text-sm text-zinc-300">
-                                            <div
-                                                className="prose prose-sm prose-invert max-w-none"
-                                                dangerouslySetInnerHTML={{ __html: comment.content }}
-                                            />
-                                        </div>
+                                        {editingCommentId === comment.id ? (
+                                            <Form {...commentForm}>
+                                                <form onSubmit={commentForm.handleSubmit(updateComment)}>
+                                                    <FormField
+                                                        control={commentForm.control}
+                                                        name="content"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormControl>
+                                                                    <TipTapTextArea
+                                                                        value={field.value}
+                                                                        onChange={field.onChange}
+                                                                        className="min-h-[100px] bg-zinc-800 text-zinc-300 border-zinc-700 resize-none focus:border-zinc-600 focus:ring-zinc-600"
+                                                                    />
+                                                                </FormControl>
+                                                                <div className="flex justify-between items-center mt-2">
+                                                                    <FormMessage className="text-red-400" />
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="secondary"
+                                                                            onClick={() => {
+                                                                                setEditingCommentId(null);
+                                                                                commentForm.reset();
+                                                                            }}
+                                                                            className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                                                                        >
+                                                                            Cancel
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="submit"
+                                                                            size="sm"
+                                                                            className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                                                                            disabled={commentForm.formState.isSubmitting}
+                                                                        >
+                                                                            <SendIcon className="h-4 w-4 mr-2" />
+                                                                            {commentForm.formState.isSubmitting ? 'Updating...' : 'Update'}
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </form>
+                                            </Form>
+                                        ) : (
+                                            <div className="rounded-lg bg-zinc-800 p-3 text-sm text-zinc-300">
+                                                <div
+                                                    className="prose prose-sm prose-invert max-w-none"
+                                                    dangerouslySetInnerHTML={{ __html: comment.content }}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -270,3 +342,4 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
 };
 
 export default CommentsSection;
+

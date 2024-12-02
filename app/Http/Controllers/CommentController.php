@@ -71,7 +71,13 @@ class CommentController extends Controller
      */
     public function update(Request $request, Comment $comment)
     {
-        //
+        $validatedData = $request->validate([
+            'content'  => 'required|string',
+        ]);
+
+        $comment->update($validatedData);
+
+        return response()->json($comment);
     }
 
     /**
