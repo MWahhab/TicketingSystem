@@ -117,7 +117,11 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                             createdAt: newComment.created_at.toString(),
                         };
                         setComments(prevComments => [formattedNewComment, ...prevComments]);
-                        setVisibleComments(prevVisible => [formattedNewComment, ...prevVisible.slice(0, commentsPerPage - 1)]);
+                        setVisibleComments(prevVisible =>
+                            showAllComments
+                                ? [formattedNewComment, ...prevVisible]
+                                : [formattedNewComment, ...prevVisible.slice(0, commentsPerPage - 1)]
+                        );
                     }
                     commentForm.reset();
                     setIsExpanded(false);
@@ -371,15 +375,15 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                     </div>
                                 </div>
                             ))}
-                            {hasMore && (
+                            {!showAllComments && hasMore && (
                                 <div className="mt-4 text-center">
                                     <Button
-                                        onClick={showAllComments ? handleLoadMore : handleShowAllComments}
+                                        onClick={handleShowAllComments}
                                         variant="secondary"
                                         size="sm"
                                         className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
                                     >
-                                        {showAllComments ? 'Load More Comments' : 'Show All Comments'}
+                                        Show All Comments
                                     </Button>
                                 </div>
                             )}
