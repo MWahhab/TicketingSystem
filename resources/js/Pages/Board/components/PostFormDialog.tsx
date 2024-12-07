@@ -32,12 +32,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    CalendarIcon,
-    Trash2Icon,
-    EyeIcon,
-    EditIcon,
-} from 'lucide-react';
+import { CalendarIcon, Trash2Icon, EyeIcon, EditIcon } from 'lucide-react';
 import {format} from 'date-fns';
 import {cn} from '@/lib/utils';
 import {Calendar} from '@/components/ui/calendar';
@@ -82,6 +77,7 @@ interface Task {
     assignee_id: string;
     deadline: string | null;
     fid_board: string;
+    fid_user: string;
     comments?: Comment[];
 }
 
@@ -126,6 +122,7 @@ export function PostFormDialog({
             assignee_id: task.assignee_id?.toString() || '',
             deadline: task.deadline ? new Date(task.deadline) : null,
             fid_board: task.fid_board?.toString() || '',
+            fid_user: task.fid_user?.toString() || '',
         }
         : {
             title: '',
@@ -135,6 +132,7 @@ export function PostFormDialog({
             assignee_id: '',
             deadline: null,
             fid_board: '',
+            fid_user: '',
         };
 
     const form = useForm<FormData>({
@@ -410,6 +408,18 @@ export function PostFormDialog({
                                                 </FormItem>
                                             )}
                                         />
+                                        {task && (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Author</FormLabel>
+                                                <div className="flex items-center gap-2 p-2 bg-zinc-700 rounded-md border border-zinc-600">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium text-white">
+                                                          {assignees.find(a => a.id.toString() === form.getValues('fid_user'))?.name || form.getValues('fid_user')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </FormItem>
+                                        )}
                                         <FormField
                                             control={form.control}
                                             name="assignee_id"
@@ -523,3 +533,4 @@ export function PostFormDialog({
 }
 
 export default React.memo(PostFormDialog);
+
