@@ -52,6 +52,7 @@ class BoardService
                     'id'   => $post->assignee->id,
                     'name' => $post->assignee->name,
                 ] : null,
+                'fid_user' => $post->creator->name,
                 'comments'    => $post->comments ? $post->comments->map(function ($comment) {
                     return [
                         'id'        => $comment->id,
