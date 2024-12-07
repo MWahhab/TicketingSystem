@@ -32,12 +32,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    CalendarIcon,
-    Trash2Icon,
-    EyeIcon,
-    EditIcon,
-} from 'lucide-react';
+import { CalendarIcon, Trash2Icon, EyeIcon, EditIcon } from 'lucide-react';
 import {format} from 'date-fns';
 import {cn} from '@/lib/utils';
 import {Calendar} from '@/components/ui/calendar';
@@ -51,13 +46,13 @@ import CommentSection from "@/Pages/Board/components/CommentSection";
 import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmation";
 
 const formSchema = z.object({
-    title: z.string().min(1, 'Title is required'),
-    desc: z.string().min(1, 'Description is required'),
-    priority: z.string().min(1, 'Priority is required'),
-    column: z.string().min(1, 'Column is required'),
+    title      : z.string().min(1, 'Title is required'),
+    desc       : z.string().min(1, 'Description is required'),
+    priority   : z.string().min(1, 'Priority is required'),
+    column     : z.string().min(1, 'Column is required'),
     assignee_id: z.string().min(1, 'Assignee is required'),
-    deadline: z.date().nullable(),
-    fid_board: z.string().min(1, 'Board is required'),
+    deadline   : z.date().nullable(),
+    fid_board  : z.string().min(1, 'Board is required'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -74,41 +69,42 @@ interface Assignee {
 }
 
 interface Task {
-    id: string;
-    title: string;
-    desc: string;
-    priority: string;
-    column: string;
+    id         : string;
+    title      : string;
+    desc       : string;
+    priority   : string;
+    column     : string;
     assignee_id: string;
-    deadline: string | null;
-    fid_board: string;
-    comments?: Comment[];
+    deadline   : string | null;
+    fid_board  : string;
+    post_author: string;
+    comments?  : Comment[];
 }
 
 interface PostFormDialogProps {
-    priorities: string[];
-    boards: Board[];
-    assignees: Assignee[];
-    task?: Task;
-    onClose?: () => void;
+    priorities: string[]
+    boards    : Board[];
+    assignees : Assignee[];
+    task?     : Task;
+    onClose?  : () => void;
 }
 
 interface Comment {
-    id: string;
-    content: string;
-    author: string;
+    id       : string;
+    content  : string;
+    author   : string;
     createdAt: string;
 }
 
 export function PostFormDialog({
-                                   boards = [],
-                                   assignees = [],
+                                   boards     = [],
+                                   assignees  = [],
                                    priorities = [],
                                    task,
                                    onClose,
                                    authUserId,
                                }: PostFormDialogProps) {
-    const [isDialogOpen,     setIsDialogOpen]     = useState(!!task);
+    const [isDialogOpen,     setIsDialogOpen]    = useState(!!task);
     const [availableColumns, setAvailableColumns] = useState<string[]>([]);
 
     const [isPreview, setIsPreview] = useState(!!task);
@@ -119,22 +115,24 @@ export function PostFormDialog({
 
     const defaultValues = task
         ? {
-            title: task.title || '',
-            desc: task.desc || '',
+            title      : task.title || '',
+            desc       : task.desc || '',
             priority: task.priority || '',
-            column: task.column || '',
+            column     : task.column || '',
             assignee_id: task.assignee_id?.toString() || '',
-            deadline: task.deadline ? new Date(task.deadline) : null,
-            fid_board: task.fid_board?.toString() || '',
+            deadline   : task.deadline ? new Date(task.deadline) : null,
+            fid_board  : task.fid_board?.toString() || '',
+            post_author: task.post_author?.toString() || '',
         }
         : {
-            title: '',
-            desc: '',
-            priority: '',
-            column: '',
+            title      : '',
+            desc       : '',
+            priority   : '',
+            column     : '',
             assignee_id: '',
-            deadline: null,
-            fid_board: '',
+            deadline   : null,
+            fid_board  : '',
+            post_author: '',
         };
 
     const form = useForm<FormData>({
@@ -147,15 +145,15 @@ export function PostFormDialog({
     });
 
     const commentForm = useForm({
-        resolver: zodResolver(commentSchema),
+        resolver     : zodResolver(commentSchema),
         defaultValues: {
-            content: '',
+            content  : '',
         },
     });
 
     const selectedBoardId = useWatch({
         control: form.control,
-        name: 'fid_board',
+        name   : 'fid_board',
     }).toString();
 
     useEffect(() => {
@@ -410,6 +408,18 @@ export function PostFormDialog({
                                                 </FormItem>
                                             )}
                                         />
+                                        {task && (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Author</FormLabel>
+                                                <div className="flex items-center gap-2 p-2 bg-zinc-700 rounded-md border border-zinc-600">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium text-white">
+                                                          {assignees.find(a => a.id.toString() === form.getValues('post_author'))?.name || form.getValues('post_author')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </FormItem>
+                                        )}
                                         <FormField
                                             control={form.control}
                                             name="assignee_id"
@@ -523,3 +533,4 @@ export function PostFormDialog({
 }
 
 export default React.memo(PostFormDialog);
+
