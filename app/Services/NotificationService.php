@@ -95,7 +95,7 @@ class NotificationService
                 $truncatedTitle,
                 $boardName
             )];
-        } else {
+        } elseif (count($changes) > 0) {
             $content = $this->parsePostChangeNotification($changes, $object, $truncatedTitle, $boardName);
         }
 
