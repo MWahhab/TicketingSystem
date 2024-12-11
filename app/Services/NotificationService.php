@@ -88,13 +88,13 @@ class NotificationService
         $truncatedTitle = Str::limit($object->title, 15, '...');
 
         if (empty($changes) && $postCreatedAt->gte($fiveMinutesAgo)) {
-            $content = sprintf(
+            $content = [sprintf(
                 '%s created a new post #%d: %s (%s)',
                 $object->creator->name,
                 $object->id,
                 $truncatedTitle,
                 $boardName
-            );
+            )];
         } else {
             $content = $this->parsePostChangeNotification($changes, $object, $truncatedTitle, $boardName);
         }
