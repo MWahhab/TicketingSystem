@@ -11,6 +11,7 @@ import { Column } from './components/Column';
 import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
 import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
 import DeleteButton from "@/Pages/Board/components/DeleteButton";
+import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell";
 
 export function BoardLayout() {
     const {
@@ -184,6 +185,11 @@ export function BoardLayout() {
                             <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
                             {boardId && <DeleteButton resourceId={boardId} type="Board" />}
                         </div>
+
+                        <InlineNotificationCenter>
+
+                        </InlineNotificationCenter>
+
                         <div className="flex items-center space-x-2">
                             <PostFormDialog
                                 boards={memoizedBoards}

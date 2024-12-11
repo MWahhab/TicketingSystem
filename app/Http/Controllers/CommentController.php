@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -36,16 +37,21 @@ class CommentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, NotificationService $notificationService): JsonResponse
     {
         $validatedData = $request->validate([
             'content'  => 'required|string',
             'fid_post' => 'required|exists:posts,id',
         ]);
         $validatedData['fid_user'] = Auth::id();
-        $comment                   = Comment::create($validatedData);
+
+        /**
+         * @var Comment $comment
+         */
+        $comment = Comment::create($validatedData);
 
         $comment->load('creator');
+        $comment->notify();
 
         return response()->json($comment);
     }

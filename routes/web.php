@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BoardConfigController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -34,6 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('comments', CommentController::class);
 
     Route::post('/move/{post}', [PostController::class, 'move']);
+
+    Route::get('/api/notifications', [NotificationController::class, 'index']);
+    Route::post('/api/notifications/mark-as-seen', [NotificationController::class, 'markAsSeen']);
 });
 
 require __DIR__.'/auth.php';

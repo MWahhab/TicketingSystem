@@ -20,11 +20,10 @@ class BoardConfigController extends Controller
      */
     public function index(Request $request, BoardService $boardService): Response
     {
-        $boardId    = $request->input('board_id');
-        $boardData  = $boardService->getBoardData($boardId);
-        $boardLinks = BoardConfig::select('id', 'title')->get();
-        $boards     = BoardConfig::all('id', 'title', 'columns');
-        $assignees  = User::all('id', 'name');
+        $boardData  = $boardService->getBoardData((int)$request->input('board_id'));
+        $boards     = BoardConfig::select('id', 'title', 'columns')->get();
+        $boardLinks = $boards->map(fn($b) => ['id' => $b->id,'title' => $b->title]);
+        $assignees  = User::select('id', 'name')->get();
 
         return Inertia::render('Board/Index', [
             'columns'       => $boardData['columns'],

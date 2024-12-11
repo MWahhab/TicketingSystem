@@ -44,7 +44,10 @@ class PostController extends Controller
             'fid_board'    => 'required|exists:board_configs,id'
         ]);
 
-        Post::create([
+        /**
+         * @var Post $post
+         */
+        $post = Post::create([
             'title'       => $validated['title'],
             'desc'        => $validated['desc'],
             'priority'    => $validated['priority'],
@@ -54,6 +57,7 @@ class PostController extends Controller
             'fid_board'   => $validated['fid_board'],
             'fid_user'    => Auth::id(),
         ]);
+        $post->notify();
 
         request()->session()->flash('success', 'New post has been created!');
 
@@ -90,6 +94,8 @@ class PostController extends Controller
         $post->column = $request->input('column');
         $post->save();
 
+        $post->notify();
+
         return response()->noContent();
     }
 
@@ -110,7 +116,13 @@ class PostController extends Controller
             'fid_board'    => 'required|exists:board_configs,id'
         ]);
 
+        $original = clone($post);
+
         $post->update($validated);
+
+        $post->setRawAttributes($original->getAttributes(), true);
+
+        $post->notify();
 
         return Inertia::location('/boards/?board_id=' . $validated['fid_board']);
     }
