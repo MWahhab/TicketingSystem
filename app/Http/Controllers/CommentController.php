@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,8 +16,7 @@ class CommentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $taskId  = $request->input('fid_post');
-
+        $taskId   = $request->input('fid_post');
         $comments = Comment::where('fid_post', $taskId)
             ->with('creator')
             ->orderBy('created_at', 'desc')
@@ -82,6 +82,7 @@ class CommentController extends Controller
         ]);
 
         $comment->update($validatedData);
+        $comment->notify();
 
         return response()->json($comment);
     }

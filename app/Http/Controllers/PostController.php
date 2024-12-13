@@ -91,9 +91,12 @@ class PostController extends Controller
             'column' => 'required|string',
         ]);
 
+        $original = clone($post);
+
         $post->column = $request->input('column');
         $post->save();
 
+        $post->setRawAttributes($original->getAttributes(), true);
         $post->notify();
 
         return response()->noContent();

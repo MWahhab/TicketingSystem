@@ -53,7 +53,15 @@ class NotificationService
         $userIds[$post->assignee_id] = true;
         $userIds[$post->fid_user]    = true;
 
-        $notifications = [];
+        $scopeContext = "#" . $object->fid_post . " ($boardName)";
+
+        $notifications = $this->parseMentions(
+            $object->content,
+            NotificationTypeEnums::COMMENT,
+            $object->fid_post,
+            $scopeContext
+        );
+
         foreach ($userIds as $userId => $value) {
             if ($userId == Auth::id()) {
                 continue;
@@ -62,13 +70,14 @@ class NotificationService
             $notifications[] = [
                 'created_by' => Auth::id(),
                 'type'       => NotificationTypeEnums::COMMENT->value,
-                'content'    => $object->creator->name . " commented on post #" . $object->fid_post . " ($boardName)",
+                'content'    => $object->creator->name . " commented on post " . $scopeContext,
                 'fid_post'   => $object->fid_post,
                 'fid_user'   => $userId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
         }
+
         return $notifications;
     }
 
@@ -103,7 +112,15 @@ class NotificationService
             return [];
         }
 
-        $notifications = [];
+        $scopeContext = "#" . $object->id . ":$truncatedTitle ($boardName)";
+
+        $notifications = $this->parseMentions(
+            $object->desc,
+            NotificationTypeEnums::POST,
+            $object->id,
+            $scopeContext
+        );
+
         foreach ($userIds as $userId => $value) {
             foreach ($content as $notification) {
                 $notifications[] = [
@@ -242,4 +259,66 @@ class NotificationService
         return $finalNotifications;
     }
 
+    /**
+     * @param string $content
+     * @param NotificationTypeEnums $objectContext
+     * @param int $postId
+     * @param string $scopeContext
+     *
+     * @return array
+     */
+    public function parseMentions(
+        string                $content,
+        NotificationTypeEnums $objectContext,
+        int                   $postId,
+        string                $scopeContext
+    ): array {
+        $mentions = $this->extractAndCleanSpanContent($content);
+
+        if (empty($mentions)) {
+            return [];
+        }
+
+        $notifications    = [];
+        $mentionedUserIds = User::whereIn('name', $mentions)->pluck('id')->toArray();
+
+        if (empty($mentionedUserIds)) {
+            return [];
+        }
+
+        foreach ($mentionedUserIds as $userId) {
+            $notifications[] = [
+                'created_by' => Auth::id(),
+                'type'       => $objectContext->value,
+                'content'    => "You were mentioned in a " . $objectContext->value . " on $scopeContext",
+                'fid_post'   => $postId,
+                'fid_user'   => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        return $notifications;
+    }
+
+    /**
+     * @param string $contents
+     * @return array
+     */
+    function extractAndCleanSpanContent(string $contents): array
+    {
+        $pattern = '/<span[^>]*>\s*@([^<]+)<\/span>/i';
+
+        preg_match_all($pattern, $contents, $matches);
+
+        $cleanedContents = [];
+
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $content) {
+                $cleanedContents[] = trim($content);
+            }
+        }
+
+        return $cleanedContents;
+    }
 }

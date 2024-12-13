@@ -1,11 +1,11 @@
 'use client';
 
-import React, {useState, useEffect} from 'react';
-import {zodResolver} from '@hookform/resolvers/zod';
+import React, { useState, useEffect } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import {useForm, useWatch} from 'react-hook-form';
-import {Inertia} from '@inertiajs/inertia';
-import {Button} from '@/components/ui/button';
+import { useForm, useWatch } from 'react-hook-form';
+import { Inertia } from '@inertiajs/inertia';
+import { Button } from '@/components/ui/button';
 import { ExpandableTipTapTextArea } from './ExpandableTipTapTextArea';
 import DeleteConfirmationDialogue from "@/Pages/Board/components/DeleteConfirmation";
 
@@ -24,7 +24,7 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import {Input} from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -33,26 +33,27 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { CalendarIcon, Trash2Icon, EyeIcon, EditIcon } from 'lucide-react';
-import {format} from 'date-fns';
-import {cn} from '@/lib/utils';
-import {Calendar} from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import {useToast} from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import CommentSection from "@/Pages/Board/components/CommentSection";
 import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmation";
+import ActivityHistory from "@/Pages/Board/components/ActivityHistory";
 
 const formSchema = z.object({
-    title      : z.string().min(1, 'Title is required'),
-    desc       : z.string().min(1, 'Description is required'),
-    priority   : z.string().min(1, 'Priority is required'),
-    column     : z.string().min(1, 'Column is required'),
+    title: z.string().min(1, 'Title is required'),
+    desc: z.string().min(1, 'Description is required'),
+    priority: z.string().min(1, 'Priority is required'),
+    column: z.string().min(1, 'Column is required'),
     assignee_id: z.string().min(1, 'Assignee is required'),
-    deadline   : z.date().nullable(),
-    fid_board  : z.string().min(1, 'Board is required'),
+    deadline: z.date().nullable(),
+    fid_board: z.string().min(1, 'Board is required'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -69,69 +70,68 @@ interface Assignee {
 }
 
 interface Task {
-    id         : string;
-    title      : string;
-    desc       : string;
-    priority   : string;
-    column     : string;
+    id: string;
+    title: string;
+    desc: string;
+    priority: string;
+    column: string;
     assignee_id: string;
-    deadline   : string | null;
-    fid_board  : string;
+    deadline: string | null;
+    fid_board: string;
     post_author: string;
-    comments?  : Comment[];
+    comments?: Comment[];
 }
 
 interface PostFormDialogProps {
     priorities: string[]
-    boards    : Board[];
-    assignees : Assignee[];
-    task?     : Task;
-    onClose?  : () => void;
+    boards: Board[];
+    assignees: Assignee[];
+    task?: Task;
+    onClose?: () => void;
+    authUserId: string;
 }
 
 interface Comment {
-    id       : string;
-    content  : string;
-    author   : string;
+    id: string;
+    content: string;
+    author: string;
     createdAt: string;
 }
 
 export function PostFormDialog({
-                                   boards     = [],
-                                   assignees  = [],
+                                   boards = [],
+                                   assignees = [],
                                    priorities = [],
                                    task,
                                    onClose,
                                    authUserId,
                                }: PostFormDialogProps) {
-    const [isDialogOpen,     setIsDialogOpen]    = useState(!!task);
+    const [isDialogOpen, setIsDialogOpen] = useState(!!task);
     const [availableColumns, setAvailableColumns] = useState<string[]>([]);
-
     const [isPreview, setIsPreview] = useState(!!task);
-
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
-    const {toast} = useToast();
+    const { toast } = useToast();
 
     const defaultValues = task
         ? {
-            title      : task.title || '',
-            desc       : task.desc || '',
+            title: task.title || '',
+            desc: task.desc || '',
             priority: task.priority || '',
-            column     : task.column || '',
+            column: task.column || '',
             assignee_id: task.assignee_id?.toString() || '',
-            deadline   : task.deadline ? new Date(task.deadline) : null,
-            fid_board  : task.fid_board?.toString() || '',
+            deadline: task.deadline ? new Date(task.deadline) : null,
+            fid_board: task.fid_board?.toString() || '',
             post_author: task.post_author?.toString() || '',
         }
         : {
-            title      : '',
-            desc       : '',
-            priority   : '',
-            column     : '',
+            title: '',
+            desc: '',
+            priority: '',
+            column: '',
             assignee_id: '',
-            deadline   : null,
-            fid_board  : '',
+            deadline: null,
+            fid_board: '',
             post_author: '',
         };
 
@@ -145,15 +145,15 @@ export function PostFormDialog({
     });
 
     const commentForm = useForm({
-        resolver     : zodResolver(commentSchema),
+        resolver: zodResolver(commentSchema),
         defaultValues: {
-            content  : '',
+            content: '',
         },
     });
 
     const selectedBoardId = useWatch({
         control: form.control,
-        name   : 'fid_board',
+        name: 'fid_board',
     }).toString();
 
     useEffect(() => {
@@ -215,7 +215,6 @@ export function PostFormDialog({
 
     return (
         <>
-
             <Dialog
                 open={isDialogOpen}
                 onOpenChange={(open) => {
@@ -251,7 +250,7 @@ export function PostFormDialog({
                             )}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="max-h-[calc(100vh-200px)] overflow-y-auto pr-4">
+                    <div className="max-h-[calc(100vh-240px)] overflow-y-auto pr-4">
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                                 <div className="grid grid-cols-[2fr_1fr] gap-6">
@@ -300,6 +299,7 @@ export function PostFormDialog({
                                                             onChange={field.onChange}
                                                             className="bg-zinc-700 text-white border border-zinc-600 rounded-md focus-within:border-white focus-within:ring-1 focus-within:ring-white"
                                                             isPreview={isPreview}
+                                                            assignees={assignees}
                                                         />
                                                     </FormControl>
                                                     <FormMessage className="text-red-400"/>
@@ -428,7 +428,6 @@ export function PostFormDialog({
                                                     <FormLabel className="text-white">Assignee</FormLabel>
                                                     <Select
                                                         onValueChange={(value) => {
-                                                            console.log("Assignee selected:", value);
                                                             field.onChange(value);
                                                         }}
                                                         value={field.value || ""}
@@ -505,7 +504,10 @@ export function PostFormDialog({
                             </form>
                         </Form>
                         {task && task.comments && (
-                            <CommentSection taskId={task.id} currentUserId={authUserId}/>
+                            <CommentSection taskId={task.id} currentUserId={authUserId} assignees={assignees}/>
+                        )}
+                        {task && (
+                            <ActivityHistory postId={task.id} />
                         )}
                     </div>
                     <div className="mt-6">

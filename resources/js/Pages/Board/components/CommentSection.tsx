@@ -41,20 +41,21 @@ interface Comment {
 interface CommentsSectionProps {
     taskId: string;
     currentUserId: string;
+    assignees: []
 }
 
 const commentSchema = z.object({
     content: z.string().min(3, 'Comment is required and must be longer than 3 characters.'),
 });
 
-const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId }) => {
+const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId, assignees }) => {
     const [comments, setComments] = useState<Comment[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
     const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
     const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
     const [visibleComments, setVisibleComments] = useState<Comment[]>([]);
     const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
+    const [hasMore, setHasMore] = useState(false);
     const [showAllComments, setShowAllComments] = useState(false);
     const commentsPerPage = 4;
 
@@ -62,7 +63,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
         setComments([]);
         setVisibleComments([]);
         setPage(1);
-        setHasMore(true);
+        setHasMore(false);
         setShowAllComments(false);
         loadComments();
     }, [taskId, page, commentsPerPage]);
@@ -71,7 +72,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
         axios
             .get(`/comments?fid_post=${taskId}`)
             .then((response) => {
-                console.log(response)
                 const fetchedComments = response.data.map((comment: any) => ({
                     id: comment.id.toString(),
                     content: comment.content.toString(),
@@ -231,6 +231,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                     <TipTapTextArea
                                                         value={field.value}
                                                         onChange={field.onChange}
+                                                        assignees={assignees}
                                                         className="min-h-[100px] bg-zinc-800 text-zinc-300 border-zinc-700 resize-none focus:border-zinc-600 focus:ring-zinc-600"
                                                         placeholder="Write your comment..."
                                                     />
@@ -331,6 +332,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                                     <TipTapTextArea
                                                                         value={field.value}
                                                                         onChange={field.onChange}
+                                                                        assignees={assignees}
                                                                         className="min-h-[100px] bg-zinc-800 text-zinc-300 border-zinc-700 resize-none focus:border-zinc-600 focus:ring-zinc-600"
                                                                     />
                                                                 </FormControl>

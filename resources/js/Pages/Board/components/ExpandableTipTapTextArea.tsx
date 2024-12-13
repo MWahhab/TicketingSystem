@@ -10,7 +10,7 @@ interface ExpandableTipTapTextAreaProps {
     isPreview: boolean;
 }
 
-export function ExpandableTipTapTextArea({ value, onChange, className, isPreview }: ExpandableTipTapTextAreaProps) {
+export function ExpandableTipTapTextArea({ value, onChange, className, isPreview, assignees }: ExpandableTipTapTextAreaProps) {
     const sanitizedContent = typeof value === 'string' ? DOMPurify.sanitize(value) : '';
 
     return (
@@ -29,6 +29,7 @@ export function ExpandableTipTapTextArea({ value, onChange, className, isPreview
                 <TipTapTextArea
                     value={value}
                     onChange={onChange}
+                    assignees={assignees}
                 />
             )}
         </div>

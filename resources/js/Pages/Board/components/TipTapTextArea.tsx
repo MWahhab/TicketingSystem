@@ -1,13 +1,13 @@
-
-import { Content } from "@tiptap/react"
-import { MinimalTiptapEditor } from '../../../../../minimal-tiptap'
+import {Content} from "@tiptap/react"
+import {MinimalTiptapEditor} from '../../../../../minimal-tiptap'
 
 interface TipTapTextAreaProps {
-    value: Content
-    onChange: (value: Content) => void
+    value: Content,
+    onChange: (value: Content) => void,
+    assignees?: []
 }
 
-export const TipTapTextArea = ({ value, onChange }: TipTapTextAreaProps) => {
+export const TipTapTextArea = ({value, onChange, assignees}: TipTapTextAreaProps) => {
     return (
         <MinimalTiptapEditor
             value={value}
@@ -22,6 +22,7 @@ export const TipTapTextArea = ({ value, onChange }: TipTapTextAreaProps) => {
             editable={true}
             injectCSS={true}
             editorClassName="focus:outline-none min-h-[200px]"
+            assignees={assignees}
         />
     )
 }

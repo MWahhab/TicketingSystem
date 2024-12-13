@@ -1,5 +1,6 @@
 import * as React from 'react'
 import './styles/index.css'
+import './hooks/use-mentions'
 
 import { EditorContent } from '@tiptap/react'
 import type { Content, Editor } from '@tiptap/react'
@@ -14,6 +15,7 @@ import { LinkBubbleMenu } from './components/bubble-menu/link-bubble-menu'
 import { ImageBubbleMenu } from './components/bubble-menu/image-bubble-menu'
 import type { UseMinimalTiptapEditorProps } from './hooks/use-minimal-tiptap'
 import { useMinimalTiptapEditor } from './hooks/use-minimal-tiptap'
+import { useMentions } from "./hooks/use-mentions";
 
 export interface MinimalTiptapProps extends Omit<UseMinimalTiptapEditorProps, 'onUpdate'> {
   value?: Content
@@ -51,12 +53,21 @@ const Toolbar = ({ editor }: { editor: Editor }) => (
 )
 
 export const MinimalTiptapEditor = React.forwardRef<HTMLDivElement, MinimalTiptapProps>(
-  ({ value, onChange, className, editorContentClassName, ...props }, ref) => {
+  ({ value, onChange, className, editorContentClassName,id, assignees, ...props }, ref) => {
+
+      const { initEventListeners } = useMentions(); // Import the function
+
     const editor = useMinimalTiptapEditor({
       value,
       onUpdate: onChange,
       ...props
     })
+
+      React.useEffect(() => {
+          if (editor) {
+              initEventListeners(assignees);
+          }
+      }, [editor, initEventListeners]);
 
     if (!editor) {
       return null
@@ -64,7 +75,8 @@ export const MinimalTiptapEditor = React.forwardRef<HTMLDivElement, MinimalTipta
 
     return (
       <div
-        ref={ref}
+          id="TipTapTextArea"
+          ref={ref}
         className={cn(
           'flex h-auto min-h-72 w-full flex-col rounded-md border border-input shadow-sm focus-within:border-primary',
           className

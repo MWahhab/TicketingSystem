@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/move/{post}', [PostController::class, 'move']);
 
     Route::get('/api/notifications', [NotificationController::class, 'index']);
+    Route::get('/api/activity/{post}', [NotificationController::class, 'getActivityHistory']);
     Route::post('/api/notifications/mark-as-seen', [NotificationController::class, 'markAsSeen']);
 });
 

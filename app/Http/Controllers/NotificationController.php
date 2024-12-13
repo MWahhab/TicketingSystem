@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Notification;
+use App\Models\Post;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,6 @@ class NotificationController extends Controller
             ->whereNull('seen_at')
             ->count();
 
-        // Move the grouping logic into the service
         $finalNotifications = $notificationService->getGroupedNotifications($userId);
 
         return response()->json([
@@ -74,5 +74,28 @@ class NotificationController extends Controller
     public function destroy(Notification $notification)
     {
         //
+    }
+
+    public function getActivityHistory(Post $post): JsonResponse
+    {
+        $rawNotifications = Notification::where('fid_post', $post->id)->with(['user', 'createdBy'])->get()->toArray();
+
+        foreach ($rawNotifications as $index => $notification) {
+            if (str_contains($notification['content'], 'mention')) {
+                unset($rawNotifications[$index]);
+
+                continue;
+            }
+
+            $position = strpos($notification['content'], ' on post');
+
+            if ($position !== false) {
+                $rawNotifications[$index]['content'] = substr($notification['content'], 0, $position);
+            }
+
+            $rawNotifications[$index]['created_by'] = $notification['created_by']['name'];
+        }
+
+        return response()->json([$rawNotifications]);
     }
 }
