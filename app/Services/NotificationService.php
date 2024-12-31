@@ -121,6 +121,7 @@ class NotificationService
             $object->desc,
             NotificationTypeEnums::POST,
             $object->id,
+            $object->fid_board,
             $scopeContext
         );
 
