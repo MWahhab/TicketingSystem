@@ -14,11 +14,10 @@ import { ColumnType } from "../types";
 
 interface ColumnProps {
     column: ColumnType;
-    tasks: Task[];
-    onTaskClick: (task: Task) => void;
+    tasks: Task[]; // we still pass the tasks array from BoardLayout
 }
 
-export function Column({ column, tasks, onTaskClick }: ColumnProps) {
+export function Column({ column, tasks }: ColumnProps) {
     return (
         <Card className="h-full bg-zinc-800 border-zinc-700 flex flex-col">
             <CardHeader className="p-3">
@@ -59,11 +58,8 @@ export function Column({ column, tasks, onTaskClick }: ColumnProps) {
                                             {...provided.dragHandleProps}
                                             className={snapshot.isDragging ? "opacity-50" : ""}
                                         >
-                                            <TaskCard
-                                                key={task.id.toString()}
-                                                task={task}
-                                                onClick={() => onTaskClick(task)}
-                                            />
+                                            {/* We no longer pass onClick; TaskCard will pull from context */}
+                                            <TaskCard task={task} />
                                         </div>
                                     )}
                                 </Draggable>

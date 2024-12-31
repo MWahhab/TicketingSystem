@@ -1,9 +1,17 @@
 "use client";
 
 import React from "react";
-import { User as UserIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UserIcon } from "lucide-react";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle
+} from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+// NEW import:
+import { useBoardContext } from "../BoardContext";
 
 interface Task {
     id: string;
@@ -12,17 +20,13 @@ interface Task {
     assignee: {
         name: string;
     };
-}
-
-interface TaskCardProps {
-    task: Task;
-    onClick: () => void; // Modified this line
+    // ...any other fields you had
 }
 
 const priorityColors: { [key in Task["priority"]]: string } = {
     high: "bg-red-500",
     medium: "bg-yellow-500",
-    low: "bg-green-500",
+    low: "bg-green-500"
 };
 
 function getInitials(name: string) {
@@ -30,10 +34,13 @@ function getInitials(name: string) {
     return names.map((n) => n.charAt(0).toUpperCase()).join("");
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task }: { task: Task }) {
+    const { openDialog } = useBoardContext();
+
     return (
         <Card
-            onClick={onClick} // Modified this line
+            onClick={() => openDialog(task.id)}
+            data-post-id={task.id}
             className="mb-4 shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-gray-50 to-white border border-gray-200 cursor-pointer"
         >
             <CardHeader className="p-4">
@@ -62,7 +69,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                         <span>{task.assignee.name}</span>
                     </div>
                     <Avatar className="w-8 h-8 bg-zinc-800 text-stone-100 font-bold">
-                        <AvatarFallback className={"bg-zinc-700"}>
+                        <AvatarFallback className="bg-zinc-700">
                             {getInitials(task.assignee.name)}
                         </AvatarFallback>
                     </Avatar>

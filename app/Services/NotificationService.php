@@ -53,12 +53,14 @@ class NotificationService
         $userIds[$post->assignee_id] = true;
         $userIds[$post->fid_user]    = true;
 
-        $scopeContext = "#" . $object->fid_post . " ($boardName)";
+        $truncatedTitle = Str::limit($post->title, 5, '...');
+        $scopeContext   = "#" . $object->fid_post . ": " . $truncatedTitle . $boardName;
 
         $notifications = $this->parseMentions(
             $object->content,
             NotificationTypeEnums::COMMENT,
             $object->fid_post,
+            $post->fid_board,
             $scopeContext
         );
 
@@ -72,6 +74,7 @@ class NotificationService
                 'type'       => NotificationTypeEnums::COMMENT->value,
                 'content'    => $object->creator->name . " commented on post " . $scopeContext,
                 'fid_post'   => $object->fid_post,
+                'fid_board'  => $post->board->id,
                 'fid_user'   => $userId,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -94,7 +97,7 @@ class NotificationService
         $fiveMinutesAgo = Carbon::now()->subMinutes(5);
         $postCreatedAt  = Carbon::parse($object->created_at);
 
-        $truncatedTitle = Str::limit($object->title, 15, '...');
+        $truncatedTitle = Str::limit($object->title, 5, '...');
 
         if (empty($changes) && $postCreatedAt->gte($fiveMinutesAgo)) {
             $content = [sprintf(
@@ -128,6 +131,7 @@ class NotificationService
                     'type'       => NotificationTypeEnums::POST->value,
                     'content'    => $notification,
                     'fid_post'   => $object->id,
+                    'fid_board'  => $object->fid_board,
                     'fid_user'   => $userId,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -234,10 +238,12 @@ class NotificationService
         foreach ($groupedByPost as $groups) {
             foreach ($groups as $group) {
                 $firstNotification = $group[0];
-                $count = count($group);
+                $count             = count($group);
 
                 $finalNotifications[] = [
                     'id'              => $firstNotification->id,
+                    'fid_post'        => $firstNotification->fid_post,
+                    'fid_board'       => $firstNotification->fid_board,
                     'content'         => $firstNotification->content,
                     'time'            => $firstNotification->created_at->diffForHumans(),
                     'type'            => $firstNotification->type,
@@ -271,6 +277,7 @@ class NotificationService
         string                $content,
         NotificationTypeEnums $objectContext,
         int                   $postId,
+        int                   $boardId,
         string                $scopeContext
     ): array {
         $mentions = $this->extractAndCleanSpanContent($content);
@@ -292,6 +299,7 @@ class NotificationService
                 'type'       => $objectContext->value,
                 'content'    => "You were mentioned in a " . $objectContext->value . " on $scopeContext",
                 'fid_post'   => $postId,
+                'fid_board'  => $boardId,
                 'fid_user'   => $userId,
                 'created_at' => now(),
                 'updated_at' => now(),

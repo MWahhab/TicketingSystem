@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('type');
             $table->text('content');
             $table->foreignId('fid_post')->constrained('posts')->onDelete('cascade');
+            $table->foreignId('fid_board')->constrained('board_configs')->onDelete('cascade');
             $table->dateTime('seen_at')->nullable();
             $table->foreignId('fid_user')->constrained('users');
             $table->foreignId('created_by')->constrained('users');

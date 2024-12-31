@@ -36,7 +36,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
         axios
             .get(`/api/activity/${postId}`)
             .then((response) => {
-                console.log(response.data);
 
                 // Flatten the nested structure and map to desired format
                 const fetchedActivities = Object.values(response.data[0]).map((activity: any) => ({
@@ -52,8 +51,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                         email: activity.user.email
                     } : null,
                 }));
-
-                console.log(fetchedActivities);
 
                 // Update state with the flattened and mapped activities
                 setActivities(fetchedActivities);

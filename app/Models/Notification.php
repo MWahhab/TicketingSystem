@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property string $type
  * @property string $content
  * @property int $fid_post
+ * @property int $fid_board
  * @property int $fid_user
  * @property int $created_by
  * @property Carbon|null $seen_at
@@ -38,6 +39,7 @@ class Notification extends Model
         'type',
         'content',
         'fid_post',
+        'fid_board',
         'seen_at',
         'fid_user',
         'created_by',

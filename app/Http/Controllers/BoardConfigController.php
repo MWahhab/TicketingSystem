@@ -53,8 +53,8 @@ class BoardConfigController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'title'     => 'required|string|min:2|max:255',
-            'columns'   => ['required', 'array', 'min:1', function ($attribute, $value, $fail) {
+            'title'   => 'required|string|min:2|max:255',
+            'columns' => ['required', 'array', 'min:1', function ($attribute, $value, $fail) {
                 if (count($value) !== count(array_unique($value))) {
                     $fail('Column names must be unique.');
                 }

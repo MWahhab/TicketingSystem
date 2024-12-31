@@ -1,17 +1,31 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { router, usePage } from '@inertiajs/react';
-import { DragDropContext, DropResult } from 'react-beautiful-dnd';
-import {Edit, MoreVertical, Search, Trash2} from 'lucide-react';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { useEffect, useState } from "react";
+import { usePage } from "@inertiajs/react";
+import { DragDropContext } from "react-beautiful-dnd";
+import { Edit, MoreVertical, Search, Trash2 } from "lucide-react";
 
-import { Column } from './components/Column';
-import { BoardFormDialog } from '@/Pages/Board/components/BoardFormDialog';
-import { PostFormDialog } from '@/Pages/Board/components/PostFormDialog';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+import { Column } from "./components/Column";
+import { BoardFormDialog } from "@/Pages/Board/components/BoardFormDialog";
+import { PostFormDialog } from "@/Pages/Board/components/PostFormDialog";
 import DeleteButton from "@/Pages/Board/components/DeleteButton";
 import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell";
+
+// Context imports
+import { BoardProvider, useBoardContext } from "./BoardContext";
+
+/**
+ * Helper function to read ?openTask=XYZ directly from window.location.search.
+ */
+function getOpenTaskParam(): string | null {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("openTask");
+}
 
 export function BoardLayout() {
     const {
@@ -24,145 +38,76 @@ export function BoardLayout() {
         boardTitle,
         boardId,
         authUserId
-    } = usePage().props;
+    } = usePage().props as any;
 
-    const [columns, setColumns] = useState({});
-    const [tasks, setTasks] = useState({});
-
-    const memoizedBoards = useMemo(() => boardsColumns, [boardsColumns]);
-    const memoizedAssignees = useMemo(() => assignees, [assignees]);
-
-    useEffect(() => {
-        const initialColumns = columnsArray.reduce((acc, columnTitle) => {
-            const columnId = columnTitle.toString();
-            acc[columnId] = {
-                id: columnId,
-                title: columnTitle,
-                taskIds: [],
-            };
-            return acc;
-        }, {});
-
-        const initialTasks = {};
-        postsArray.forEach((task) => {
-            const taskId = task.id.toString();
-            initialTasks[taskId] = { ...task, id: taskId };
-
-            const columnId = task.column.toString();
-            if (initialColumns[columnId]) {
-                initialColumns[columnId].taskIds.push(taskId);
-            }
-        });
-
-        setColumns(initialColumns);
-        setTasks(initialTasks);
-    }, [columnsArray, postsArray]);
-
-    const handleBoardClick = (boardId) => {
-        router.get(`/boards?board_id=${boardId}`);
-    };
-
-    const onDragEnd = useCallback(
-        (result: DropResult) => {
-            const { destination, source, draggableId } = result;
-
-            if (!destination) return;
-
-            if (
-                destination.droppableId === source.droppableId &&
-                destination.index === source.index
-            ) {
-                return;
-            }
-
-            setTasks((prevTasks) => ({
-                ...prevTasks,
-                [draggableId]: {
-                    ...prevTasks[draggableId],
-                    column: destination.droppableId,
-                },
-            }));
-
-            setColumns((prevColumns) => {
-                const startColumn = prevColumns[source.droppableId];
-                const finishColumn = prevColumns[destination.droppableId];
-
-                if (startColumn === finishColumn) {
-                    const newTaskIds = Array.from(startColumn.taskIds);
-                    newTaskIds.splice(source.index, 1);
-                    newTaskIds.splice(destination.index, 0, draggableId);
-
-                    const newColumn = {
-                        ...startColumn,
-                        taskIds: newTaskIds,
-                    };
-
-                    return {
-                        ...prevColumns,
-                        [newColumn.id]: newColumn,
-                    };
-                }
-
-                const startTaskIds = Array.from(startColumn.taskIds);
-                startTaskIds.splice(source.index, 1);
-
-                const finishTaskIds = Array.from(finishColumn.taskIds);
-                finishTaskIds.splice(destination.index, 0, draggableId);
-
-                return {
-                    ...prevColumns,
-                    [startColumn.id]: {
-                        ...startColumn,
-                        taskIds: startTaskIds,
-                    },
-                    [finishColumn.id]: {
-                        ...finishColumn,
-                        taskIds: finishTaskIds,
-                    },
-                };
-            });
-
-            fetch(`/move/${draggableId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({
-                    _token: document
-                        .querySelector('meta[name="csrf-token"]')
-                        ?.getAttribute('content'),
-                    _method: 'POST',
-                    column: destination.droppableId,
-                }),
-                credentials: 'same-origin',
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(`Network response was not ok: ${response.status}`);
-                    }
-                })
-                .catch((error) => {
-                    console.error('Error during fetch:', error);
-                });
-        },
-        [setTasks, setColumns]
+    return (
+        <BoardProvider
+            boardId={boardId}
+            columnsArray={columnsArray}
+            postsArray={postsArray}
+            boards={boards}
+            assignees={assignees}
+            boardsColumns={boardsColumns}
+            priorities={priorities}
+            boardTitle={boardTitle}
+            authUserId={authUserId}
+        >
+            <InnerBoardLayout />
+        </BoardProvider>
     );
+}
 
-    const [selectedTask, setSelectedTask] = useState(null);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+function InnerBoardLayout() {
+    /**
+     * Local state so we only attempt to auto-open the dialog once
+     * (prevents multiple triggers on re-renders).
+     */
+    const [didAutoOpen, setDidAutoOpen] = useState(false);
 
-    const handleTaskClick = (task) => {
-        setSelectedTask(task);
-        setIsEditDialogOpen(true);
-    };
+    // Pull everything from the context:
+    const {
+        boards,
+        boardTitle,
+        boardId,
+        authUserId,
+        columns,
+        tasks,
+        handleBoardClick,
+        onDragEnd,
+        selectedTask,
+        isEditDialogOpen,
+        openDialog,
+        closeDialog,
+        boardsColumns,
+        assignees,
+        priorities
+    } = useBoardContext();
+
+    // Grab any route props, if needed
+    const pageProps = usePage().props as any; // Not strictly necessary if we read from the URL
+
+    /**
+     * If the URL has ?openTask=XYZ, automatically open that post
+     * once we have tasks loaded and haven't done it yet.
+     *
+     * We read from the browser’s query params directly,
+     * so that if Inertia doesn't provide it via pageProps, it's still accessible.
+     */
+    useEffect(() => {
+        const openTaskId = getOpenTaskParam();
+        if (!didAutoOpen && openTaskId && tasks[openTaskId]) {
+            openDialog(openTaskId);
+            setDidAutoOpen(true);
+        }
+    }, [didAutoOpen, openDialog, tasks]);
 
     return (
         <div className="flex h-screen overflow-hidden bg-neutral-900 text-white">
+            {/* Sidebar with boards */}
             <div className="w-64 border-r border-zinc-700 p-4 flex flex-col min-h-0">
                 <h2 className="mb-4 text-lg font-semibold text-white">Projects</h2>
                 <ScrollArea className="flex-1 overflow-y-auto">
-                    {boards.map((board) => (
+                    {boards.map((board: any) => (
                         <Button
                             key={board.id}
                             variant="ghost"
@@ -178,6 +123,7 @@ export function BoardLayout() {
                 </div>
             </div>
 
+            {/* Main content area */}
             <div className="flex-1 overflow-hidden">
                 <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
@@ -186,20 +132,17 @@ export function BoardLayout() {
                             {boardId && <DeleteButton resourceId={boardId} type="Board" />}
                         </div>
 
-                        <InlineNotificationCenter>
-
-                        </InlineNotificationCenter>
+                        <InlineNotificationCenter />
 
                         <div className="flex items-center space-x-2">
                             <PostFormDialog
-                                boards={memoizedBoards}
-                                assignees={memoizedAssignees}
+                                boards={boardsColumns}
+                                assignees={assignees}
                                 priorities={priorities}
                                 authUserId={authUserId}
                             />
                             <div className="relative">
-                                <Search
-                                    className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-zinc-400"/>
+                                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-zinc-400" />
                                 <Input
                                     type="search"
                                     placeholder="Search..."
@@ -211,33 +154,28 @@ export function BoardLayout() {
 
                     <DragDropContext onDragEnd={onDragEnd}>
                         <div className="flex flex-1 overflow-x-auto p-4 space-x-4">
-                            {Object.values(columns).map((column) => {
-                                const columnTasks = column.taskIds.map(
-                                    (taskId) => tasks[taskId]
-                                );
+                            {Object.values(columns).map((column: any) => {
+                                const columnTasks = column.taskIds.map((taskId: string) => tasks[taskId]);
                                 return (
-                                    <div key={column.id} className="flex-1 min-w-[250px] max-w-screen">
-                                        <Column
-                                            column={column}
-                                            tasks={columnTasks}
-                                            onTaskClick={handleTaskClick}
-                                        />
+                                    <div
+                                        key={column.id}
+                                        className="flex-1 min-w-[250px] max-w-screen"
+                                    >
+                                        <Column column={column} tasks={columnTasks} />
                                     </div>
                                 );
                             })}
                         </div>
                     </DragDropContext>
 
+                    {/* Show PostFormDialog if a task is selected */}
                     {isEditDialogOpen && selectedTask && (
                         <PostFormDialog
-                            boards={memoizedBoards}
-                            assignees={memoizedAssignees}
+                            boards={boardsColumns}
+                            assignees={assignees}
                             priorities={priorities}
                             task={selectedTask}
-                            onClose={() => {
-                                setIsEditDialogOpen(false);
-                                setSelectedTask(null);
-                            }}
+                            onClose={closeDialog}
                             authUserId={authUserId}
                         />
                     )}
