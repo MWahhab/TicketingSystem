@@ -332,7 +332,7 @@ export function PostFormDialog({
                                                                 <SelectItem
                                                                     key={board.id}
                                                                     value={board.id.toString()}
-                                                                    className="focus:bg-zinc-600"
+                                                                    className="hover:bg-zinc-600"
                                                                 >
                                                                     {board.title}
                                                                 </SelectItem>
@@ -367,7 +367,7 @@ export function PostFormDialog({
                                                                 <SelectItem
                                                                     key={index}
                                                                     value={column}
-                                                                    className="focus:bg-zinc-600"
+                                                                    className="hover:bg-zinc-600"
                                                                 >
                                                                     {column}
                                                                 </SelectItem>
@@ -397,7 +397,7 @@ export function PostFormDialog({
                                                                 <SelectItem
                                                                     key={priority}
                                                                     value={priority}
-                                                                    className="focus:bg-zinc-600"
+                                                                    className="hover:bg-zinc-600"
                                                                 >
                                                                     {priority}
                                                                 </SelectItem>
@@ -444,7 +444,7 @@ export function PostFormDialog({
                                                                 <SelectItem
                                                                     key={assignee.id}
                                                                     value={assignee.id.toString()}
-                                                                    className="focus:bg-zinc-600"
+                                                                    className="hover:bg-zinc-600"
                                                                 >
                                                                     {assignee.name}
                                                                 </SelectItem>

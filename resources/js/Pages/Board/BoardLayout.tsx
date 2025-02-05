@@ -1,34 +1,43 @@
-"use client";
+"use client"
 
-import React, { useEffect, useState } from "react";
-import { usePage } from "@inertiajs/react";
-import { DragDropContext } from "react-beautiful-dnd";
-import { Search, ChevronDown } from 'lucide-react';
+import React, { useEffect, useState } from "react"
+import { usePage } from "@inertiajs/react"
+import { DragDropContext } from "react-beautiful-dnd"
+import { Search, ChevronDown } from "lucide-react"
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
-import { Column } from "./components/Column";
-import { BoardFormDialog } from "@/Pages/Board/components/BoardFormDialog";
-import { PostFormDialog } from "@/Pages/Board/components/PostFormDialog";
-import DeleteButton from "@/Pages/Board/components/DeleteButton";
-import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell";
+import { Column } from "./components/Column"
+import { BoardFormDialog } from "@/Pages/Board/components/BoardFormDialog"
+import { PostFormDialog } from "@/Pages/Board/components/PostFormDialog"
+import DeleteButton from "@/Pages/Board/components/DeleteButton"
+import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell"
 
 // Context imports
-import { BoardProvider, useBoardContext } from "./BoardContext";
+import { BoardProvider, useBoardContext } from "./BoardContext"
+
+const PreventCloseMenuItem = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<typeof DropdownMenuItem>>(
+    ({ children, ...props }, forwardedRef) => (
+        <DropdownMenuItem
+            {...props}
+            ref={forwardedRef}
+            onSelect={(event) => {
+                event.preventDefault()
+            }}
+        >
+            {children}
+        </DropdownMenuItem>
+    ),
+)
+PreventCloseMenuItem.displayName = "PreventCloseMenuItem"
 
 function getOpenTaskParam(): string | null {
-    if (typeof window === "undefined") return null;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("openTask");
+    if (typeof window === "undefined") return null
+    const params = new URLSearchParams(window.location.search)
+    return params.get("openTask")
 }
 
 export function BoardLayout() {
@@ -41,8 +50,8 @@ export function BoardLayout() {
         priorities,
         boardTitle,
         boardId,
-        authUserId
-    } = usePage().props as any;
+        authUserId,
+    } = usePage().props as any
 
     return (
         <BoardProvider
@@ -58,15 +67,17 @@ export function BoardLayout() {
         >
             <InnerBoardLayout />
         </BoardProvider>
-    );
+    )
 }
 
 function InnerBoardLayout() {
-    const [didAutoOpen, setDidAutoOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedAssignee, setSelectedAssignee] = useState("");
-    const [selectedAuthor, setSelectedAuthor] = useState("");
-    const [selectedPriority, setSelectedPriority] = useState("");
+    const [didAutoOpen, setDidAutoOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [selectedAssignees, setSelectedAssignees] = useState([])
+    const [selectedAuthors, setSelectedAuthors] = useState([])
+    const [selectedPriorities, setSelectedPriorities] = useState([])
+    const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("")
+    const [authorSearchQuery, setAuthorSearchQuery] = useState("")
 
     const {
         boards,
@@ -83,19 +94,24 @@ function InnerBoardLayout() {
         closeDialog,
         boardsColumns,
         assignees,
-        priorities
-    } = useBoardContext();
+        priorities,
+    } = useBoardContext()
 
     useEffect(() => {
-        const openTaskId = getOpenTaskParam();
+        const openTaskId = getOpenTaskParam()
         if (!didAutoOpen && openTaskId && tasks[openTaskId]) {
-            openDialog(openTaskId);
-            setDidAutoOpen(true);
+            openDialog(openTaskId)
+            setDidAutoOpen(true)
         }
-    }, [didAutoOpen, openDialog, tasks]);
+    }, [didAutoOpen, openDialog, tasks])
 
     // Get unique authors from tasks
-    const uniqueAuthors = Array.from(new Set(Object.values(tasks).map((task: any) => task.post_author)));
+    const uniqueAuthors = Array.from(new Set(Object.values(tasks).map((task: any) => task.post_author)))
+
+    const filterBySearch = (items: any[], searchQuery: string, getItemName: (item: any) => string) => {
+        if (!searchQuery) return items
+        return items.filter((item) => getItemName(item).toLowerCase().includes(searchQuery.toLowerCase()))
+    }
 
     return (
         <div className="flex h-screen overflow-hidden bg-neutral-900 text-white">
@@ -154,28 +170,100 @@ function InnerBoardLayout() {
                                             variant="outline"
                                             className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600"
                                         >
-                                            {selectedAssignee ?
-                                                assignees.find((a: any) => a.id === selectedAssignee)?.name :
-                                                "All Assignees"
-                                            }
+                                            {selectedAssignees.length > 0 ? `${selectedAssignees.length} selected` : "All Assignees"}
                                             <ChevronDown className="ml-2 h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="bg-zinc-800 border-zinc-700">
-                                        <DropdownMenuItem
-                                            onClick={() => setSelectedAssignee("")}
-                                            className="hover:bg-zinc-700"
-                                        >
+                                    <DropdownMenuContent
+                                        className="my-1 bg-zinc-800 border-zinc-700 text-white"
+                                        onKeyDown={(e) => e.preventDefault()}
+                                    >
+                                        <div className="relative p-2">
+                                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-zinc-400" />
+                                            <Input
+                                                type="search"
+                                                placeholder="Search assignees..."
+                                                value={assigneeSearchQuery}
+                                                onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                className="pl-8 w-full bg-zinc-800 text-white border-zinc-700 focus:border-white focus:ring-1 focus:ring-white"
+                                            />
+                                        </div>
+                                        <PreventCloseMenuItem onClick={() => setSelectedAssignees([])} className="hover:bg-zinc-700">
                                             All Assignees
-                                        </DropdownMenuItem>
-                                        {assignees.map((assignee: any) => (
-                                            <DropdownMenuItem
-                                                key={assignee.id}
-                                                onClick={() => setSelectedAssignee(assignee.id)}
-                                                className="hover:bg-zinc-700"
+                                        </PreventCloseMenuItem>
+                                        {filterBySearch(assignees, assigneeSearchQuery, (assignee) => assignee.name).map(
+                                            (assignee: any) => (
+                                                <PreventCloseMenuItem
+                                                    key={assignee.id}
+                                                    className={`my-1 hover:bg-zinc-700 ${
+                                                        selectedAssignees.includes(assignee.id) ? "bg-zinc-700 text-white" : ""
+                                                    }`}
+                                                >
+                                                    <div
+                                                        onClick={() =>
+                                                            setSelectedAssignees((prev) =>
+                                                                prev.includes(assignee.id)
+                                                                    ? prev.filter((id) => id !== assignee.id)
+                                                                    : [...prev, assignee.id],
+                                                            )
+                                                        }
+                                                        className="w-full h-full"
+                                                    >
+                                                        {assignee.name}
+                                                    </div>
+                                                </PreventCloseMenuItem>
+                                            ),
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600"
+                                        >
+                                            {selectedAuthors.length > 0 ? `${selectedAuthors.length} selected` : "All Authors"}
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        className="my-1 bg-zinc-800 border-zinc-700 text-white"
+                                        onKeyDown={(e) => e.preventDefault()}
+                                    >
+                                        <div className="relative p-2">
+                                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-zinc-400" />
+                                            <Input
+                                                type="search"
+                                                placeholder="Search authors..."
+                                                value={authorSearchQuery}
+                                                onChange={(e) => setAuthorSearchQuery(e.target.value)}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                className="pl-8 w-full bg-zinc-800 text-white border-zinc-700 focus:border-white focus:ring-1 focus:ring-white"
+                                            />
+                                        </div>
+                                        <PreventCloseMenuItem onClick={() => setSelectedAuthors([])} className="hover:bg-zinc-700">
+                                            All Authors
+                                        </PreventCloseMenuItem>
+                                        {filterBySearch(uniqueAuthors, authorSearchQuery, (author) => author).map((author: string) => (
+                                            <PreventCloseMenuItem
+                                                key={author}
+                                                className={`my-1 hover:bg-zinc-700 ${
+                                                    selectedAuthors.includes(author) ? "bg-zinc-700 text-white" : ""
+                                                }`}
                                             >
-                                                {assignee.name}
-                                            </DropdownMenuItem>
+                                                <div
+                                                    onClick={() =>
+                                                        setSelectedAuthors((prev) =>
+                                                            prev.includes(author) ? prev.filter((a) => a !== author) : [...prev, author],
+                                                        )
+                                                    }
+                                                    className="w-full h-full"
+                                                >
+                                                    {author}
+                                                </div>
+                                            </PreventCloseMenuItem>
                                         ))}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -186,48 +274,29 @@ function InnerBoardLayout() {
                                             variant="outline"
                                             className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600"
                                         >
-                                            {selectedAuthor || "All Authors"}
+                                            {selectedPriorities.length > 0 ? `${selectedPriorities.length} selected` : "All Priorities"}
                                             <ChevronDown className="ml-2 h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="bg-zinc-800 border-zinc-700">
-                                        <DropdownMenuItem
-                                            onClick={() => setSelectedAuthor("")}
-                                            className="hover:bg-zinc-700"
-                                        >
-                                            All Authors
-                                        </DropdownMenuItem>
-                                        {uniqueAuthors.map((author: string) => (
-                                            <DropdownMenuItem
-                                                key={author}
-                                                onClick={() => setSelectedAuthor(author)}
-                                                className="hover:bg-zinc-700"
+                                    <DropdownMenuContent className="bg-zinc-800 border-zinc-700 text-white">
+                                        <PreventCloseMenuItem onClick={() => setSelectedPriorities([])} className="my-1 hover:bg-zinc-700">
+                                            All Priorities
+                                        </PreventCloseMenuItem>
+                                        {["low", "medium", "high"].map((priority) => (
+                                            <PreventCloseMenuItem
+                                                key={priority}
+                                                onClick={() =>
+                                                    setSelectedPriorities((prev) =>
+                                                        prev.includes(priority) ? prev.filter((p) => p !== priority) : [...prev, priority],
+                                                    )
+                                                }
+                                                className={`my-1 hover:bg-zinc-700 ${selectedPriorities.includes(priority) ? "bg-zinc-700 text-white" : ""}`}
                                             >
-                                                {author}
-                                            </DropdownMenuItem>
+                                                <span className="capitalize">{priority}</span>
+                                            </PreventCloseMenuItem>
                                         ))}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
-
-                                <div className="flex gap-1">
-                                    {["low", "medium", "high"].map((priority) => (
-                                        <Button
-                                            key={priority}
-                                            variant={selectedPriority === priority ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setSelectedPriority(selectedPriority === priority ? "" : priority)}
-                                            className={`
-                                                ${selectedPriority === priority ?
-                                                'bg-zinc-700 text-white' :
-                                                'bg-zinc-800 text-zinc-400 hover:text-white'
-                                            }
-                                                border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600
-                                            `}
-                                        >
-                                            {priority}
-                                        </Button>
-                                    ))}
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -238,21 +307,21 @@ function InnerBoardLayout() {
                                 const columnTasks = column.taskIds
                                     .map((taskId: string) => tasks[taskId])
                                     .filter((task) => {
-                                        const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            task.desc.toLowerCase().includes(searchQuery.toLowerCase());
-                                        const matchesAssignee = !selectedAssignee || task.assignee_id === selectedAssignee;
-                                        const matchesAuthor = !selectedAuthor || task.post_author === selectedAuthor;
-                                        const matchesPriority = !selectedPriority || task.priority.toLowerCase() === selectedPriority;
-                                        return matchesSearch && matchesAssignee && matchesAuthor && matchesPriority;
-                                    });
+                                        const matchesSearch =
+                                            task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                            task.desc.toLowerCase().includes(searchQuery.toLowerCase())
+                                        const matchesAssignee =
+                                            selectedAssignees.length === 0 || selectedAssignees.includes(task.assignee_id)
+                                        const matchesAuthor = selectedAuthors.length === 0 || selectedAuthors.includes(task.post_author)
+                                        const matchesPriority =
+                                            selectedPriorities.length === 0 || selectedPriorities.includes(task.priority.toLowerCase())
+                                        return matchesSearch && matchesAssignee && matchesAuthor && matchesPriority
+                                    })
                                 return (
-                                    <div
-                                        key={column.id}
-                                        className="flex-1 min-w-[250px] max-w-screen"
-                                    >
+                                    <div key={column.id} className="flex-1 min-w-[250px] max-w-screen">
                                         <Column column={column} tasks={columnTasks} />
                                     </div>
-                                );
+                                )
                             })}
                         </div>
                     </DragDropContext>
@@ -270,8 +339,8 @@ function InnerBoardLayout() {
                 </div>
             </div>
         </div>
-    );
+    )
 }
 
-export default BoardLayout;
+export default BoardLayout
 
