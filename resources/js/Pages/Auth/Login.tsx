@@ -1,93 +1,94 @@
-import { FormEventHandler } from 'react';
-import Checkbox from '@/Components/Checkbox';
-import GuestLayout from '@/Layouts/GuestLayout';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import { Head, Link, useForm } from '@inertiajs/react';
+import type { FormEventHandler } from "react"
+import { Head, Link, useForm } from "@inertiajs/react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function Login({ status, canResetPassword }: { status?: string, canResetPassword: boolean }) {
+export default function Login({ status, canResetPassword }: { status?: string; canResetPassword: boolean }) {
     const { data, setData, post, processing, errors, reset } = useForm({
-        email: '',
-        password: '',
+        email: "",
+        password: "",
         remember: false,
-    });
+    })
 
     const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-
-        post(route('login'), {
-            onFinish: () => reset('password'),
-        });
-    };
+        e.preventDefault()
+        post("/login", {
+            onFinish: () => reset("password"),
+        })
+    }
 
     return (
-        <GuestLayout>
-            <Head title="Log in" />
+        <div className="min-h-screen flex items-center justify-center bg-black">
+            <div className="w-full max-w-[400px] p-4">
+                <Head title="Log in" />
 
-            {status && <div className="mb-4 font-medium text-sm text-green-600">{status}</div>}
+                <Card className="bg-[#1D1F23] border-0">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-semibold text-white">Log in</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {status && <div className="mb-4 text-sm text-blue-400">{status}</div>}
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
+                        <form onSubmit={submit} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="email" className="text-gray-200">
+                                    Email
+                                </Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    value={data.email}
+                                    onChange={(e) => setData("email", e.target.value)}
+                                    className="bg-white text-black border-0"
+                                    required
+                                />
+                            </div>
 
-                    <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
-                        className="mt-1 block w-full"
-                        autoComplete="username"
-                        isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
-                    />
+                            <div className="space-y-2">
+                                <Label htmlFor="password" className="text-gray-200">
+                                    Password
+                                </Label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={data.password}
+                                    onChange={(e) => setData("password", e.target.value)}
+                                    className="bg-white text-black border-0"
+                                    required
+                                />
+                            </div>
 
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="remember"
+                                    checked={data.remember}
+                                    onCheckedChange={(checked) => setData("remember", checked as boolean)}
+                                    className="bg-white border-0 text-black"
+                                />
+                                <Label htmlFor="remember" className="text-gray-200 font-normal">
+                                    Remember me
+                                </Label>
+                            </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
+                            <Button type="submit" disabled={processing} className="w-full bg-white text-black hover:bg-gray-100">
+                                Log in
+                            </Button>
 
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="block mt-4">
-                    <label className="flex items-center">
-                        <Checkbox
-                            name="remember"
-                            checked={data.remember}
-                            onChange={(e) => setData('remember', e.target.checked)}
-                        />
-                        <span className="ms-2 text-sm text-gray-600">Remember me</span>
-                    </label>
-                </div>
-
-                <div className="flex items-center justify-end mt-4">
-                    {canResetPassword && (
-                        <Link
-                            href={route('password.request')}
-                            className="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            Forgot your password?
-                        </Link>
-                    )}
-
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
-                    </PrimaryButton>
-                </div>
-            </form>
-        </GuestLayout>
-    );
+                            {canResetPassword && (
+                                <div className="text-center">
+                                    <Link href="/forgot-password" className="text-sm text-gray-400 hover:text-white">
+                                        Forgot your password?
+                                    </Link>
+                                </div>
+                            )}
+                        </form>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    )
 }
+
