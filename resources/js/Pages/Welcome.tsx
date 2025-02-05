@@ -1,5 +1,6 @@
 import { Link, Head } from "@inertiajs/react"
 import type { PageProps } from "@/types"
+import { Button } from "@/components/ui/button"
 
 export default function Welcome({ auth }: PageProps<{ auth: { user: object | null } }>) {
     return (
@@ -11,7 +12,7 @@ export default function Welcome({ auth }: PageProps<{ auth: { user: object | nul
                         <div className="w-8 h-8 relative">
                             <img
                                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-7T3nHm8ThlbW9in4ebkEpnZXigX7t8.png"
-                                alt="Jira Logo"
+                                alt="Logo"
                                 className="w-full h-full object-contain"
                             />
                         </div>
@@ -19,49 +20,39 @@ export default function Welcome({ auth }: PageProps<{ auth: { user: object | nul
                     </div>
                     <nav>
                         {auth.user ? (
-                            <Link
-                                href={route("dashboard")}
-                                className="text-sm bg-[#0052CC] hover:bg-[#0747A6] text-white py-2 px-4 rounded transition duration-300"
-                            >
-                                Dashboard
-                            </Link>
+                            <Button asChild variant="default" className="bg-white text-black hover:bg-gray-100">
+                                <Link href="/dashboard">Dashboard</Link>
+                            </Button>
                         ) : (
                             <div className="space-x-4">
-                                <Link
-                                    href={route("login")}
-                                    className="text-sm bg-[#1D1F23] hover:bg-[#2C2F33] text-white py-2 px-4 rounded transition duration-300"
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    className="bg-transparent text-white border-white hover:bg-white hover:text-black"
                                 >
-                                    Log in
-                                </Link>
-                                <Link
-                                    href={route("register")}
-                                    className="text-sm bg-[#0052CC] hover:bg-[#0747A6] text-white py-2 px-4 rounded transition duration-300"
-                                >
-                                    Register
-                                </Link>
+                                    <Link href="/login">Log in</Link>
+                                </Button>
+                                <Button asChild variant="default" className="bg-white text-black hover:bg-gray-100">
+                                    <Link href="/register">Register</Link>
+                                </Button>
                             </div>
                         )}
                     </nav>
                 </header>
 
-                <main className="flex-grow flex items-center justify-center px-6 bg-gradient-to-b from-black to-[#0D1117]">
+                <main className="flex-grow flex items-center justify-center px-6 bg-black">
                     <div className="text-center max-w-2xl mx-auto">
-                        <h2 className="text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                            Welcome to Your Ticketing System
-                        </h2>
-                        <p className="text-xl mb-8 text-gray-400">Streamline your project management with our powerful tools.</p>
+                        <h2 className="text-5xl font-bold mb-6 text-white">Welcome to Your Ticketing System</h2>
+                        <p className="text-xl mb-8 text-gray-300">Streamline your project management with our powerful tools.</p>
                         {!auth.user && (
-                            <Link
-                                href={route("register")}
-                                className="text-lg bg-[#0052CC] hover:bg-[#0747A6] text-white py-3 px-8 rounded-lg transition duration-300 shadow-lg shadow-[#0052CC]/20"
-                            >
-                                Get Started
-                            </Link>
+                            <Button asChild variant="default" size="lg" className="bg-white text-black hover:bg-gray-100">
+                                <Link href="/register">Get Started</Link>
+                            </Button>
                         )}
                     </div>
                 </main>
 
-                <footer className="p-6 text-center text-sm text-gray-600 border-t border-[#1D1F23]">
+                <footer className="p-6 text-center text-sm text-gray-400 border-t border-[#1D1F23]">
                     &copy; {new Date().getFullYear()} Ticketing System. All rights reserved.
                 </footer>
             </div>
