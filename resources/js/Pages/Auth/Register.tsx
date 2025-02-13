@@ -1,113 +1,106 @@
-import { FormEventHandler } from 'react';
-import GuestLayout from '@/Layouts/GuestLayout';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import { Head, Link, useForm } from '@inertiajs/react';
+import type { FormEventHandler } from "react"
+import { Head, Link, useForm } from "@inertiajs/react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm({
-        name: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
-    });
+        name: "",
+        email: "",
+        password: "",
+        password_confirmation: "",
+    })
 
     const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-
-        post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
-    };
+        e.preventDefault()
+        post("/register", {
+            onFinish: () => reset("password", "password_confirmation"),
+        })
+    }
 
     return (
-        <GuestLayout>
-            <Head title="Register" />
+        <div className="min-h-screen flex items-center justify-center bg-black">
+            <div className="w-full max-w-[400px] p-4">
+                <Head title="Register" />
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
+                <Card className="bg-[#1D1F23] border-0">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-semibold text-white">Register</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={submit} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name" className="text-gray-200">
+                                    Name
+                                </Label>
+                                <Input
+                                    id="name"
+                                    type="text"
+                                    value={data.name}
+                                    onChange={(e) => setData("name", e.target.value)}
+                                    className="bg-white text-black border-0"
+                                    required
+                                />
+                            </div>
 
-                    <TextInput
-                        id="name"
-                        name="name"
-                        value={data.name}
-                        className="mt-1 block w-full"
-                        autoComplete="name"
-                        isFocused={true}
-                        onChange={(e) => setData('name', e.target.value)}
-                        required
-                    />
+                            <div className="space-y-2">
+                                <Label htmlFor="email" className="text-gray-200">
+                                    Email
+                                </Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    value={data.email}
+                                    onChange={(e) => setData("email", e.target.value)}
+                                    className="bg-white text-black border-0"
+                                    required
+                                />
+                            </div>
 
-                    <InputError message={errors.name} className="mt-2" />
-                </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="password" className="text-gray-200">
+                                    Password
+                                </Label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={data.password}
+                                    onChange={(e) => setData("password", e.target.value)}
+                                    className="bg-white text-black border-0"
+                                    required
+                                />
+                            </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
+                            <div className="space-y-2">
+                                <Label htmlFor="password_confirmation" className="text-gray-200">
+                                    Confirm Password
+                                </Label>
+                                <Input
+                                    id="password_confirmation"
+                                    type="password"
+                                    value={data.password_confirmation}
+                                    onChange={(e) => setData("password_confirmation", e.target.value)}
+                                    className="bg-white text-black border-0"
+                                    required
+                                />
+                            </div>
 
-                    <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
-                        className="mt-1 block w-full"
-                        autoComplete="username"
-                        onChange={(e) => setData('email', e.target.value)}
-                        required
-                    />
+                            <Button type="submit" disabled={processing} className="w-full bg-white text-black hover:bg-gray-100">
+                                Register
+                            </Button>
 
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                        required
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="password_confirmation" value="Confirm Password" />
-
-                    <TextInput
-                        id="password_confirmation"
-                        type="password"
-                        name="password_confirmation"
-                        value={data.password_confirmation}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) => setData('password_confirmation', e.target.value)}
-                        required
-                    />
-
-                    <InputError message={errors.password_confirmation} className="mt-2" />
-                </div>
-
-                <div className="flex items-center justify-end mt-4">
-                    <Link
-                        href={route('login')}
-                        className="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                        Already registered?
-                    </Link>
-
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
-                    </PrimaryButton>
-                </div>
-            </form>
-        </GuestLayout>
-    );
+                            <div className="text-center">
+                                <Link href="/login" className="text-sm text-gray-400 hover:text-white">
+                                    Already have an account? Log in
+                                </Link>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    )
 }
+
