@@ -189,7 +189,7 @@ function InnerBoardLayout() {
                                                 className="pl-8 w-full bg-zinc-800 text-white border-zinc-700 focus:border-white focus:ring-1 focus:ring-white"
                                             />
                                         </div>
-                                        <PreventCloseMenuItem onClick={() => setSelectedAssignees([])} className="hover:bg-zinc-700">
+                                        <PreventCloseMenuItem onClick={() => setSelectedAssignees([])} className="hover:bg-zinc-700 hover:text-white">
                                             All Assignees
                                         </PreventCloseMenuItem>
                                         {filterBySearch(assignees, assigneeSearchQuery, (assignee) => assignee.name).map(

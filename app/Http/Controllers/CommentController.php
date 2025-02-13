@@ -37,7 +37,7 @@ class CommentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, NotificationService $notificationService): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $validatedData = $request->validate([
             'content'  => 'required|string',

@@ -83,7 +83,7 @@ interface Task {
 }
 
 interface PostFormDialogProps {
-    priorities: string[]
+    priorities: string[];
     boards: Board[];
     assignees: Assignee[];
     task?: Task;
@@ -106,7 +106,16 @@ export function PostFormDialog({
                                    onClose,
                                    authUserId,
                                }: PostFormDialogProps) {
+    // Control dialog open state
     const [isDialogOpen, setIsDialogOpen] = useState(!!task);
+
+    // These states will control the open status of each dropdown/popover
+    const [boardSelectOpen, setBoardSelectOpen] = useState(false);
+    const [columnSelectOpen, setColumnSelectOpen] = useState(false);
+    const [prioritySelectOpen, setPrioritySelectOpen] = useState(false);
+    const [assigneeSelectOpen, setAssigneeSelectOpen] = useState(false);
+    const [deadlinePopoverOpen, setDeadlinePopoverOpen] = useState(false);
+
     const [availableColumns, setAvailableColumns] = useState<string[]>([]);
     const [isPreview, setIsPreview] = useState(!!task);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -190,7 +199,6 @@ export function PostFormDialog({
                     console.error(errors);
                 },
             });
-
             return;
         }
 
@@ -213,313 +221,326 @@ export function PostFormDialog({
         setShowDeleteConfirmation(true);
     }
 
+    const handleDialogOpenChange = (open: boolean) => {
+        if (!open) {
+            document.querySelectorAll('[data-state="open"]').forEach((el) => {
+                (el as HTMLElement).blur();
+            });
+
+            setTimeout(() => {
+                setIsDialogOpen(false);
+                if (onClose) onClose();
+            }, 50);
+        } else {
+            setIsDialogOpen(true);
+        }
+    };
+
     return (
         <>
-            <Dialog
-                open={isDialogOpen}
-                onOpenChange={(open) => {
-                    setIsDialogOpen(open);
-                    if (!open && onClose) onClose();
-                }}
-            >
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
                 {!task && (
                     <DialogTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className="bg-white text-zinc-900 hover:bg-zinc-100"
-                        >
+                        <Button variant="outline" className="bg-white text-zinc-900 hover:bg-zinc-100">
                             Create New Post
                         </Button>
                     </DialogTrigger>
                 )}
-                <DialogContent
-                    className="sm:max-w-[1000px] bg-zinc-800 text-white border border-zinc-700"
-                >
-                    <DialogHeader className="flex flex-row items-center space-x-2">
-                        <DialogTitle className="text-white text-2xl flex items-center">
-                            {task ? 'Edit Post' : 'Create New Post'}
-                            {task && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={onDelete}
-                                    className="ml-2 text-red-400 hover:text-red-300 hover:bg-red-100/10 p-1"
-                                >
-                                    <Trash2Icon className="h-5 w-5"/>
-                                </Button>
-                            )}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="max-h-[calc(100vh-240px)] overflow-y-auto pr-4">
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                                <div className="grid grid-cols-[2fr_1fr] gap-6">
-                                    <div className="space-y-8">
-                                        <FormField
-                                            control={form.control}
-                                            name="title"
-                                            render={({field}) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-white">Title</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Enter title"
-                                                            {...field}
-                                                            className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-red-400"/>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="desc"
-                                            render={({field}) => (
-                                                <FormItem>
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <FormLabel className="text-white">Description</FormLabel>
-                                                        <Button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                setIsPreview(!isPreview);
-                                                            }}
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-white hover:text-zinc-300"
-                                                        >
-                                                            {isPreview ? <EditIcon className="h-4 w-4"/> :
-                                                                <EyeIcon className="h-4 w-4"/>}
-                                                        </Button>
-                                                    </div>
-                                                    <FormControl>
-                                                        <ExpandableTipTapTextArea
-                                                            value={field.value}
-                                                            onChange={field.onChange}
-                                                            className="bg-zinc-700 text-white border border-zinc-600 rounded-md focus-within:border-white focus-within:ring-1 focus-within:ring-white"
-                                                            isPreview={isPreview}
-                                                            assignees={assignees}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-red-400"/>
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="fid_board"
-                                            render={({field}) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-white">Board</FormLabel>
-                                                    <Select
-                                                        onValueChange={(value) => {
-                                                            field.onChange(value);
-                                                        }}
-                                                        value={field.value || ""}
-                                                    >
+                {isDialogOpen && (
+                    <DialogContent className="sm:max-w-[1000px] bg-zinc-800 text-white border border-zinc-700">
+                        <DialogHeader className="flex flex-row items-center space-x-2">
+                            <DialogTitle className="text-white text-2xl flex items-center">
+                                {task ? 'Edit Post' : 'Create New Post'}
+                                {task && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={onDelete}
+                                        className="ml-2 text-red-400 hover:text-red-300 hover:bg-red-100/10 p-1"
+                                    >
+                                        <Trash2Icon className="h-5 w-5" />
+                                    </Button>
+                                )}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="max-h-[calc(100vh-240px)] overflow-y-auto pr-4">
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                                    <div className="grid grid-cols-[2fr_1fr] gap-6">
+                                        <div className="space-y-8">
+                                            <FormField
+                                                control={form.control}
+                                                name="title"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Title</FormLabel>
                                                         <FormControl>
-                                                            <SelectTrigger
-                                                                className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
-                                                                <SelectValue placeholder="Select board"/>
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent
-                                                            className="bg-zinc-700 text-white border-zinc-600">
-                                                            {boards.map((board) => (
-                                                                <SelectItem
-                                                                    key={board.id}
-                                                                    value={board.id.toString()}
-                                                                    className="hover:bg-zinc-600"
-                                                                >
-                                                                    {board.title}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage className="text-red-400"/>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="column"
-                                            render={({field}) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-white">Column</FormLabel>
-                                                    <Select
-                                                        onValueChange={field.onChange}
-                                                        value={field.value || ""}
-                                                        disabled={!availableColumns.length}
-                                                    >
-                                                        <FormControl>
-                                                            <SelectTrigger
-                                                                className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
-                                                                <SelectValue
-                                                                    placeholder={availableColumns.length ? "Select column" : "Select a board first"}/>
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent
-                                                            className="bg-zinc-700 text-white border-zinc-600">
-                                                            {availableColumns.map((column, index) => (
-                                                                <SelectItem
-                                                                    key={index}
-                                                                    value={column}
-                                                                    className="hover:bg-zinc-600"
-                                                                >
-                                                                    {column}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage className="text-red-400"/>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="priority"
-                                            render={({field}) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-white">Priority</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger
-                                                                className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
-                                                                <SelectValue placeholder="Select priority"/>
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent
-                                                            className="bg-zinc-700 text-white border-zinc-600">
-                                                            {priorities.map((priority) => (
-                                                                <SelectItem
-                                                                    key={priority}
-                                                                    value={priority}
-                                                                    className="hover:bg-zinc-600"
-                                                                >
-                                                                    {priority}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage className="text-red-400"/>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        {task && (
-                                            <FormItem>
-                                                <FormLabel className="text-white">Author</FormLabel>
-                                                <div className="flex items-center gap-2 p-2 bg-zinc-700 rounded-md border border-zinc-600">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-medium text-white">
-                                                          {assignees.find(a => a.id.toString() === form.getValues('post_author'))?.name || form.getValues('post_author')}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </FormItem>
-                                        )}
-                                        <FormField
-                                            control={form.control}
-                                            name="assignee_id"
-                                            render={({field}) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-white">Assignee</FormLabel>
-                                                    <Select
-                                                        onValueChange={(value) => {
-                                                            field.onChange(value);
-                                                        }}
-                                                        value={field.value || ""}
-                                                    >
-                                                        <FormControl>
-                                                            <SelectTrigger
-                                                                className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
-                                                                <SelectValue placeholder="Select assignee"/>
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent
-                                                            className="bg-zinc-700 text-white border-zinc-600">
-                                                            {assignees.map((assignee) => (
-                                                                <SelectItem
-                                                                    key={assignee.id}
-                                                                    value={assignee.id.toString()}
-                                                                    className="hover:bg-zinc-600"
-                                                                >
-                                                                    {assignee.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage className="text-red-400"/>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="deadline"
-                                            render={({field}) => (
-                                                <FormItem className="flex flex-col mt-2">
-                                                    <FormLabel className="text-white">Deadline</FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button
-                                                                    variant={"outline"}
-                                                                    className={cn(
-                                                                        "w-full pl-3 text-left font-normal bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white",
-                                                                        !field.value && "text-muted-foreground"
-                                                                    )}
-                                                                >
-                                                                    {field.value ? (
-                                                                        format(field.value, "PPP")
-                                                                    ) : (
-                                                                        <span>Pick a date</span>
-                                                                    )}
-                                                                    <CalendarIcon
-                                                                        className="ml-auto h-4 w-4 opacity-50"/>
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0 bg-zinc-700"
-                                                                        align="start">
-                                                            <Calendar
-                                                                mode="single"
-                                                                selected={field.value}
-                                                                onSelect={field.onChange}
-                                                                disabled={(date) =>
-                                                                    date < new Date() || date < new Date("1900-01-01")
-                                                                }
-                                                                initialFocus
-                                                                className="bg-zinc-700 text-white"
+                                                            <Input
+                                                                placeholder="Enter title"
+                                                                {...field}
+                                                                className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white"
                                                             />
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                    <FormMessage className="text-red-400"/>
+                                                        </FormControl>
+                                                        <FormMessage className="text-red-400" />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="desc"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <FormLabel className="text-white">Description</FormLabel>
+                                                            <Button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    setIsPreview(!isPreview);
+                                                                }}
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-white hover:text-zinc-300"
+                                                            >
+                                                                {isPreview ? <EditIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                                            </Button>
+                                                        </div>
+                                                        <FormControl>
+                                                            <ExpandableTipTapTextArea
+                                                                value={field.value}
+                                                                onChange={field.onChange}
+                                                                className="bg-zinc-700 text-white border border-zinc-600 rounded-md focus-within:border-white focus-within:ring-1 focus-within:ring-white"
+                                                                isPreview={isPreview}
+                                                                assignees={assignees}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage className="text-red-400" />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="fid_board"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Board</FormLabel>
+                                                        <Select
+                                                            open={boardSelectOpen}
+                                                            onOpenChange={setBoardSelectOpen}
+                                                            onValueChange={(value) => {
+                                                                field.onChange(value);
+                                                                setBoardSelectOpen(false);
+                                                            }}
+                                                            value={field.value || ''}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                                    <SelectValue placeholder="Select board" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent className="bg-zinc-700 text-white border-zinc-600">
+                                                                {boards.map((board) => (
+                                                                    <SelectItem
+                                                                        key={board.id}
+                                                                        value={board.id.toString()}
+                                                                        className="hover:bg-zinc-600"
+                                                                    >
+                                                                        {board.title}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage className="text-red-400" />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="column"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Column</FormLabel>
+                                                        <Select
+                                                            open={columnSelectOpen}
+                                                            onOpenChange={setColumnSelectOpen}
+                                                            onValueChange={(value) => {
+                                                                field.onChange(value);
+                                                                setColumnSelectOpen(false);
+                                                            }}
+                                                            value={field.value || ''}
+                                                            disabled={!availableColumns.length}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                                    <SelectValue placeholder={availableColumns.length ? "Select column" : "Select a board first"} />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent className="bg-zinc-700 text-white border-zinc-600">
+                                                                {availableColumns.map((column, index) => (
+                                                                    <SelectItem
+                                                                        key={index}
+                                                                        value={column}
+                                                                        className="hover:bg-zinc-600"
+                                                                    >
+                                                                        {column}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage className="text-red-400" />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="priority"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Priority</FormLabel>
+                                                        <Select
+                                                            open={prioritySelectOpen}
+                                                            onOpenChange={setPrioritySelectOpen}
+                                                            onValueChange={(value) => {
+                                                                field.onChange(value);
+                                                                setPrioritySelectOpen(false);
+                                                            }}
+                                                            value={field.value}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                                    <SelectValue placeholder="Select priority" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent className="bg-zinc-700 text-white border-zinc-600">
+                                                                {priorities.map((priority) => (
+                                                                    <SelectItem
+                                                                        key={priority}
+                                                                        value={priority}
+                                                                        className="hover:bg-zinc-600"
+                                                                    >
+                                                                        {priority}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage className="text-red-400" />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            {task && (
+                                                <FormItem>
+                                                    <FormLabel className="text-white">Author</FormLabel>
+                                                    <div className="flex items-center gap-2 p-2 bg-zinc-700 rounded-md border border-zinc-600">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-medium text-white">
+                                                                {assignees.find(a => a.id.toString() === form.getValues('post_author'))?.name || form.getValues('post_author')}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </FormItem>
                                             )}
-                                        />
+                                            <FormField
+                                                control={form.control}
+                                                name="assignee_id"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Assignee</FormLabel>
+                                                        <Select
+                                                            open={assigneeSelectOpen}
+                                                            onOpenChange={setAssigneeSelectOpen}
+                                                            onValueChange={(value) => {
+                                                                field.onChange(value);
+                                                                setAssigneeSelectOpen(false);
+                                                            }}
+                                                            value={field.value || ''}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                                    <SelectValue placeholder="Select assignee" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent className="bg-zinc-700 text-white border-zinc-600">
+                                                                {assignees.map((assignee) => (
+                                                                    <SelectItem
+                                                                        key={assignee.id}
+                                                                        value={assignee.id.toString()}
+                                                                        className="hover:bg-zinc-600"
+                                                                    >
+                                                                        {assignee.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage className="text-red-400" />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="deadline"
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-col mt-2">
+                                                        <FormLabel className="text-white">Deadline</FormLabel>
+                                                        <Popover
+                                                            open={deadlinePopoverOpen}
+                                                            onOpenChange={setDeadlinePopoverOpen}
+                                                        >
+                                                            <PopoverTrigger asChild>
+                                                                <FormControl>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        className={cn(
+                                                                            "w-full pl-3 text-left font-normal bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white",
+                                                                            !field.value && "text-muted-foreground"
+                                                                        )}
+                                                                    >
+                                                                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                                    </Button>
+                                                                </FormControl>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto p-0 bg-zinc-700" align="start">
+                                                                <Calendar
+                                                                    mode="single"
+                                                                    selected={field.value}
+                                                                    onSelect={(val) => {
+                                                                        field.onChange(val);
+                                                                        setDeadlinePopoverOpen(false);
+                                                                    }}
+                                                                    disabled={(date) =>
+                                                                        date < new Date() || date < new Date("1900-01-01")
+                                                                    }
+                                                                    initialFocus
+                                                                    className="bg-zinc-700 text-white"
+                                                                />
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                        <FormMessage className="text-red-400" />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </form>
-                        </Form>
-                        {task && task.comments && (
-                            <CommentSection taskId={task.id} currentUserId={authUserId} assignees={assignees}/>
-                        )}
-                        {task && (
-                            <ActivityHistory postId={task.id} />
-                        )}
-                    </div>
-                    <div className="mt-6">
-                        <Button
-                            type="submit"
-                            onClick={form.handleSubmit(onSubmit)}
-                            className="w-full bg-white text-zinc-900 hover:bg-zinc-100"
-                        >
-                            {task ? 'Update' : 'Submit'}
-                        </Button>
-                    </div>
-                </DialogContent>
+                                </form>
+                            </Form>
+                            {task && task.comments && (
+                                <CommentSection taskId={task.id} currentUserId={authUserId} assignees={assignees} />
+                            )}
+                            {task && <ActivityHistory postId={task.id} />}
+                        </div>
+                        <div className="mt-6">
+                            <Button
+                                type="submit"
+                                onClick={form.handleSubmit(onSubmit)}
+                                className="w-full bg-white text-zinc-900 hover:bg-zinc-100"
+                            >
+                                {task ? 'Update' : 'Submit'}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                )}
             </Dialog>
 
             {showDeleteConfirmation && (
@@ -535,4 +556,3 @@ export function PostFormDialog({
 }
 
 export default React.memo(PostFormDialog);
-
