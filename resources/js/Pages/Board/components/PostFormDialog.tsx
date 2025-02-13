@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useForm, useWatch } from 'react-hook-form';
@@ -45,6 +46,11 @@ import { useToast } from '@/hooks/use-toast';
 import CommentSection from "@/Pages/Board/components/CommentSection";
 import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmation";
 import ActivityHistory from "@/Pages/Board/components/ActivityHistory";
+
+// Custom Portal component using ReactDOM.createPortal
+const Portal = ({ children }: { children: React.ReactNode }) => {
+    return createPortal(children, document.body);
+};
 
 const formSchema = z.object({
     title: z.string().min(1, 'Title is required'),
@@ -106,10 +112,10 @@ export function PostFormDialog({
                                    onClose,
                                    authUserId,
                                }: PostFormDialogProps) {
-    // Control dialog open state
+    // Dialog open state
     const [isDialogOpen, setIsDialogOpen] = useState(!!task);
 
-    // These states will control the open status of each dropdown/popover
+    // Open states for each dropdown/popover
     const [boardSelectOpen, setBoardSelectOpen] = useState(false);
     const [columnSelectOpen, setColumnSelectOpen] = useState(false);
     const [prioritySelectOpen, setPrioritySelectOpen] = useState(false);
@@ -152,7 +158,6 @@ export function PostFormDialog({
     const commentSchema = z.object({
         content: z.string().min(3, 'Comment is required and must be longer than 3 characters.'),
     });
-
     const commentForm = useForm({
         resolver: zodResolver(commentSchema),
         defaultValues: {
@@ -199,18 +204,17 @@ export function PostFormDialog({
                     console.error(errors);
                 },
             });
-            return;
+        } else {
+            Inertia.post('/posts', values, {
+                onSuccess: () => {
+                    form.reset();
+                    setIsDialogOpen(false);
+                },
+                onError: (errors) => {
+                    console.error(errors);
+                },
+            });
         }
-
-        Inertia.post('/posts', values, {
-            onSuccess: () => {
-                form.reset();
-                setIsDialogOpen(false);
-            },
-            onError: (errors) => {
-                console.error(errors);
-            },
-        });
     }
 
     const handleDialogClose = () => {
@@ -226,7 +230,6 @@ export function PostFormDialog({
             document.querySelectorAll('[data-state="open"]').forEach((el) => {
                 (el as HTMLElement).blur();
             });
-
             setTimeout(() => {
                 setIsDialogOpen(false);
                 if (onClose) onClose();
@@ -302,7 +305,11 @@ export function PostFormDialog({
                                                                 size="sm"
                                                                 className="text-white hover:text-zinc-300"
                                                             >
-                                                                {isPreview ? <EditIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                                                {isPreview ? (
+                                                                    <EditIcon className="h-4 w-4" />
+                                                                ) : (
+                                                                    <EyeIcon className="h-4 w-4" />
+                                                                )}
                                                             </Button>
                                                         </div>
                                                         <FormControl>
@@ -378,13 +385,13 @@ export function PostFormDialog({
                                                                 </SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent className="bg-zinc-700 text-white border-zinc-600">
-                                                                {availableColumns.map((column, index) => (
+                                                                {availableColumns.map((col, idx) => (
                                                                     <SelectItem
-                                                                        key={index}
-                                                                        value={column}
+                                                                        key={idx}
+                                                                        value={col}
                                                                         className="hover:bg-zinc-600"
                                                                     >
-                                                                        {column}
+                                                                        {col}
                                                                     </SelectItem>
                                                                 ))}
                                                             </SelectContent>
@@ -501,21 +508,32 @@ export function PostFormDialog({
                                                                     </Button>
                                                                 </FormControl>
                                                             </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0 bg-zinc-700" align="start">
-                                                                <Calendar
-                                                                    mode="single"
-                                                                    selected={field.value}
-                                                                    onSelect={(val) => {
-                                                                        field.onChange(val);
-                                                                        setDeadlinePopoverOpen(false);
-                                                                    }}
-                                                                    disabled={(date) =>
-                                                                        date < new Date() || date < new Date("1900-01-01")
-                                                                    }
-                                                                    initialFocus
-                                                                    className="bg-zinc-700 text-white"
-                                                                />
-                                                            </PopoverContent>
+                                                            <Portal>
+                                                                <PopoverContent
+                                                                    side="bottom"
+                                                                    align="start"
+                                                                    sideOffset={4}
+                                                                    className="z-[9999] w-auto p-0 bg-zinc-700 pointer-events-auto"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                                        <Calendar
+                                                                            mode="single"
+                                                                            selected={field.value}
+                                                                            onSelect={(val) => {
+                                                                                field.onChange(val);
+                                                                                setDeadlinePopoverOpen(false);
+                                                                            }}
+                                                                            disabled={(date) =>
+                                                                                date < new Date() ||
+                                                                                date < new Date("1900-01-01")
+                                                                            }
+                                                                            initialFocus
+                                                                            className="bg-zinc-700 text-white"
+                                                                        />
+                                                                    </div>
+                                                                </PopoverContent>
+                                                            </Portal>
                                                         </Popover>
                                                         <FormMessage className="text-red-400" />
                                                     </FormItem>
@@ -526,7 +544,11 @@ export function PostFormDialog({
                                 </form>
                             </Form>
                             {task && task.comments && (
-                                <CommentSection taskId={task.id} currentUserId={authUserId} assignees={assignees} />
+                                <CommentSection
+                                    taskId={task.id}
+                                    currentUserId={authUserId}
+                                    assignees={assignees}
+                                />
                             )}
                             {task && <ActivityHistory postId={task.id} />}
                         </div>
@@ -542,10 +564,9 @@ export function PostFormDialog({
                     </DialogContent>
                 )}
             </Dialog>
-
             {showDeleteConfirmation && (
                 <DeleteConfirmationDialog
-                    id={task.id}
+                    id={task?.id ?? ''}
                     type="Post"
                     isOpen={true}
                     onClose={handleDialogClose}
