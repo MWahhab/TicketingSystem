@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Interfaces\NotificationServiceInterface;
-use App\Services\NotificationService;
+use App\Traits\HasNotificationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  */
 class BoardConfig extends Model implements NotificationServiceInterface
 {
-    use HasFactory;
+    use HasFactory, HasNotificationService;
     protected $fillable = ['title', 'columns', 'fid_user'];
 
     protected $casts = [
@@ -39,10 +39,5 @@ class BoardConfig extends Model implements NotificationServiceInterface
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class, 'fid_board');
-    }
-
-    public function notify(): void
-    {
-        app(NotificationService::class)->notify($this);
     }
 }

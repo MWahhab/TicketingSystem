@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BoardConfigController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\LinkedIssuesController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
@@ -33,8 +34,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('boards.posts', PostController::class)->shallow();
     Route::resource('posts', PostController::class);
     Route::resource('comments', CommentController::class);
+    Route::resource('linkedIssues', LinkedIssuesController::class);
 
     Route::post('/move/{post}', [PostController::class, 'move']);
+    Route::get('/postSearch', [PostController::class, 'search']);
 
     Route::get('/api/notifications', [NotificationController::class, 'index']);
     Route::get('/api/activity/{post}', [NotificationController::class, 'getActivityHistory']);

@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Bell, X, MessageSquare, FileText, Layout } from "lucide-react";
+import { Bell, X, MessageSquare, FileText, Layout, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axios from "axios";
-
-// NEW imports:
 import { useBoardContext } from "../BoardContext";
 import { router } from "@inertiajs/react";
 
@@ -18,7 +16,7 @@ interface Notification {
     fid_board: string;
     content: string;
     time: string;
-    type: "comment" | "post" | "board";
+    type: "comment" | "post" | "board" | "linked_issue";
     additionalCount: number;
     seen: boolean;
 }
@@ -26,13 +24,15 @@ interface Notification {
 const typeColors = {
     comment: "bg-blue-500",
     post: "bg-green-500",
-    board: "bg-purple-500"
+    board: "bg-purple-500",
+    linked_issue: "bg-purple-500"
 };
 
 const typeIcons = {
     comment: MessageSquare,
     post: FileText,
-    board: Layout
+    board: Layout,
+    linked_issue: Link
 };
 
 const useNotifications = () => {
@@ -97,10 +97,8 @@ export default function InlineNotificationCenter() {
     function onNotificationClick(notification: Notification) {
         const { fid_post, fid_board } = notification;
         if (fid_board === currentBoardId) {
-            // Same board => open from context
             openDialog(fid_post);
         } else {
-            // Different board => navigate so that board’s tasks load
             router.get(`/boards?board_id=${fid_board}&openTask=${fid_post}`);
         }
     }

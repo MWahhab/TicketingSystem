@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Interfaces\NotificationServiceInterface;
-use App\Services\NotificationService;
+use App\Traits\HasNotificationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,7 +25,7 @@ use Illuminate\Support\Carbon;
 
 class Comment extends Model implements NotificationServiceInterface
 {
-    use HasFactory;
+    use HasFactory, HasNotificationService;
 
     protected $fillable = ['content', 'fid_post', 'fid_user'];
 
@@ -37,10 +37,5 @@ class Comment extends Model implements NotificationServiceInterface
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'fid_user');
-    }
-
-    public function notify(): void
-    {
-        app(NotificationService::class)->notify($this);
     }
 }

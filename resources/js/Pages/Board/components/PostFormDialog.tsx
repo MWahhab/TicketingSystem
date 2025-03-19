@@ -46,6 +46,7 @@ import { useToast } from '@/hooks/use-toast';
 import CommentSection from "@/Pages/Board/components/CommentSection";
 import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmation";
 import ActivityHistory from "@/Pages/Board/components/ActivityHistory";
+import LinkedIssuesSection from "@/Pages/Board/components/LinkedIssues";
 
 // Custom Portal component using ReactDOM.createPortal
 const Portal = ({ children }: { children: React.ReactNode }) => {
@@ -551,6 +552,7 @@ export function PostFormDialog({
                                 />
                             )}
                             {task && <ActivityHistory postId={task.id} />}
+                            {task && <LinkedIssuesSection taskId={task.id} currentUserId={authUserId} />}
                         </div>
                         <div className="mt-6">
                             <Button

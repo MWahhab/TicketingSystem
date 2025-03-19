@@ -6,6 +6,7 @@ use App\Enums\NotificationTypeEnums;
 use app\Interfaces\NotificationServiceInterface;
 use App\Models\BoardConfig;
 use App\Models\Comment;
+use App\Models\LinkedIssues;
 use App\Models\Notification;
 use App\Models\Post;
 use App\Models\User;
@@ -15,12 +16,16 @@ use Illuminate\Support\Str;
 
 class NotificationService
 {
+    const NOTIFICATION_GROUPING_INTERVAL = 5;
 
-    const NOTIFICATION_GROUPING_INTERVAL=5;
-
+    /**
+     * @param Object $object
+     *
+     * @return void
+     */
     public function notify(Object $object): void
     {
-        switch (true) {
+        switch ($object) {
             case $object instanceof Comment:
                 $notifications = $this->parseCommentNotification($object);
                 Notification::insert($notifications);
@@ -28,6 +33,11 @@ class NotificationService
                 break;
             case $object instanceof Post:
                 $notifications = $this->parsePostNotification($object);
+                Notification::insert($notifications);
+
+                break;
+            case $object instanceof LinkedIssues:
+                $notifications = $this->parseLinkedIssueNotification($object);
                 Notification::insert($notifications);
 
                 break;
@@ -84,6 +94,10 @@ class NotificationService
         return $notifications;
     }
 
+    /**
+     * @param Post   $object
+     * @return array
+     */
     public function parsePostNotification(Post $object): array
     {
         $changes = $object->getChanges();
@@ -91,8 +105,8 @@ class NotificationService
         $userIds[$object->assignee_id] = true;
         $userIds[$object->fid_user]    = true;
 
-        $board     = BoardConfig::find($object->fid_board);
-        $boardName = $board->title;
+        $board          = BoardConfig::find($object->fid_board);
+        $boardName      = $board->title;
 
         $fiveMinutesAgo = Carbon::now()->subMinutes(5);
         $postCreatedAt  = Carbon::parse($object->created_at);
@@ -204,6 +218,10 @@ class NotificationService
         return $content;
     }
 
+    /**
+     * @param int   $userId
+     * @return array
+     */
     public function getGroupedNotifications(int $userId): array
     {
         $rawNotifications = Notification::where('fid_user', $userId)
@@ -267,10 +285,11 @@ class NotificationService
     }
 
     /**
-     * @param string $content
+     * @param string                $content
      * @param NotificationTypeEnums $objectContext
-     * @param int $postId
-     * @param string $scopeContext
+     * @param int                   $postId
+     * @param int                   $boardId
+     * @param string                $scopeContext
      *
      * @return array
      */
@@ -329,5 +348,76 @@ class NotificationService
         }
 
         return $cleanedContents;
+    }
+
+    /**
+     * @param LinkedIssues $object
+     * @return array
+     */
+    private function parseLinkedIssueNotification(LinkedIssues $object): array
+    {
+        if ($object->wasRecentlyCreated) {
+            $action = 'created';
+        } elseif (!$object->exists) {
+            $action = 'deleted';
+        } else {
+            $action = 'updated';
+        }
+
+        if (!isset($object->fid_origin_post, $object->fid_related_post)) {
+            return [];
+        }
+
+        // 3. Eager-load relationships before building the notification.
+        $object->load(['creator', 'post', 'relatedPost']);
+
+        /** @var Post $post */
+        $post        = $object->post;
+
+        /** @var Post $relatedPost */
+        $relatedPost = $object->relatedPost;
+
+        $userIds     = array_unique([
+            $object->fid_user,
+            $relatedPost->assignee_id,
+            $relatedPost->fid_user,
+            $post->assignee_id,
+            $post->fid_user,
+        ]);
+
+        $userName   = $object->creator->name ?? 'Unknown User';
+
+        $contentMap = [
+            'created' => '%s linked post #%s - %s to #%s - %s',
+            'updated' => '%s updated link between post #%s - %s and #%s - %s',
+            'deleted' => '%s removed link between post #%s - %s and #%s - %s',
+        ];
+
+        $template = $contentMap[$action] ?? $contentMap['updated'];
+
+        $notifications = [];
+        foreach ($userIds as $userId) {
+            $content = sprintf(
+                $template,
+                $userName,
+                $relatedPost->id,
+                $relatedPost->title,
+                $post->id,
+                $post->title
+            );
+
+            $notifications[] = [
+                'created_by' => Auth::id(),
+                'type'       => NotificationTypeEnums::LINKED_ISSUE->value,
+                'content'    => $content,
+                'fid_post'   => $post->id,
+                'fid_board'  => $post->fid_board,
+                'fid_user'   => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        return $notifications;
     }
 }

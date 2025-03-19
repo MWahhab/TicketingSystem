@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -30,6 +31,7 @@ class PostController extends Controller
      * Store a newly created post in storage.
      *
      * @param Request $request
+     *
      * @return Response
      */
     public function store(Request $request): Response
@@ -81,8 +83,9 @@ class PostController extends Controller
     }
 
     /**
-     * @param Post $post
+     * @param Post    $post
      * @param Request $request
+     *
      * @return Response
      */
     public function move(Post $post, Request $request): Response
@@ -129,6 +132,27 @@ class PostController extends Controller
 
         return Inertia::location('/boards/?board_id=' . $validated['fid_board']);
     }
+
+    /**
+     * Search for posts to link
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $query = trim($request->input('query', ''));
+
+        if (!$query) {
+            return response()->json([]);
+        }
+
+        $posts = Post::query()
+            ->where('title', 'like', "%{$query}%")
+            ->when(is_numeric($query), fn($q) => $q->orWhere('id', $query))
+            ->limit(10)
+            ->get(['id', 'title']);
+
+        return response()->json($posts);
+    }
+
 
     /**
      * Remove the specified resource from storage.

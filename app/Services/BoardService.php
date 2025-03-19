@@ -46,7 +46,7 @@ class BoardService
 
         $columns = is_array($board->columns) ? $board->columns : [];
 
-        $posts = $board->posts ? $board->posts->map(function ($post) {
+        $posts   = $board->posts ? $board->posts->map(function ($post) {
             return [
                 'id'          => $post->id,
                 'title'       => $post->title,

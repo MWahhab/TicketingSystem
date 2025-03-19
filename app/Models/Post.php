@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Interfaces\NotificationServiceInterface;
-use App\Services\NotificationService;
+use App\Traits\HasNotificationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,7 +31,7 @@ use Illuminate\Support\Carbon;
  */
 class Post extends Model implements NotificationServiceInterface
 {
-    use HasFactory;
+    use HasFactory, HasNotificationService;
 
     protected $fillable = [
         'title', 'desc', 'priority', 'column', 'assignee_id', 'deadline',
@@ -62,13 +62,8 @@ class Post extends Model implements NotificationServiceInterface
         return $this->hasMany(Comment::class, 'fid_post');
     }
 
-    /**
-     * In case of an update, we need the original object so we can show both new and old values
-     *
-     * @return void
-     */
-    public function notify(): void
+    public function linkedIssues(): HasMany
     {
-        app(NotificationService::class)->notify($this);
+        return $this->hasMany(LinkedIssues::class, 'fid_origin_post');
     }
 }
