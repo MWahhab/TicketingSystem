@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, {
@@ -11,9 +10,6 @@ import React, {
 import { router } from "@inertiajs/react";
 import { DropResult } from "react-beautiful-dnd";
 
-/**
- * Types you already had in your code:
- */
 interface Board {
     id: string;
     title: string;
@@ -35,7 +31,6 @@ interface Task {
     deadline: string | null;
     fid_board: string;
     post_author: string;
-    // ...plus any other fields
 }
 
 interface ColumnState {
@@ -44,10 +39,6 @@ interface ColumnState {
     taskIds: string[];
 }
 
-/**
- * Props we need to initialize the context with your board data,
- * which we get from `usePage().props` in `BoardLayout`.
- */
 interface BoardProviderProps {
     children: React.ReactNode;
     boardId?: string;
@@ -55,17 +46,17 @@ interface BoardProviderProps {
     postsArray: Task[];
     boards: Board[];
     assignees: Assignee[];
-    boardsColumns: Board[]; // same structure you used for <PostFormDialog>
+    boardsColumns: Board[];
     priorities: string[];
     boardTitle?: string;
     authUserId: string;
+    openPostId?: string | null;
 }
 
 /**
  * Values our context will provide to children:
  */
 interface BoardContextValue {
-    // Basic board info:
     boardId?: string;
     boards: Board[];
     assignees: Assignee[];
@@ -73,16 +64,14 @@ interface BoardContextValue {
     priorities: string[];
     boardTitle?: string;
     authUserId: string;
+    openPostId?: string | null;
 
-    // Columns + tasks as state
     columns: Record<string, ColumnState>;
     tasks: Record<string, Task>;
 
-    // Post dialog state:
     selectedTask: Task | null;
     isEditDialogOpen: boolean;
 
-    // Actions:
     handleBoardClick: (boardId: string) => void;
     onDragEnd: (result: DropResult) => void;
     openDialog: (taskId: string) => void;
@@ -95,6 +84,7 @@ const BoardContext = createContext<BoardContextValue>({
     boardsColumns: [],
     priorities: [],
     authUserId: "",
+    openPostId: null,
     columns: {},
     tasks: {},
     selectedTask: null,
@@ -122,7 +112,8 @@ export function BoardProvider({
                                   boardsColumns,
                                   priorities,
                                   boardTitle,
-                                  authUserId
+                                  authUserId,
+                                  openPostId,
                               }: BoardProviderProps) {
     // We'll store your columns + tasks here, as you did in BoardLayout.
     const [columns, setColumns] = useState<Record<string, ColumnState>>({});
@@ -223,7 +214,6 @@ export function BoardProvider({
             };
         });
 
-        // Persist it to the DB
         fetch(`/move/${draggableId}`, {
             method: "POST",
             headers: {
@@ -280,6 +270,7 @@ export function BoardProvider({
                 priorities,
                 boardTitle,
                 authUserId,
+                openPostId,
                 columns,
                 tasks,
                 selectedTask,

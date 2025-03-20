@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import axios from "axios"
+import { useBoardContext } from "../BoardContext"
 
 interface LinkType {
     name: string
@@ -42,6 +43,7 @@ interface LinkedIssue {
     userId: string
     userName: string
     createdAt: string
+    fid_board?: string
 }
 
 interface LinkedIssuesSectionProps {
@@ -72,13 +74,18 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
     const [selectedResultIndex, setSelectedResultIndex] = useState<number>(-1)
     const [isIssueSelected, setIsIssueSelected] = useState(false)
 
+    const { openDialog } = useBoardContext()
+
+    const handleIssueClick = (issueId: string) => {
+        openDialog(issueId)
+    }
+
     useEffect(() => {
         if (taskId) {
             loadLinkedIssues()
         }
     }, [taskId])
 
-    // Reset selected index when search results change
     useEffect(() => {
         setSelectedResultIndex(searchResults.length > 0 ? 0 : -1)
     }, [searchResults])
@@ -108,8 +115,9 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                     relatedPostTitle: issue.related_post?.title || "Unknown Issue",
                     linkType: issue.link_type || "Unknown",
                     userId: issue.fid_user?.toString() || "Unknown",
-                    userName: issue.creator?.name || "Unknown User", // Changed from user to creator
+                    userName: issue.creator?.name || "Unknown User",
                     createdAt: issue.created_at?.toString() || "Unknown Date",
+                    fid_board: issue.related_post?.fid_board?.toString() || "",
                 })),
             )
         } catch (error) {
@@ -158,12 +166,10 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
         setSearchQuery(query)
         setIsIssueSelected(false)
 
-        // Clear any existing timeout
         if (searchTimeoutId) {
             clearTimeout(searchTimeoutId)
         }
 
-        // Set new timeout
         const timeoutId = setTimeout(() => {
             searchIssues(query)
         }, 800)
@@ -174,17 +180,14 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (searchResults.length === 0) return
 
-        // Arrow down
         if (e.key === "ArrowDown") {
             e.preventDefault()
             setSelectedResultIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev))
         }
-        // Arrow up
         else if (e.key === "ArrowUp") {
             e.preventDefault()
             setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0))
         }
-        // Enter
         else if (e.key === "Enter" && selectedResultIndex >= 0) {
             e.preventDefault()
             selectIssue(searchResults[selectedResultIndex])
@@ -220,7 +223,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                             relatedPostTitle: newLinkedIssue.related_post?.title || "Unknown Issue",
                             linkType: newLinkedIssue.link_type,
                             userId: newLinkedIssue.fid_user.toString(),
-                            userName: newLinkedIssue.creator?.name || "Unknown User", // Changed from user to creator
+                            userName: newLinkedIssue.creator?.name || "Unknown User",
                             createdAt: newLinkedIssue.created_at.toString(),
                         }
                         setLinkedIssues((prevLinkedIssues) => [formattedNewLinkedIssue, ...prevLinkedIssues])
@@ -302,8 +305,6 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
     }
 
     const getIssueTypeColor = (issue: any) => {
-        // This is a placeholder function - you would need to determine the issue type
-        // from your actual data structure and return appropriate colors
         const type = issue.type || "default"
         const colors = {
             Bug: "bg-red-500",
@@ -511,7 +512,13 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                         return (
                                             <li
                                                 key={issue.id}
-                                                className="bg-zinc-800 rounded-md px-3 py-2 hover:bg-zinc-750 transition-colors group flex items-center"
+                                                className="bg-zinc-800 rounded-md px-3 py-2 hover:bg-zinc-750 transition-colors group flex items-center cursor-pointer"
+                                                onClick={() => {
+                                                    window.open(
+                                                        `/boards?board_id=${issue.fid_board || ""}&post_id=${issue.relatedPostId}`,
+                                                        "_blank",
+                                                    )
+                                                }}
                                             >
                                                 <Badge className={`mr-2 ${linkTypeColor} border-none text-xs`}>{issue.linkType}</Badge>
 

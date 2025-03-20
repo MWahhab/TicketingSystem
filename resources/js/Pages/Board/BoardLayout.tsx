@@ -51,6 +51,7 @@ export function BoardLayout() {
         boardTitle,
         boardId,
         authUserId,
+        openPostId,
     } = usePage().props as any
 
     return (
@@ -64,6 +65,7 @@ export function BoardLayout() {
             priorities={priorities}
             boardTitle={boardTitle}
             authUserId={authUserId}
+            openPostId={openPostId}
         >
             <InnerBoardLayout />
         </BoardProvider>
@@ -95,17 +97,19 @@ function InnerBoardLayout() {
         boardsColumns,
         assignees,
         priorities,
+        openPostId,
     } = useBoardContext()
 
     useEffect(() => {
-        const openTaskId = getOpenTaskParam()
-        if (!didAutoOpen && openTaskId && tasks[openTaskId]) {
-            openDialog(openTaskId)
+        const openTaskId   = getOpenTaskParam()
+        const postIdToOpen = openTaskId || openPostId
+
+        if (!didAutoOpen && postIdToOpen && tasks[postIdToOpen]) {
+            openDialog(postIdToOpen)
             setDidAutoOpen(true)
         }
-    }, [didAutoOpen, openDialog, tasks])
+    }, [didAutoOpen, openDialog, tasks, openPostId])
 
-    // Get unique authors from tasks
     const uniqueAuthors = Array.from(new Set(Object.values(tasks).map((task: any) => task.post_author)))
 
     const filterBySearch = (items: any[], searchQuery: string, getItemName: (item: any) => string) => {
@@ -189,7 +193,10 @@ function InnerBoardLayout() {
                                                 className="pl-8 w-full bg-zinc-800 text-white border-zinc-700 focus:border-white focus:ring-1 focus:ring-white"
                                             />
                                         </div>
-                                        <PreventCloseMenuItem onClick={() => setSelectedAssignees([])} className="hover:bg-zinc-700 hover:text-white">
+                                        <PreventCloseMenuItem
+                                            onClick={() => setSelectedAssignees([])}
+                                            className="hover:bg-zinc-700 hover:text-white"
+                                        >
                                             All Assignees
                                         </PreventCloseMenuItem>
                                         {filterBySearch(assignees, assigneeSearchQuery, (assignee) => assignee.name).map(

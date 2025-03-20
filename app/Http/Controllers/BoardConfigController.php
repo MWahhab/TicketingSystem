@@ -25,6 +25,14 @@ class BoardConfigController extends Controller
         $boardLinks = $boards->map(fn($b) => ['id' => $b->id,'title' => $b->title]);
         $assignees  = User::select('id', 'name')->get();
 
+        $openPostId = null;
+        $postId     = $request->query->get('post_id');
+        $boardId    = $request->query->get('board_id');
+
+        if (is_numeric($boardId) && is_numeric($postId)) {
+            $openPostId = $postId;
+        }
+
         return Inertia::render('Board/Index', [
             'columns'       => $boardData['columns'],
             'posts'         => $boardData['posts'],
@@ -35,6 +43,7 @@ class BoardConfigController extends Controller
             'boardTitle'    => $boardData['boardTitle'],
             'boardId'       => $boardData['id'],
             'authUserId'    => Auth::id(),
+            'openPostId'    => $openPostId,
         ]);
     }
 
