@@ -73,6 +73,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
     const [searchTimeoutId, setSearchTimeoutId] = useState<NodeJS.Timeout | null>(null)
     const [selectedResultIndex, setSelectedResultIndex] = useState<number>(-1)
     const [isIssueSelected, setIsIssueSelected] = useState(false)
+    const [selectedIssue, setSelectedIssue] = useState<any>(null)
 
     const { openDialog } = useBoardContext()
 
@@ -183,12 +184,10 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
         if (e.key === "ArrowDown") {
             e.preventDefault()
             setSelectedResultIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev))
-        }
-        else if (e.key === "ArrowUp") {
+        } else if (e.key === "ArrowUp") {
             e.preventDefault()
             setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0))
-        }
-        else if (e.key === "Enter" && selectedResultIndex >= 0) {
+        } else if (e.key === "Enter" && selectedResultIndex >= 0) {
             e.preventDefault()
             selectIssue(searchResults[selectedResultIndex])
         }
@@ -196,6 +195,8 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
 
     const selectIssue = (issue: any) => {
         linkedIssueForm.setValue("relatedPostId", issue.id.toString())
+        // Store the selected issue data for later use
+        setSelectedIssue(issue)
         setSearchQuery(issue.title)
         setSearchResults([])
         setIsIssueSelected(true)
@@ -225,6 +226,10 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                             userId: newLinkedIssue.fid_user.toString(),
                             userName: newLinkedIssue.creator?.name || "Unknown User",
                             createdAt: newLinkedIssue.created_at.toString(),
+                            // Use the fid_board from the selected issue if available
+                            fid_board:
+                                newLinkedIssue.related_post?.fid_board?.toString() ||
+                                (selectedIssue ? selectedIssue.fid_board?.toString() : ""),
                         }
                         setLinkedIssues((prevLinkedIssues) => [formattedNewLinkedIssue, ...prevLinkedIssues])
                     }
@@ -232,6 +237,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                     setIsExpanded(false)
                     setSearchQuery("")
                     setIsIssueSelected(false)
+                    setSelectedIssue(null) // Reset the selected issue
                 })
                 .catch((error) => {
                     console.error(error)

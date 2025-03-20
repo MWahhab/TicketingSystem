@@ -148,7 +148,7 @@ class PostController extends Controller
             ->where('title', 'like', "%{$query}%")
             ->when(is_numeric($query), fn($q) => $q->orWhere('id', $query))
             ->limit(10)
-            ->get(['id', 'title']);
+            ->get(['id', 'title', 'fid_board']);
 
         return response()->json($posts);
     }
