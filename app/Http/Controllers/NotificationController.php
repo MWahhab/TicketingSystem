@@ -17,8 +17,7 @@ class NotificationController extends Controller
      */
     public function index(NotificationService $notificationService): JsonResponse
     {
-        $userId = Auth::id();
-
+        $userId      = Auth::id();
         $unseenCount = Notification::where('fid_user', $userId)
             ->whereNull('seen_at')
             ->count();

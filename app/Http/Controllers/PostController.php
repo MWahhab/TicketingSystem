@@ -141,13 +141,17 @@ class PostController extends Controller
         $query = trim($request->input('query', ''));
 
         if (!$query) {
-            return response()->json([]);
+            return response()->json();
+        }
+
+        if (str_starts_with($query, '#')) {
+            $query = str_replace('#', '', $query);
         }
 
         $posts = Post::query()
             ->where('title', 'like', "%{$query}%")
             ->when(is_numeric($query), fn($q) => $q->orWhere('id', $query))
-            ->limit(10)
+            ->limit(6)
             ->get(['id', 'title', 'fid_board']);
 
         return response()->json($posts);

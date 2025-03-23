@@ -455,9 +455,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                                     )}
                                                                 </div>
                                                                 {searchResults.length > 5 && (
-                                                                    <div className="p-2 bg-zinc-700 text-center text-sm text-zinc-300 hover:bg-zinc-600 cursor-pointer transition-colors">
-                                                                        View all results ({searchResults.length})
-                                                                    </div>
+                                                                    <div className="p-4 text-center text-zinc-400">5+ search results found</div>
                                                                 )}
                                                             </div>
                                                         )}
