@@ -8,13 +8,18 @@ export default function Welcome({ auth }: PageProps<{ auth: { user: object | nul
             <Head title="Welcome" />
             <div className="min-h-screen bg-black text-white flex flex-col">
                 <header className="p-6 flex justify-between items-center border-b border-[#1D1F23]">
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
                         <div className="w-8 h-8 relative">
-                            <img
-                                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-7T3nHm8ThlbW9in4ebkEpnZXigX7t8.png"
-                                alt="Logo"
-                                className="w-full h-full object-contain"
-                            />
+                            <svg
+                                viewBox="0 0 64 64"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-full h-full"
+                            >
+                                <rect width="64" height="64" rx="12" fill="#1E1E1E" />
+                                <rect x="12" y="16" width="8" height="32" rx="2" fill="#FFFFFF" />
+                                <rect x="28" y="12" width="8" height="40" rx="2" fill="#FFFFFF" />
+                                <rect x="44" y="16" width="8" height="32" rx="2" fill="#FFFFFF" />
+                            </svg>
                         </div>
                         <h1 className="text-2xl font-bold tracking-tight">Ticketing System</h1>
                     </div>
