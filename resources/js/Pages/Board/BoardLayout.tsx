@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { usePage } from "@inertiajs/react"
+import { usePage, router } from "@inertiajs/react"
 import { DragDropContext } from "react-beautiful-dnd"
 import { Search, ChevronDown } from "lucide-react"
+import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +16,7 @@ import { BoardFormDialog } from "@/Pages/Board/components/BoardFormDialog"
 import { PostFormDialog } from "@/Pages/Board/components/PostFormDialog"
 import DeleteButton from "@/Pages/Board/components/DeleteButton"
 import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell"
+import { DateFilter } from "./components/DateFilter"
 
 // Context imports
 import { BoardProvider, useBoardContext } from "./BoardContext"
@@ -52,6 +54,8 @@ export function BoardLayout() {
         boardId,
         authUserId,
         openPostId,
+        dateFrom,
+        dateTo,
     } = usePage().props as any
 
     return (
@@ -66,6 +70,8 @@ export function BoardLayout() {
             boardTitle={boardTitle}
             authUserId={authUserId}
             openPostId={openPostId}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
         >
             <InnerBoardLayout />
         </BoardProvider>
@@ -73,14 +79,6 @@ export function BoardLayout() {
 }
 
 function InnerBoardLayout() {
-    const [didAutoOpen, setDidAutoOpen] = useState(false)
-    const [searchQuery, setSearchQuery] = useState("")
-    const [selectedAssignees, setSelectedAssignees] = useState([])
-    const [selectedAuthors, setSelectedAuthors] = useState([])
-    const [selectedPriorities, setSelectedPriorities] = useState([])
-    const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("")
-    const [authorSearchQuery, setAuthorSearchQuery] = useState("")
-
     const {
         boards,
         boardTitle,
@@ -98,10 +96,26 @@ function InnerBoardLayout() {
         assignees,
         priorities,
         openPostId,
+        dateFrom,
+        dateTo,
     } = useBoardContext()
 
+    // Initialize date states from context (passed from backend)
+    const [activeDateFrom, setActiveDateFrom] = useState<Date | null>(dateFrom ? new Date(dateFrom) : null)
+    const [activeDateTo, setActiveDateTo] = useState<Date | null>(dateTo ? new Date(dateTo) : null)
+    const [isDateFilterActive, setIsDateFilterActive] = useState(!!dateFrom || !!dateTo)
+
+    // Rest of your state variables
+    const [didAutoOpen, setDidAutoOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [selectedAssignees, setSelectedAssignees] = useState([])
+    const [selectedAuthors, setSelectedAuthors] = useState([])
+    const [selectedPriorities, setSelectedPriorities] = useState([])
+    const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("")
+    const [authorSearchQuery, setAuthorSearchQuery] = useState("")
+
     useEffect(() => {
-        const openTaskId   = getOpenTaskParam()
+        const openTaskId = getOpenTaskParam()
         const postIdToOpen = openTaskId || openPostId
 
         if (!didAutoOpen && postIdToOpen && tasks[postIdToOpen]) {
@@ -115,6 +129,35 @@ function InnerBoardLayout() {
     const filterBySearch = (items: any[], searchQuery: string, getItemName: (item: any) => string) => {
         if (!searchQuery) return items
         return items.filter((item) => getItemName(item).toLowerCase().includes(searchQuery.toLowerCase()))
+    }
+
+    const handleApplyDateFilter = (dateFrom: Date | null, dateTo: Date | null) => {
+        if (boardId) {
+            const params = new URLSearchParams()
+            params.set("board_id", boardId)
+
+            if (dateFrom) {
+                params.set("date_from", format(dateFrom, "yyyy-MM-dd"))
+                setActiveDateFrom(dateFrom)
+            }
+
+            if (dateTo) {
+                params.set("date_to", format(dateTo, "yyyy-MM-dd"))
+                setActiveDateTo(dateTo)
+            }
+
+            setIsDateFilterActive(true)
+            router.get(`/boards?${params.toString()}`)
+        }
+    }
+
+    const handleClearDateFilter = () => {
+        setActiveDateFrom(null)
+        setActiveDateTo(null)
+        setIsDateFilterActive(false)
+        if (boardId) {
+            router.get(`/boards?board_id=${boardId}`)
+        }
     }
 
     return (
@@ -304,6 +347,15 @@ function InnerBoardLayout() {
                                         ))}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
+
+                                <DateFilter
+                                    onApplyFilter={handleApplyDateFilter}
+                                    onClearFilter={handleClearDateFilter}
+                                    initialDateFrom={activeDateFrom}
+                                    initialDateTo={activeDateTo}
+                                    isActive={isDateFilterActive}
+                                    className={isDateFilterActive ? "ring-2 ring-primary ring-offset-1 ring-offset-zinc-800" : ""}
+                                />
                             </div>
                         </div>
                     </div>
@@ -350,4 +402,3 @@ function InnerBoardLayout() {
 }
 
 export default BoardLayout
-

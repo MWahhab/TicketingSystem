@@ -51,6 +51,8 @@ interface BoardProviderProps {
     boardTitle?: string;
     authUserId: string;
     openPostId?: string | null;
+    dateFrom?: string | null;
+    dateTo?: string | null;
 }
 
 /**
@@ -65,6 +67,8 @@ interface BoardContextValue {
     boardTitle?: string;
     authUserId: string;
     openPostId?: string | null;
+    dateFrom?: string | null;
+    dateTo?: string | null;
 
     columns: Record<string, ColumnState>;
     tasks: Record<string, Task>;
@@ -85,6 +89,8 @@ const BoardContext = createContext<BoardContextValue>({
     priorities: [],
     authUserId: "",
     openPostId: null,
+    dateFrom: null,
+    dateTo: null,
     columns: {},
     tasks: {},
     selectedTask: null,
@@ -114,6 +120,8 @@ export function BoardProvider({
                                   boardTitle,
                                   authUserId,
                                   openPostId,
+                                  dateFrom,
+                                  dateTo,
                               }: BoardProviderProps) {
     // We'll store your columns + tasks here, as you did in BoardLayout.
     const [columns, setColumns] = useState<Record<string, ColumnState>>({});
@@ -152,8 +160,24 @@ export function BoardProvider({
 
     // If you want the user to switch boards in the left sidebar
     const handleBoardClick = useCallback((targetBoardId: string) => {
-        router.get(`/boards?board_id=${targetBoardId}`);
-    }, []);
+        // Preserve date filter if it exists
+        if (dateFrom || dateTo) {
+            const params = new URLSearchParams();
+            params.set("board_id", targetBoardId);
+
+            if (dateFrom) {
+                params.set("date_from", dateFrom);
+            }
+
+            if (dateTo) {
+                params.set("date_to", dateTo);
+            }
+
+            router.get(`/boards?${params.toString()}`);
+        } else {
+            router.get(`/boards?board_id=${targetBoardId}`);
+        }
+    }, [dateFrom, dateTo]);
 
     // The drag-drop update logic
     const onDragEnd = useCallback((result: DropResult) => {
@@ -271,6 +295,8 @@ export function BoardProvider({
                 boardTitle,
                 authUserId,
                 openPostId,
+                dateFrom,
+                dateTo,
                 columns,
                 tasks,
                 selectedTask,

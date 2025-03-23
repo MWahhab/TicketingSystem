@@ -11,9 +11,11 @@ class BoardService
      * assumed this is the first render and attempts to retrieve the first board config found in the table.
      *
      * @param  $boardId
+     * @param  $dateFrom
+     * @param  $dateTo
      * @return array|null
      */
-    public function getBoardData($boardId = null): ?array
+    public function getBoardData($boardId = null, $dateFrom = null, $dateTo = null): ?array
     {
         $board = BoardConfig::with([
             'posts.assignee:id,name',
@@ -21,19 +23,31 @@ class BoardService
                 $query->orderBy('created_at', 'desc')->with('creator:id,name');
             },
         ])
-            ->with(['posts' => function ($query) {
+            ->with(['posts' => function ($query) use ($dateFrom, $dateTo) {
                 $query->orderByRaw("CASE 
-            WHEN priority = 'high' THEN 1
-            WHEN priority = 'medium' THEN 2
-            WHEN priority = 'low' THEN 3
-            ELSE 4 END");
+                    WHEN priority = 'high' THEN 1
+                    WHEN priority = 'medium' THEN 2
+                    WHEN priority = 'low' THEN 3
+                    ELSE 4 END");
+
+                if ($dateFrom) {
+                    $query->whereDate('created_at', '>=', $dateFrom->toDateString());
+                }
+
+                if ($dateTo) {
+                    $query->whereDate('created_at', '<=', $dateTo->toDateString());
+                }
+
+                if (!$dateFrom && !$dateTo) {
+                    $query->limit(100);
+                }
             }])
+
             ->when($boardId, function ($query) use ($boardId) {
                 return $query->find($boardId);
             }, function ($query) {
                 return $query->first();
             });
-
 
         if (!$board->exists()) {
             return [
@@ -80,3 +94,4 @@ class BoardService
         ];
     }
 }
+

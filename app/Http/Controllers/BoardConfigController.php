@@ -6,6 +6,7 @@ use App\Enums\PrioritiesEnum;
 use App\Models\BoardConfig;
 use App\Models\User;
 use App\Services\BoardService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +21,41 @@ class BoardConfigController extends Controller
      */
     public function index(Request $request, BoardService $boardService): Response
     {
-        $boardData  = $boardService->getBoardData((int)$request->input('board_id'));
+        $dateFrom = null;
+        $dateTo   = null;
+
+        try {
+            if ($request->has('date_from') && !empty($request->input('date_from'))) {
+                $dateFrom = Carbon::parse($request->input('date_from'))->startOfDay();
+            }
+
+            if ($request->has('date_to') && !empty($request->input('date_to'))) {
+                $dateTo = Carbon::parse($request->input('date_to'))->endOfDay();
+            } elseif ($dateFrom !== null) {
+                $dateTo = $dateFrom->copy()->endOfDay();
+            }
+        } catch (\Exception $e) {
+            return Inertia::render('Board/Index', [
+                'columns'       => [],
+                'posts'         => [],
+                'boards'        => [],
+                'boardsColumns' => [],
+                'assignees'     => [],
+                'priorities'    => PrioritiesEnum::cases(),
+                'boardTitle'    => 'Invalid Date Format',
+                'boardId'       => null,
+                'authUserId'    => Auth::id(),
+                'openPostId'    => null,
+                'error'         => 'Invalid date format provided. Please use a valid date format (e.g., YYYY-MM-DD).'
+            ]);
+        }
+
+        $boardData  = $boardService->getBoardData(
+            (int)$request->input('board_id'),
+            $dateFrom,
+            $dateTo
+        );
+
         $boards     = BoardConfig::select('id', 'title', 'columns')->get();
         $boardLinks = $boards->map(fn($b) => ['id' => $b->id,'title' => $b->title]);
         $assignees  = User::select('id', 'name')->get();
@@ -44,6 +79,8 @@ class BoardConfigController extends Controller
             'boardId'       => $boardData['id'],
             'authUserId'    => Auth::id(),
             'openPostId'    => $openPostId,
+            'dateFrom'      => $dateFrom?->format('Y-m-d'),
+            'dateTo'        => $dateTo?->format('Y-m-d'),
         ]);
     }
 
@@ -116,3 +153,4 @@ class BoardConfigController extends Controller
         return redirect()->route("boards.index", ["board_id" => null])->with("Success! ", "Board deleted");
     }
 }
+
