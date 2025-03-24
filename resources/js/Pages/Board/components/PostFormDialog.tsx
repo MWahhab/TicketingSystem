@@ -194,10 +194,23 @@ export function PostFormDialog({
     }, [selectedBoardId, boards]);
 
     function onSubmit(values: FormData) {
+        const formattedValues = { ...values };
+
+        if (formattedValues.deadline) {
+            const date = new Date(formattedValues.deadline);
+            const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            formattedValues.deadline = formattedDate;
+        }
+
         if (task) {
-            Inertia.put(`/posts/${task.id}`, values, {
+            Inertia.put(`/posts/${task.id}`, formattedValues, {
                 onSuccess: () => {
-                    form.reset();
+                    // Clear the form
+                    setTimeout(() => {
+                        form.reset();
+                    }, 100);
+                    
+                    // Close dialog
                     setIsDialogOpen(false);
                     onClose && onClose();
                 },
@@ -206,9 +219,13 @@ export function PostFormDialog({
                 },
             });
         } else {
-            Inertia.post('/posts', values, {
+            Inertia.post('/posts', formattedValues, {
                 onSuccess: () => {
-                    form.reset();
+                    // Clear the form
+                    setTimeout(() => {
+                        form.reset();
+                    }, 100);
+                    
                     setIsDialogOpen(false);
                 },
                 onError: (errors) => {

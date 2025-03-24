@@ -39,8 +39,23 @@ class Post extends Model implements NotificationServiceInterface
     ];
 
     protected $casts = [
-        'deadline' => 'date',
+        'deadline' => 'date:Y-m-d', // Specify the format explicitly to avoid timezone issues
     ];
+    
+    /**
+     * Override the deadline attribute setter to ensure consistent date formatting
+     * 
+     * @param mixed $value
+     * @return void
+     */
+    public function setDeadlineAttribute($value): void
+    {
+        if ($value) {
+            $this->attributes['deadline'] = $value;
+        } else {
+            $this->attributes['deadline'] = null;
+        }
+    }
 
     public function assignee(): BelongsTo
     {
