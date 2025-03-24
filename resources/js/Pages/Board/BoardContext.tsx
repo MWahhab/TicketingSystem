@@ -53,6 +53,7 @@ interface BoardProviderProps {
     openPostId?: string | null;
     dateFrom?: string | null;
     dateTo?: string | null;
+    dateField?: string | null;
 }
 
 /**
@@ -69,6 +70,7 @@ interface BoardContextValue {
     openPostId?: string | null;
     dateFrom?: string | null;
     dateTo?: string | null;
+    dateField?: string | null;
 
     columns: Record<string, ColumnState>;
     tasks: Record<string, Task>;
@@ -91,6 +93,7 @@ const BoardContext = createContext<BoardContextValue>({
     openPostId: null,
     dateFrom: null,
     dateTo: null,
+    dateField: "created_at",
     columns: {},
     tasks: {},
     selectedTask: null,
@@ -122,6 +125,7 @@ export function BoardProvider({
                                   openPostId,
                                   dateFrom,
                                   dateTo,
+                                  dateField = "created_at",
                               }: BoardProviderProps) {
     // We'll store your columns + tasks here, as you did in BoardLayout.
     const [columns, setColumns] = useState<Record<string, ColumnState>>({});
@@ -158,9 +162,7 @@ export function BoardProvider({
         setTasks(initialTasks);
     }, [columnsArray, postsArray]);
 
-    // If you want the user to switch boards in the left sidebar
     const handleBoardClick = useCallback((targetBoardId: string) => {
-        // Preserve date filter if it exists
         if (dateFrom || dateTo) {
             const params = new URLSearchParams();
             params.set("board_id", targetBoardId);
@@ -172,6 +174,10 @@ export function BoardProvider({
             if (dateTo) {
                 params.set("date_to", dateTo);
             }
+            
+            if (dateField) {
+                params.set("date_field", dateField);
+            }
 
             router.get(`/boards?${params.toString()}`);
         } else {
@@ -179,7 +185,6 @@ export function BoardProvider({
         }
     }, [dateFrom, dateTo]);
 
-    // The drag-drop update logic
     const onDragEnd = useCallback((result: DropResult) => {
         const { destination, source, draggableId } = result;
         if (!destination) return;
@@ -190,7 +195,6 @@ export function BoardProvider({
             return;
         }
 
-        // Move the task internally
         setTasks((prevTasks) => ({
             ...prevTasks,
             [draggableId]: {
@@ -297,6 +301,7 @@ export function BoardProvider({
                 openPostId,
                 dateFrom,
                 dateTo,
+                dateField,
                 columns,
                 tasks,
                 selectedTask,

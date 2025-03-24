@@ -13,9 +13,10 @@ class BoardService
      * @param  $boardId
      * @param  $dateFrom
      * @param  $dateTo
+     * @param  $dateField
      * @return array|null
      */
-    public function getBoardData($boardId = null, $dateFrom = null, $dateTo = null): ?array
+    public function getBoardData($boardId = null, $dateFrom = null, $dateTo = null, $dateField = 'created_at'): ?array
     {
         $board = BoardConfig::with([
             'posts.assignee:id,name',
@@ -23,7 +24,7 @@ class BoardService
                 $query->orderBy('created_at', 'desc')->with('creator:id,name');
             },
         ])
-            ->with(['posts' => function ($query) use ($dateFrom, $dateTo) {
+            ->with(['posts' => function ($query) use ($dateFrom, $dateTo, $dateField) {
                 $query->orderByRaw("CASE 
                     WHEN priority = 'high' THEN 1
                     WHEN priority = 'medium' THEN 2
@@ -31,11 +32,11 @@ class BoardService
                     ELSE 4 END");
 
                 if ($dateFrom) {
-                    $query->whereDate('created_at', '>=', $dateFrom->toDateString());
+                    $query->whereDate($dateField, '>=', $dateFrom->toDateString());
                 }
 
                 if ($dateTo) {
-                    $query->whereDate('created_at', '<=', $dateTo->toDateString());
+                    $query->whereDate($dateField, '<=', $dateTo->toDateString());
                 }
 
                 if (!$dateFrom && !$dateTo) {

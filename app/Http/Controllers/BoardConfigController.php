@@ -21,8 +21,9 @@ class BoardConfigController extends Controller
      */
     public function index(Request $request, BoardService $boardService): Response
     {
-        $dateFrom = null;
-        $dateTo   = null;
+        $dateFrom  = null;
+        $dateTo    = null;
+        $dateField = $request->input('date_field', 'created_at');
 
         try {
             if ($request->has('date_from') && !empty($request->input('date_from'))) {
@@ -44,17 +45,22 @@ class BoardConfigController extends Controller
                 'priorities'    => PrioritiesEnum::cases(),
                 'boardTitle'    => 'Invalid Date Format',
                 'boardId'       => null,
+                'dateField'     => 'created_at',
                 'authUserId'    => Auth::id(),
                 'openPostId'    => null,
                 'error'         => 'Invalid date format provided. Please use a valid date format (e.g., YYYY-MM-DD).'
             ]);
         }
 
+        $validDateFields = ['created_at', 'updated_at', 'deadline'];
+        $dateField       = in_array($dateField, $validDateFields) ? $dateField : 'created_at';
+
         $boardData  = $boardService->getBoardData(
             (int)$request->input('board_id'),
             $dateFrom,
-            $dateTo
-        );
+            $dateTo,
+            $dateField
+       );
 
         $boards     = BoardConfig::select('id', 'title', 'columns')->get();
         $boardLinks = $boards->map(fn($b) => ['id' => $b->id,'title' => $b->title]);
@@ -81,6 +87,7 @@ class BoardConfigController extends Controller
             'openPostId'    => $openPostId,
             'dateFrom'      => $dateFrom?->format('Y-m-d'),
             'dateTo'        => $dateTo?->format('Y-m-d'),
+            'dateField'     => $dateField,
         ]);
     }
 
