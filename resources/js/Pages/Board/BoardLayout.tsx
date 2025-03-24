@@ -56,6 +56,7 @@ export function BoardLayout() {
         openPostId,
         dateFrom,
         dateTo,
+        dateField,
     } = usePage().props as any
 
     return (
@@ -72,6 +73,7 @@ export function BoardLayout() {
             openPostId={openPostId}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            dateField={dateField}
         >
             <InnerBoardLayout />
         </BoardProvider>
@@ -98,14 +100,14 @@ function InnerBoardLayout() {
         openPostId,
         dateFrom,
         dateTo,
+        dateField,
     } = useBoardContext()
 
-    // Initialize date states from context (passed from backend)
     const [activeDateFrom, setActiveDateFrom] = useState<Date | null>(dateFrom ? new Date(dateFrom) : null)
     const [activeDateTo, setActiveDateTo] = useState<Date | null>(dateTo ? new Date(dateTo) : null)
+    const [activeDateField, setActiveDateField] = useState<string>(dateField || "created_at")
     const [isDateFilterActive, setIsDateFilterActive] = useState(!!dateFrom || !!dateTo)
 
-    // Rest of your state variables
     const [didAutoOpen, setDidAutoOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedAssignees, setSelectedAssignees] = useState([])
@@ -131,22 +133,27 @@ function InnerBoardLayout() {
         return items.filter((item) => getItemName(item).toLowerCase().includes(searchQuery.toLowerCase()))
     }
 
-    const handleApplyDateFilter = (dateFrom: Date | null, dateTo: Date | null) => {
+    const handleApplyDateFilter = (dateFrom: Date | null, dateTo: Date | null, dateField: string) => {
         if (boardId) {
+            // Update local state
+            setActiveDateFrom(dateFrom)
+            setActiveDateTo(dateTo)
+            setActiveDateField(dateField)
+            setIsDateFilterActive(true)
+            
             const params = new URLSearchParams()
             params.set("board_id", boardId)
 
             if (dateFrom) {
                 params.set("date_from", format(dateFrom, "yyyy-MM-dd"))
-                setActiveDateFrom(dateFrom)
             }
+            
+            params.set("date_field", dateField)
 
             if (dateTo) {
                 params.set("date_to", format(dateTo, "yyyy-MM-dd"))
-                setActiveDateTo(dateTo)
             }
 
-            setIsDateFilterActive(true)
             router.get(`/boards?${params.toString()}`)
         }
     }
@@ -154,9 +161,10 @@ function InnerBoardLayout() {
     const handleClearDateFilter = () => {
         setActiveDateFrom(null)
         setActiveDateTo(null)
+        setActiveDateField("created_at")
         setIsDateFilterActive(false)
         if (boardId) {
-            router.get(`/boards?board_id=${boardId}`)
+            router.get(`/boards?board_id=${boardId}&date_field=created_at`)
         }
     }
 
@@ -382,8 +390,10 @@ function InnerBoardLayout() {
                                     onClearFilter={handleClearDateFilter}
                                     initialDateFrom={activeDateFrom}
                                     initialDateTo={activeDateTo}
+                                    initialDateField={activeDateField}
                                     isActive={isDateFilterActive}
                                     className={isDateFilterActive ? "ring-2 ring-primary ring-offset-1 ring-offset-zinc-800" : ""}
+                                    
                                 />
                             </div>
                         </div>

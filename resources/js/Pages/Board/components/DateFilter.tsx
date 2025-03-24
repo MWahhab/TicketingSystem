@@ -5,14 +5,16 @@ import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { CalendarIcon, X } from "lucide-react"
 import { Label } from "@/components/ui/label"
 
 interface DateFilterProps {
-    onApplyFilter: (dateFrom: Date | null, dateTo: Date | null) => void
+    onApplyFilter: (dateFrom: Date | null, dateTo: Date | null, dateField: string) => void
     onClearFilter: () => void
     initialDateFrom?: Date | null
     initialDateTo?: Date | null
+    initialDateField?: string
     isActive?: boolean
     className?: string
 }
@@ -22,12 +24,14 @@ export function DateFilter({
                                onClearFilter,
                                initialDateFrom = null,
                                initialDateTo = null,
+                               initialDateField = "created_at",
                                isActive = false,
                                className = "",
                            }: DateFilterProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [dateFrom, setDateFrom] = useState<Date | null>(initialDateFrom)
     const [dateTo, setDateTo] = useState<Date | null>(initialDateTo)
+    const [dateField, setDateField] = useState<string>(initialDateField)
     const [isFromCalendarOpen, setIsFromCalendarOpen] = useState(false)
     const [isToCalendarOpen, setIsToCalendarOpen] = useState(false)
 
@@ -35,9 +39,13 @@ export function DateFilter({
         setDateFrom(initialDateFrom)
         setDateTo(initialDateTo)
     }, [initialDateFrom, initialDateTo])
+    
+    useEffect(() => {
+        if (initialDateField) setDateField(initialDateField)
+    }, [initialDateField])
 
     const handleApplyFilter = () => {
-        onApplyFilter(dateFrom, dateTo)
+        onApplyFilter(dateFrom, dateTo, dateField)
         setIsOpen(false)
     }
 
@@ -60,7 +68,7 @@ export function DateFilter({
         } else if (dateTo) {
             return `Until ${format(dateTo, "MMM dd, yyyy")}`
         }
-        return isActive ? "Date Filter (Active)" : "Date Filter"
+        return isActive ? `${dateField.replace('_', ' ')} Filter (Active)` : "Date Filter"
     }
 
     const isApplyDisabled = !dateFrom || !dateTo
@@ -163,6 +171,40 @@ export function DateFilter({
                                     />
                                 </PopoverContent>
                             </Popover>
+                        </div>
+
+                        <div className="space-y-2 pt-4">
+                            <Label className="text-zinc-200">Filter By:</Label>
+                            <RadioGroup 
+                                value={dateField} 
+                                onValueChange={(value) => setDateField(value)}
+                                className="flex flex-col space-y-1"
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem 
+                                        value="created_at" 
+                                        id="created_at"
+                                        className="border-zinc-500 text-white" 
+                                    />
+                                    <Label htmlFor="created_at" className="text-zinc-200">Creation Date</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem 
+                                        value="updated_at" 
+                                        id="updated_at" 
+                                        className="border-zinc-500 text-white"
+                                    />
+                                    <Label htmlFor="updated_at" className="text-zinc-200">Update Date</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem 
+                                        value="deadline" 
+                                        id="deadline" 
+                                        className="border-zinc-500 text-white"
+                                    />
+                                    <Label htmlFor="deadline" className="text-zinc-200">Deadline</Label>
+                                </div>
+                            </RadioGroup>
                         </div>
 
                         <div className="flex justify-between pt-2">
