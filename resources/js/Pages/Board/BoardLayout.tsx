@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { usePage, router } from "@inertiajs/react"
+import { usePage, router, Link } from "@inertiajs/react"
 import { DragDropContext } from "react-beautiful-dnd"
-import { Search, ChevronDown } from "lucide-react"
+import { Search, ChevronDown, User, LogOut } from "lucide-react"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
@@ -176,7 +176,36 @@ function InnerBoardLayout() {
                         </Button>
                     ))}
                 </ScrollArea>
-                <div className="pb-4">
+
+                <div className="mt-auto pt-4 space-y-2">
+                    <Button
+                        className="w-full bg-white text-zinc-900 hover:bg-zinc-100"
+                        onClick={() => document.querySelector('[data-dialog-trigger="board-form"]')?.click()}
+                    >
+                        Add new board
+                    </Button>
+
+                    <div className="flex items-center gap-2 mt-3">
+                        <Link
+                            href={route("profile.edit")}
+                            className="flex items-center justify-center w-10 h-10 rounded-md bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                        >
+                            <User className="h-5 w-5 text-zinc-300" />
+                        </Link>
+                        <Link
+                            href={route("logout")}
+                            method="post"
+                            as="button"
+                            className="flex items-center justify-between w-full h-10 px-3 rounded-md bg-zinc-800 text-zinc-300 hover:bg-red-100 hover:text-red-900 transition-colors"
+                        >
+                            <span>Logout</span>
+                            <LogOut className="h-4 w-4" />
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Hidden trigger for the board form dialog */}
+                <div className="hidden">
                     <BoardFormDialog />
                 </div>
             </div>
@@ -402,3 +431,4 @@ function InnerBoardLayout() {
 }
 
 export default BoardLayout
+
