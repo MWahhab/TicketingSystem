@@ -56,7 +56,6 @@ export function BoardLayout() {
         openPostId,
         dateFrom,
         dateTo,
-        dateField,
     } = usePage().props as any
 
     return (
@@ -73,7 +72,6 @@ export function BoardLayout() {
             openPostId={openPostId}
             dateFrom={dateFrom}
             dateTo={dateTo}
-            dateField={dateField}
         >
             <InnerBoardLayout />
         </BoardProvider>
@@ -100,14 +98,14 @@ function InnerBoardLayout() {
         openPostId,
         dateFrom,
         dateTo,
-        dateField,
     } = useBoardContext()
 
+    // Initialize date states from context (passed from backend)
     const [activeDateFrom, setActiveDateFrom] = useState<Date | null>(dateFrom ? new Date(dateFrom) : null)
     const [activeDateTo, setActiveDateTo] = useState<Date | null>(dateTo ? new Date(dateTo) : null)
-    const [activeDateField, setActiveDateField] = useState<string>(dateField || "created_at")
     const [isDateFilterActive, setIsDateFilterActive] = useState(!!dateFrom || !!dateTo)
 
+    // Rest of your state variables
     const [didAutoOpen, setDidAutoOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedAssignees, setSelectedAssignees] = useState([])
@@ -133,27 +131,22 @@ function InnerBoardLayout() {
         return items.filter((item) => getItemName(item).toLowerCase().includes(searchQuery.toLowerCase()))
     }
 
-    const handleApplyDateFilter = (dateFrom: Date | null, dateTo: Date | null, dateField: string) => {
+    const handleApplyDateFilter = (dateFrom: Date | null, dateTo: Date | null) => {
         if (boardId) {
-            // Update local state
-            setActiveDateFrom(dateFrom)
-            setActiveDateTo(dateTo)
-            setActiveDateField(dateField)
-            setIsDateFilterActive(true)
-            
             const params = new URLSearchParams()
             params.set("board_id", boardId)
 
             if (dateFrom) {
                 params.set("date_from", format(dateFrom, "yyyy-MM-dd"))
+                setActiveDateFrom(dateFrom)
             }
-            
-            params.set("date_field", dateField)
 
             if (dateTo) {
                 params.set("date_to", format(dateTo, "yyyy-MM-dd"))
+                setActiveDateTo(dateTo)
             }
 
+            setIsDateFilterActive(true)
             router.get(`/boards?${params.toString()}`)
         }
     }
@@ -161,10 +154,9 @@ function InnerBoardLayout() {
     const handleClearDateFilter = () => {
         setActiveDateFrom(null)
         setActiveDateTo(null)
-        setActiveDateField("created_at")
         setIsDateFilterActive(false)
         if (boardId) {
-            router.get(`/boards?board_id=${boardId}&date_field=created_at`)
+            router.get(`/boards?board_id=${boardId}`)
         }
     }
 
@@ -186,19 +178,14 @@ function InnerBoardLayout() {
                 </ScrollArea>
 
                 <div className="mt-auto pt-4 space-y-2">
-                    <Button
-                        className="w-full bg-white text-zinc-900 hover:bg-zinc-100"
-                        onClick={() => document.querySelector('[data-dialog-trigger="board-form"]')?.click()}
-                    >
-                        Add new board
-                    </Button>
+                    <BoardFormDialog/>
 
                     <div className="flex items-center gap-2 mt-3">
                         <Link
                             href={route("profile.edit")}
                             className="flex items-center justify-center w-10 h-10 rounded-md bg-zinc-800 hover:bg-zinc-700 transition-colors"
                         >
-                            <User className="h-5 w-5 text-zinc-300" />
+                            <User className="h-5 w-5 text-zinc-300"/>
                         </Link>
                         <Link
                             href={route("logout")}
@@ -207,14 +194,9 @@ function InnerBoardLayout() {
                             className="flex items-center justify-between w-full h-10 px-3 rounded-md bg-zinc-800 text-zinc-300 hover:bg-red-100 hover:text-red-900 transition-colors"
                         >
                             <span>Logout</span>
-                            <LogOut className="h-4 w-4" />
+                            <LogOut className="h-4 w-4"/>
                         </Link>
                     </div>
-                </div>
-
-                {/* Hidden trigger for the board form dialog */}
-                <div className="hidden">
-                    <BoardFormDialog />
                 </div>
             </div>
 
@@ -223,10 +205,10 @@ function InnerBoardLayout() {
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
                         <div className="flex items-center space-x-2">
                             <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
-                            {boardId && <DeleteButton resourceId={boardId} type="Board" />}
+                            {boardId && <DeleteButton resourceId={boardId} type="Board"/>}
                         </div>
 
-                        <InlineNotificationCenter />
+                        <InlineNotificationCenter/>
 
                         <div className="flex items-center gap-3">
                             <PostFormDialog
@@ -390,10 +372,8 @@ function InnerBoardLayout() {
                                     onClearFilter={handleClearDateFilter}
                                     initialDateFrom={activeDateFrom}
                                     initialDateTo={activeDateTo}
-                                    initialDateField={activeDateField}
                                     isActive={isDateFilterActive}
                                     className={isDateFilterActive ? "ring-2 ring-primary ring-offset-1 ring-offset-zinc-800" : ""}
-                                    
                                 />
                             </div>
                         </div>
