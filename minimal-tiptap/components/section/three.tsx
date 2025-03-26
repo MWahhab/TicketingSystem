@@ -63,7 +63,6 @@ const COLORS: ColorPalette[] = [
   },
 ]
 
-// Function to find color object by hex value
 const findColorByHexValue = (hexValue: string) => {
   for (const palette of COLORS) {
     for (const color of palette.colors) {
@@ -72,7 +71,7 @@ const findColorByHexValue = (hexValue: string) => {
       }
     }
   }
-  return COLORS[0].colors[0] // Return default color if not found
+  return COLORS[0].colors[0]
 }
 
 const MemoizedColorButton = React.memo<{
@@ -88,11 +87,9 @@ const MemoizedColorButton = React.memo<{
   const checkColor = isLightColor ? "#000000" : "#ffffff"
 
   const handleClick = (e: React.MouseEvent) => {
-    // Stop propagation to prevent the editor from capturing the click
     e.stopPropagation()
     e.preventDefault()
 
-    // Call the onClick handler with the color's hex value
     onClick(color.hexValue)
   }
 
@@ -105,7 +102,6 @@ const MemoizedColorButton = React.memo<{
                 tabIndex={0}
                 onClick={handleClick}
                 onMouseDown={(e) => {
-                  // Also stop propagation on mouseDown to prevent editor focus
                   e.stopPropagation()
                   e.preventDefault()
                 }}
@@ -122,12 +118,12 @@ const MemoizedColorButton = React.memo<{
                   borderRadius: "4px",
                   backgroundColor: color.hexValue,
                   border: "1px solid #e1e1e1",
-                  cursor: "pointer !important", // Force pointer cursor
+                  cursor: "pointer !important",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
                   margin: "2px",
-                  pointerEvents: "auto" // Ensure pointer events are enabled
+                  pointerEvents: "auto"
                 }}
                 aria-label={label}
             >
@@ -181,47 +177,36 @@ interface SectionThreeProps extends VariantProps<typeof toggleVariants> {
 }
 
 export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, variant }) => {
-  // Store the selected color in component state
   const [selectedColor, setSelectedColor] = React.useState<string>("#333333")
 
-  // Track if the popover is open - we'll manage this manually
   const [popoverOpen, setPopoverOpen] = React.useState(false)
 
-  // Ref to track if we should allow the popover to close
   const allowCloseRef = React.useRef(true)
 
-  // Apply color directly using the editor's commands
   const handleColorChange = React.useCallback(
       (hexColor: string) => {
-        // Update UI state
         setSelectedColor(hexColor)
 
-        // Make sure the editor is focused
         editor.commands.focus()
 
-        // Apply the color to selection
         editor.commands.setColor(hexColor)
       },
       [editor],
   )
 
-  // Handle popover trigger click
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setPopoverOpen(!popoverOpen)
   }
 
-  // Handle popover open/close changes
   const handleOpenChange = (open: boolean) => {
-    // Only allow closing if we explicitly permit it
     if (!open && !allowCloseRef.current) {
       return
     }
     setPopoverOpen(open)
   }
 
-  // Handle done button click
   const handleDone = () => {
     allowCloseRef.current = true
     setPopoverOpen(false)
@@ -276,26 +261,22 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
                 align="start"
                 className="w-72 p-3"
                 onMouseEnter={() => {
-                  // Prevent automatic closing when interacting with content
                   allowCloseRef.current = false
                 }}
                 onMouseLeave={() => {
-                  // Allow closing after leaving the content
                   allowCloseRef.current = true
                 }}
                 onMouseDown={(e) => {
-                  // Prevent the mouseDown from reaching editor
                   e.stopPropagation()
                   e.preventDefault()
                 }}
                 onClick={(e) => {
-                  // Also prevent click from reaching editor
                   e.stopPropagation()
                 }}
                 style={{
                   cursor: 'default',
                   pointerEvents: 'auto',
-                  zIndex: 100 // Higher z-index to appear above editor
+                  zIndex: 100
                 }}
             >
               <div className="space-y-3">
