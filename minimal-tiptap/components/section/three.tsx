@@ -3,8 +3,7 @@ import type { Editor } from '@tiptap/react'
 import { CaretDownIcon, CheckIcon } from '@radix-ui/react-icons'
 import { ToolbarButton } from '../toolbar-button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { useTheme } from '../../hooks/use-theme'
 import type { toggleVariants } from '@/components/ui/toggle'
 import type { VariantProps } from 'class-variance-authority'
@@ -13,6 +12,7 @@ interface ColorItem {
   cssVar: string
   label: string
   darkLabel?: string
+  hexValue: string
 }
 
 interface ColorPalette {
@@ -26,42 +26,54 @@ const COLORS: ColorPalette[] = [
     label: 'Palette 1',
     inverse: 'hsl(var(--background))',
     colors: [
-      { cssVar: 'hsl(var(--foreground))', label: 'Default' },
-      { cssVar: 'var(--mt-accent-bold-blue)', label: 'Bold blue' },
-      { cssVar: 'var(--mt-accent-bold-teal)', label: 'Bold teal' },
-      { cssVar: 'var(--mt-accent-bold-green)', label: 'Bold green' },
-      { cssVar: 'var(--mt-accent-bold-orange)', label: 'Bold orange' },
-      { cssVar: 'var(--mt-accent-bold-red)', label: 'Bold red' },
-      { cssVar: 'var(--mt-accent-bold-purple)', label: 'Bold purple' }
-    ]
+      { cssVar: 'hsl(var(--foreground))', label: 'Default', hexValue: '#333333' },
+      { cssVar: 'var(--mt-accent-bold-blue)', label: 'Bold blue', hexValue: '#05c' },
+      { cssVar: 'var(--mt-accent-bold-teal)', label: 'Bold teal', hexValue: '#206a83' },
+      { cssVar: 'var(--mt-accent-bold-green)', label: 'Bold green', hexValue: '#216e4e' },
+      { cssVar: 'var(--mt-accent-bold-orange)', label: 'Bold orange', hexValue: '#a54800' },
+      { cssVar: 'var(--mt-accent-bold-red)', label: 'Bold red', hexValue: '#ae2e24' },
+      { cssVar: 'var(--mt-accent-bold-purple)', label: 'Bold purple', hexValue: '#5e4db2' },
+    ],
   },
   {
     label: 'Palette 2',
     inverse: 'hsl(var(--background))',
     colors: [
-      { cssVar: 'var(--mt-accent-gray)', label: 'Gray' },
-      { cssVar: 'var(--mt-accent-blue)', label: 'Blue' },
-      { cssVar: 'var(--mt-accent-teal)', label: 'Teal' },
-      { cssVar: 'var(--mt-accent-green)', label: 'Green' },
-      { cssVar: 'var(--mt-accent-orange)', label: 'Orange' },
-      { cssVar: 'var(--mt-accent-red)', label: 'Red' },
-      { cssVar: 'var(--mt-accent-purple)', label: 'Purple' }
-    ]
+      { cssVar: 'var(--mt-accent-gray)', label: 'Gray', hexValue: '#758195' },
+      { cssVar: 'var(--mt-accent-blue)', label: 'Blue', hexValue: '#1d7afc' },
+      { cssVar: 'var(--mt-accent-teal)', label: 'Teal', hexValue: '#2898bd' },
+      { cssVar: 'var(--mt-accent-green)', label: 'Green', hexValue: '#22a06b' },
+      { cssVar: 'var(--mt-accent-orange)', label: 'Orange', hexValue: '#fea362' },
+      { cssVar: 'var(--mt-accent-red)', label: 'Red', hexValue: '#c9372c' },
+      { cssVar: 'var(--mt-accent-purple)', label: 'Purple', hexValue: '#8270db' },
+    ],
   },
   {
     label: 'Palette 3',
     inverse: 'hsl(var(--foreground))',
     colors: [
-      { cssVar: 'hsl(var(--background))', label: 'White', darkLabel: 'Black' },
-      { cssVar: 'var(--mt-accent-blue-subtler)', label: 'Blue subtle' },
-      { cssVar: 'var(--mt-accent-teal-subtler)', label: 'Teal subtle' },
-      { cssVar: 'var(--mt-accent-green-subtler)', label: 'Green subtle' },
-      { cssVar: 'var(--mt-accent-yellow-subtler)', label: 'Yellow subtle' },
-      { cssVar: 'var(--mt-accent-red-subtler)', label: 'Red subtle' },
-      { cssVar: 'var(--mt-accent-purple-subtler)', label: 'Purple subtle' }
-    ]
-  }
+      { cssVar: 'hsl(var(--background))', label: 'White', darkLabel: 'Black', hexValue: '#ffffff' },
+      { cssVar: 'var(--mt-accent-blue-subtler)', label: 'Blue subtle', hexValue: '#cce0ff' },
+      { cssVar: 'var(--mt-accent-teal-subtler)', label: 'Teal subtle', hexValue: '#c6edfb' },
+      { cssVar: 'var(--mt-accent-green-subtler)', label: 'Green subtle', hexValue: '#baf3db' },
+      { cssVar: 'var(--mt-accent-yellow-subtler)', label: 'Yellow subtle', hexValue: '#f8e6a0' },
+      { cssVar: 'var(--mt-accent-red-subtler)', label: 'Red subtle', hexValue: '#ffd5d2' },
+      { cssVar: 'var(--mt-accent-purple-subtler)', label: 'Purple subtle', hexValue: '#dfd8fd' },
+    ],
+  },
 ]
+
+// Function to find color object by hex value
+const findColorByHexValue = (hexValue: string) => {
+  for (const palette of COLORS) {
+    for (const color of palette.colors) {
+      if (color.hexValue === hexValue) {
+        return color
+      }
+    }
+  }
+  return COLORS[0].colors[0] // Return default color if not found
+}
 
 const MemoizedColorButton = React.memo<{
   color: ColorItem
@@ -72,30 +84,73 @@ const MemoizedColorButton = React.memo<{
   const isDarkMode = useTheme()
   const label = isDarkMode && color.darkLabel ? color.darkLabel : color.label
 
+  const isLightColor = label === "White" || label.includes("subtle") || color.hexValue === "#ffffff"
+  const checkColor = isLightColor ? "#000000" : "#ffffff"
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Stop propagation to prevent the editor from capturing the click
+    e.stopPropagation()
+    e.preventDefault()
+
+    // Call the onClick handler with the color's hex value
+    onClick(color.hexValue)
+  }
+
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <ToggleGroupItem
-          className="relative size-7 rounded-md p-0"
-          value={color.cssVar}
-          aria-label={label}
-          style={{ backgroundColor: color.cssVar }}
-          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-            e.preventDefault()
-            onClick(color.cssVar)
-          }}
-        >
-          {isSelected && <CheckIcon className="absolute inset-0 m-auto size-6" style={{ color: inverse }} />}
-        </ToggleGroupItem>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
-        <p>{label}</p>
-      </TooltipContent>
-    </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={handleClick}
+                onMouseDown={(e) => {
+                  // Also stop propagation on mouseDown to prevent editor focus
+                  e.stopPropagation()
+                  e.preventDefault()
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    onClick(color.hexValue)
+                  }
+                }}
+                className="relative"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "4px",
+                  backgroundColor: color.hexValue,
+                  border: "1px solid #e1e1e1",
+                  cursor: "pointer !important", // Force pointer cursor
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "2px",
+                  pointerEvents: "auto" // Ensure pointer events are enabled
+                }}
+                aria-label={label}
+            >
+              {isSelected && (
+                  <CheckIcon
+                      style={{
+                        color: checkColor,
+                        width: "16px",
+                        height: "16px",
+                      }}
+                  />
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>{label}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
   )
 })
 
-MemoizedColorButton.displayName = 'MemoizedColorButton'
+MemoizedColorButton.displayName = "MemoizedColorButton"
 
 const MemoizedColorPicker = React.memo<{
   palette: ColorPalette
@@ -103,89 +158,107 @@ const MemoizedColorPicker = React.memo<{
   inverse: string
   onColorChange: (value: string) => void
 }>(({ palette, selectedColor, inverse, onColorChange }) => (
-  <ToggleGroup
-    type="single"
-    value={selectedColor}
-    onValueChange={(value: string) => {
-      if (value) onColorChange(value)
-    }}
-    className="gap-1.5"
-  >
-    {palette.colors.map((color, index) => (
-      <MemoizedColorButton
-        key={index}
-        inverse={inverse}
-        color={color}
-        isSelected={selectedColor === color.cssVar}
-        onClick={onColorChange}
-      />
-    ))}
-  </ToggleGroup>
+    <div>
+      <div className="text-sm font-medium mb-2">{palette.label}</div>
+      <div className="flex flex-wrap gap-1">
+        {palette.colors.map((color, index) => (
+            <MemoizedColorButton
+                key={index}
+                inverse={inverse}
+                color={color}
+                isSelected={selectedColor === color.hexValue}
+                onClick={onColorChange}
+            />
+        ))}
+      </div>
+    </div>
 ))
 
-MemoizedColorPicker.displayName = 'MemoizedColorPicker'
+MemoizedColorPicker.displayName = "MemoizedColorPicker"
 
 interface SectionThreeProps extends VariantProps<typeof toggleVariants> {
   editor: Editor
 }
 
 export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, variant }) => {
-  const color = editor.getAttributes('textStyle')?.color || 'hsl(var(--foreground))'
-  const [selectedColor, setSelectedColor] = React.useState(color)
+  // Store the selected color in component state
+  const [selectedColor, setSelectedColor] = React.useState<string>("#333333")
 
+  // Track if the popover is open
+  const [isOpen, setIsOpen] = React.useState(false)
+
+  // Apply color directly using the editor's commands
   const handleColorChange = React.useCallback(
-    (value: string) => {
-      setSelectedColor(value)
-      editor.chain().setColor(value).run()
-    },
-    [editor]
+      (hexColor: string) => {
+        // Update UI state
+        setSelectedColor(hexColor)
+
+        // Make sure the editor is focused
+        editor.commands.focus()
+
+        // Apply the color to selection
+        editor.commands.setColor(hexColor)
+
+        // Close the popover after selecting a color
+        setIsOpen(false)
+      },
+      [editor],
   )
 
-  React.useEffect(() => {
-    setSelectedColor(color)
-  }, [color])
-
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <ToolbarButton tooltip="Text color" aria-label="Text color" className="w-12" size={size} variant={variant}>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-5"
-            style={{ color: selectedColor }}
+      <TooltipProvider>
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <ToolbarButton
+                tooltip="Text color"
+                aria-label="Text color"
+                className="w-12"
+                size={size}
+                variant={variant}
+            >
+              <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="size-5"
+                  style={{ color: selectedColor }}
+              >
+                <path d="M4 20h16" />
+                <path d="m6 16 6-12 6 12" />
+                <path d="M8 12h8" />
+              </svg>
+              <CaretDownIcon className="size-5" />
+            </ToolbarButton>
+          </PopoverTrigger>
+          <PopoverContent
+              align="start"
+              className="w-72 p-3"
+              onMouseDown={(e) => e.stopPropagation()} // Stop mouseDown from reaching editor
+              style={{ cursor: 'default', pointerEvents: 'auto' }} // Force default cursor for content
           >
-            <path d="M4 20h16" />
-            <path d="m6 16 6-12 6 12" />
-            <path d="M8 12h8" />
-          </svg>
-          <CaretDownIcon className="size-5" />
-        </ToolbarButton>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-full">
-        <div className="space-y-1.5">
-          {COLORS.map((palette, index) => (
-            <MemoizedColorPicker
-              key={index}
-              palette={palette}
-              inverse={palette.inverse}
-              selectedColor={selectedColor}
-              onColorChange={handleColorChange}
-            />
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
+            <div className="space-y-3">
+              {COLORS.map((palette, index) => (
+                  <MemoizedColorPicker
+                      key={index}
+                      palette={palette}
+                      inverse={palette.inverse}
+                      selectedColor={selectedColor}
+                      onColorChange={handleColorChange}
+                  />
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </TooltipProvider>
   )
 }
 
-SectionThree.displayName = 'SectionThree'
+SectionThree.displayName = "SectionThree"
 
 export default SectionThree
