@@ -184,8 +184,11 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
   // Store the selected color in component state
   const [selectedColor, setSelectedColor] = React.useState<string>("#333333")
 
-  // Track if the popover is open
-  const [isOpen, setIsOpen] = React.useState(false)
+  // Track if the popover is open - we'll manage this manually
+  const [popoverOpen, setPopoverOpen] = React.useState(false)
+
+  // Ref to track if we should allow the popover to close
+  const allowCloseRef = React.useRef(true)
 
   // Apply color directly using the editor's commands
   const handleColorChange = React.useCallback(
@@ -198,63 +201,127 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
 
         // Apply the color to selection
         editor.commands.setColor(hexColor)
-
-        // Close the popover after selecting a color
-        setIsOpen(false)
       },
       [editor],
   )
 
+  // Handle popover trigger click
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setPopoverOpen(!popoverOpen)
+  }
+
+  // Handle popover open/close changes
+  const handleOpenChange = (open: boolean) => {
+    // Only allow closing if we explicitly permit it
+    if (!open && !allowCloseRef.current) {
+      return
+    }
+    setPopoverOpen(open)
+  }
+
+  // Handle done button click
+  const handleDone = () => {
+    allowCloseRef.current = true
+    setPopoverOpen(false)
+  }
+
   return (
       <TooltipProvider>
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <ToolbarButton
-                tooltip="Text color"
-                aria-label="Text color"
-                className="w-12"
-                size={size}
-                variant={variant}
-            >
-              <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="size-5"
-                  style={{ color: selectedColor }}
-              >
-                <path d="M4 20h16" />
-                <path d="m6 16 6-12 6 12" />
-                <path d="M8 12h8" />
-              </svg>
-              <CaretDownIcon className="size-5" />
-            </ToolbarButton>
-          </PopoverTrigger>
-          <PopoverContent
-              align="start"
-              className="w-72 p-3"
-              onMouseDown={(e) => e.stopPropagation()} // Stop mouseDown from reaching editor
-              style={{ cursor: 'default', pointerEvents: 'auto' }} // Force default cursor for content
+        <div className="relative"
+             onMouseDown={(e) => {
+               e.stopPropagation()
+             }}
+        >
+          <Popover
+              open={popoverOpen}
+              onOpenChange={handleOpenChange}
           >
-            <div className="space-y-3">
-              {COLORS.map((palette, index) => (
-                  <MemoizedColorPicker
-                      key={index}
-                      palette={palette}
-                      inverse={palette.inverse}
-                      selectedColor={selectedColor}
-                      onColorChange={handleColorChange}
-                  />
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+            <PopoverTrigger asChild>
+              <ToolbarButton
+                  tooltip="Text color"
+                  aria-label="Text color"
+                  className="w-12"
+                  size={size}
+                  variant={variant}
+                  onClick={handleTriggerClick}
+                  onMouseDown={(e) => {
+                    // Critical: Prevent default and stop propagation
+                    e.preventDefault()
+                    e.stopPropagation()
+                    // Prevent automatic closing
+                    allowCloseRef.current = false
+                  }}
+              >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="size-5"
+                    style={{ color: selectedColor }}
+                >
+                  <path d="M4 20h16" />
+                  <path d="m6 16 6-12 6 12" />
+                  <path d="M8 12h8" />
+                </svg>
+                <CaretDownIcon className="size-5" />
+              </ToolbarButton>
+            </PopoverTrigger>
+            <PopoverContent
+                align="start"
+                className="w-72 p-3"
+                onMouseEnter={() => {
+                  // Prevent automatic closing when interacting with content
+                  allowCloseRef.current = false
+                }}
+                onMouseLeave={() => {
+                  // Allow closing after leaving the content
+                  allowCloseRef.current = true
+                }}
+                onMouseDown={(e) => {
+                  // Prevent the mouseDown from reaching editor
+                  e.stopPropagation()
+                  e.preventDefault()
+                }}
+                onClick={(e) => {
+                  // Also prevent click from reaching editor
+                  e.stopPropagation()
+                }}
+                style={{
+                  cursor: 'default',
+                  pointerEvents: 'auto',
+                  zIndex: 100 // Higher z-index to appear above editor
+                }}
+            >
+              <div className="space-y-3">
+                {COLORS.map((palette, index) => (
+                    <MemoizedColorPicker
+                        key={index}
+                        palette={palette}
+                        inverse={palette.inverse}
+                        selectedColor={selectedColor}
+                        onColorChange={handleColorChange}
+                    />
+                ))}
+                <div className="flex justify-end pt-2">
+                  <button
+                      className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/80"
+                      onClick={handleDone}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </TooltipProvider>
   )
 }
