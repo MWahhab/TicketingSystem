@@ -242,15 +242,13 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
               <ToolbarButton
                   tooltip="Text color"
                   aria-label="Text color"
-                  className="w-12"
+                  className="w-8 mt-2"
                   size={size}
                   variant={variant}
                   onClick={handleTriggerClick}
                   onMouseDown={(e) => {
-                    // Critical: Prevent default and stop propagation
                     e.preventDefault()
                     e.stopPropagation()
-                    // Prevent automatic closing
                     allowCloseRef.current = false
                   }}
               >
