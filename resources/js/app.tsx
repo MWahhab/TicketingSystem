@@ -6,6 +6,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { Toaster } from "@/components/ui/toaster"
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { fixPointerEventsGlobally } from './hooks/pointer-fix'
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -23,6 +24,8 @@ createInertiaApp({
                 <Toaster />
             </>
         );
+
+        fixPointerEventsGlobally()
     },
     progress: {
         color: '#4B5563',
