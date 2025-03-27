@@ -33,7 +33,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CalendarIcon, Trash2Icon, EyeIcon, EditIcon } from 'lucide-react';
+import { CalendarIcon, Trash2Icon, EyeIcon, EditIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -126,6 +126,7 @@ export function PostFormDialog({
     const [availableColumns, setAvailableColumns] = useState<string[]>([]);
     const [isPreview, setIsPreview] = useState(!!task);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const { toast } = useToast();
 
@@ -209,7 +210,7 @@ export function PostFormDialog({
                     setTimeout(() => {
                         form.reset();
                     }, 100);
-                    
+
                     // Close dialog
                     setIsDialogOpen(false);
                     onClose && onClose();
@@ -225,7 +226,7 @@ export function PostFormDialog({
                     setTimeout(() => {
                         form.reset();
                     }, 100);
-                    
+
                     setIsDialogOpen(false);
                 },
                 onError: (errors) => {
@@ -242,6 +243,10 @@ export function PostFormDialog({
     function onDelete() {
         setShowDeleteConfirmation(true);
     }
+
+    const toggleExpansion = () => {
+        setIsExpanded(!isExpanded);
+    };
 
     const handleDialogOpenChange = (open: boolean) => {
         if (!open) {
@@ -268,10 +273,18 @@ export function PostFormDialog({
                     </DialogTrigger>
                 )}
                 {isDialogOpen && (
-                    <DialogContent className="sm:max-w-[1000px] bg-zinc-800 text-white border border-zinc-700">
-                        <DialogHeader className="flex flex-row items-center space-x-2">
-                            <DialogTitle className="text-white text-2xl flex items-center">
-                                {task ? 'Edit Post' : 'Create New Post'}
+                    <DialogContent
+                        className={`bg-zinc-800 text-white border border-zinc-700 transition-all duration-300 ${
+                            isExpanded
+                                ? "sm:max-w-[90vw] w-[90vw] h-[90vh]"
+                                : "sm:max-w-[1000px]"
+                        }`}
+                    >
+                        <DialogHeader>
+                            <div className="flex items-center">
+                                <DialogTitle className="text-white text-2xl flex items-center">
+                                    {task ? 'Edit Post' : 'Create New Post'}
+                                </DialogTitle>
                                 {task && (
                                     <Button
                                         variant="ghost"
@@ -282,9 +295,20 @@ export function PostFormDialog({
                                         <Trash2Icon className="h-5 w-5" />
                                     </Button>
                                 )}
-                            </DialogTitle>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={toggleExpansion}
+                                    className="ml-2 text-zinc-400 hover:text-zinc-300 hover:bg-zinc-100/10 p-1"
+                                >
+                                    {isExpanded ?
+                                        <Minimize2Icon className="h-5 w-5" /> :
+                                        <Maximize2Icon className="h-5 w-5" />}
+                                </Button>
+                            </div>
                         </DialogHeader>
-                        <div className="max-h-[calc(100vh-240px)] overflow-y-auto pr-4">
+
+                        <div className={`overflow-y-auto pr-4 ${isExpanded ? "h-[calc(90vh-180px)]" : "max-h-[calc(100vh-240px)]"}`}>
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                                     <div className="grid grid-cols-[2fr_1fr] gap-6">
