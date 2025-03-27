@@ -31,7 +31,7 @@ export function DateFilter({
     const [isOpen, setIsOpen] = useState(false)
     const [dateFrom, setDateFrom] = useState<Date | null>(initialDateFrom)
     const [dateTo, setDateTo] = useState<Date | null>(initialDateTo)
-    const [dateField, setDateField] = useState<string>(initialDateField)
+    const [dateField, setDateField] = useState<string>(initialDateField || "created_at")
     const [isFromCalendarOpen, setIsFromCalendarOpen] = useState(false)
     const [isToCalendarOpen, setIsToCalendarOpen] = useState(false)
 
@@ -39,7 +39,7 @@ export function DateFilter({
         setDateFrom(initialDateFrom)
         setDateTo(initialDateTo)
     }, [initialDateFrom, initialDateTo])
-    
+
     useEffect(() => {
         if (initialDateField) setDateField(initialDateField)
     }, [initialDateField])
@@ -175,31 +175,31 @@ export function DateFilter({
 
                         <div className="space-y-2 pt-4">
                             <Label className="text-zinc-200">Filter By:</Label>
-                            <RadioGroup 
-                                value={dateField} 
+                            <RadioGroup
+                                value={dateField}
                                 onValueChange={(value) => setDateField(value)}
                                 className="flex flex-col space-y-1"
                             >
                                 <div className="flex items-center space-x-2">
-                                    <RadioGroupItem 
-                                        value="created_at" 
+                                    <RadioGroupItem
+                                        value="created_at"
                                         id="created_at"
-                                        className="border-zinc-500 text-white" 
+                                        className="border-zinc-500 text-white"
                                     />
                                     <Label htmlFor="created_at" className="text-zinc-200">Creation Date</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <RadioGroupItem 
-                                        value="updated_at" 
-                                        id="updated_at" 
+                                    <RadioGroupItem
+                                        value="updated_at"
+                                        id="updated_at"
                                         className="border-zinc-500 text-white"
                                     />
                                     <Label htmlFor="updated_at" className="text-zinc-200">Update Date</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <RadioGroupItem 
-                                        value="deadline" 
-                                        id="deadline" 
+                                    <RadioGroupItem
+                                        value="deadline"
+                                        id="deadline"
                                         className="border-zinc-500 text-white"
                                     />
                                     <Label htmlFor="deadline" className="text-zinc-200">Deadline</Label>
@@ -229,4 +229,3 @@ export function DateFilter({
         </div>
     )
 }
-

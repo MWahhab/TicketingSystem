@@ -174,7 +174,7 @@ export function BoardProvider({
             if (dateTo) {
                 params.set("date_to", dateTo);
             }
-            
+
             if (dateField) {
                 params.set("date_field", dateField);
             }
@@ -183,7 +183,7 @@ export function BoardProvider({
         } else {
             router.get(`/boards?board_id=${targetBoardId}`);
         }
-    }, [dateFrom, dateTo]);
+    }, [dateFrom, dateTo, dateField]);
 
     const onDragEnd = useCallback((result: DropResult) => {
         const { destination, source, draggableId } = result;

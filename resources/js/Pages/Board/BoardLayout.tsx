@@ -56,6 +56,7 @@ export function BoardLayout() {
         openPostId,
         dateFrom,
         dateTo,
+        dateField,
     } = usePage().props as any
 
     return (
@@ -72,6 +73,7 @@ export function BoardLayout() {
             openPostId={openPostId}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            dateField={dateField}
         >
             <InnerBoardLayout />
         </BoardProvider>
@@ -98,6 +100,7 @@ function InnerBoardLayout() {
         openPostId,
         dateFrom,
         dateTo,
+        dateField,
     } = useBoardContext()
 
     // Initialize date states from context (passed from backend)
@@ -131,7 +134,7 @@ function InnerBoardLayout() {
         return items.filter((item) => getItemName(item).toLowerCase().includes(searchQuery.toLowerCase()))
     }
 
-    const handleApplyDateFilter = (dateFrom: Date | null, dateTo: Date | null) => {
+    const handleApplyDateFilter = (dateFrom: Date | null, dateTo: Date | null, dateField: string) => {
         if (boardId) {
             const params = new URLSearchParams()
             params.set("board_id", boardId)
@@ -144,6 +147,10 @@ function InnerBoardLayout() {
             if (dateTo) {
                 params.set("date_to", format(dateTo, "yyyy-MM-dd"))
                 setActiveDateTo(dateTo)
+            }
+
+            if (dateField) {
+                params.set("date_field", dateField)
             }
 
             setIsDateFilterActive(true)
@@ -372,6 +379,7 @@ function InnerBoardLayout() {
                                     onClearFilter={handleClearDateFilter}
                                     initialDateFrom={activeDateFrom}
                                     initialDateTo={activeDateTo}
+                                    initialDateField={dateField}
                                     isActive={isDateFilterActive}
                                     className={isDateFilterActive ? "ring-2 ring-primary ring-offset-1 ring-offset-zinc-800" : ""}
                                 />
@@ -421,4 +429,3 @@ function InnerBoardLayout() {
 }
 
 export default BoardLayout
-
