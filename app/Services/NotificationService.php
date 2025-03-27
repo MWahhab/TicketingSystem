@@ -225,7 +225,7 @@ class NotificationService
     public function getGroupedNotifications(int $userId): array
     {
         $rawNotifications = Notification::where('fid_user', $userId)
-            ->orderBy('created_at', 'asc')
+            ->orderBy('created_at', 'DESC')
             ->take(50)
             ->get();
 
