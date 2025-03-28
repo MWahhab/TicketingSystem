@@ -71,6 +71,7 @@ interface BoardContextValue {
     dateFrom?: string | null;
     dateTo?: string | null;
     dateField?: string | null;
+    isPremium: boolean;
 
     columns: Record<string, ColumnState>;
     tasks: Record<string, Task>;
@@ -101,7 +102,8 @@ const BoardContext = createContext<BoardContextValue>({
     handleBoardClick: () => {},
     onDragEnd: () => {},
     openDialog: () => {},
-    closeDialog: () => {}
+    closeDialog: () => {},
+    isPremium: false
 });
 
 /**
@@ -127,15 +129,13 @@ export function BoardProvider({
                                   dateTo,
                                   dateField = "created_at",
                               }: BoardProviderProps) {
-    // We'll store your columns + tasks here, as you did in BoardLayout.
     const [columns, setColumns] = useState<Record<string, ColumnState>>({});
-    const [tasks, setTasks] = useState<Record<string, Task>>({});
+    const [tasks, setTasks]     = useState<Record<string, Task>>({});
 
-    // State for opening the PostFormDialog on a specific task
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [selectedTask, setSelectedTask]         = useState<Task | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isPremium, setIsPremium]               = useState(false)
 
-    // Initialize columns/tasks from columnsArray + postsArray
     useEffect(() => {
         const initialColumns: Record<string, ColumnState> = {};
         columnsArray.forEach((colTitle) => {
@@ -161,6 +161,24 @@ export function BoardProvider({
         setColumns(initialColumns);
         setTasks(initialTasks);
     }, [columnsArray, postsArray]);
+
+    useEffect(() => {
+        fetch('/premium/status', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (typeof data.isPremium === 'boolean') {
+                    setIsPremium(data.isPremium);
+                }
+            })
+            .catch((err) => {
+                console.error('Error fetching premium status:', err);
+            });
+    }, []);
 
     const handleBoardClick = useCallback((targetBoardId: string) => {
         if (dateFrom || dateTo) {
@@ -222,7 +240,6 @@ export function BoardProvider({
                 };
             }
 
-            // Moving between two different columns
             const startTaskIds = Array.from(startColumn.taskIds);
             startTaskIds.splice(source.index, 1);
 
@@ -309,7 +326,8 @@ export function BoardProvider({
                 handleBoardClick,
                 onDragEnd,
                 openDialog,
-                closeDialog
+                closeDialog,
+                isPremium
             }}
         >
             {children}

@@ -21,6 +21,7 @@ return new class extends Migration
             $table->date('deadline')->nullable();
             $table->foreignId('fid_board')->constrained('board_configs')->onDelete('cascade');
             $table->foreignId('fid_user')->constrained('users');
+            $table->string('migrated_from')->nullable();
             $table->timestamps();
         });
     }

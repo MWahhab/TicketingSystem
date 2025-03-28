@@ -37,27 +37,30 @@ class PostController extends Controller
     public function store(Request $request): Response
     {
         $validated = $request->validate([
-            'title'        => 'required|string|max:255',
-            'desc'         => 'required|string',
-            'priority'     => 'required|string|max:255',
-            'column'       => 'required|string|max:255',
-            'assignee_id'  => 'required|exists:users,id',
-            'deadline'     => 'nullable|date',
-            'fid_board'    => 'required|exists:board_configs,id'
+            'title'         => 'required|string|max:255',
+            'desc'          => 'required|string',
+            'priority'      => 'required|string|max:255',
+            'column'        => 'required|string|max:255',
+            'assignee_id'   => 'required|exists:users,id',
+            'deadline'      => 'nullable|date',
+            'fid_board'     => 'required|exists:board_configs,id',
+            'migrated_from' => 'nullable|string'
         ]);
 
         /**
          * @var Post $post
          */
         $post = Post::create([
-            'title'       => $validated['title'],
-            'desc'        => $validated['desc'],
-            'priority'    => $validated['priority'],
-            'column'      => $validated['column'],
-            'assignee_id' => $validated['assignee_id'],
-            'deadline'    => $validated['deadline'],
-            'fid_board'   => $validated['fid_board'],
-            'fid_user'    => Auth::id(),
+            'title'         => $validated['title'],
+            'desc'          => $validated['desc'],
+            'priority'      => $validated['priority'],
+            'column'        => $validated['column'],
+            'assignee_id'   => $validated['assignee_id'],
+            'deadline'      => $validated['deadline'],
+            'fid_board'     => $validated['fid_board'],
+            'fid_user'      => Auth::id(),
+            'migrated_from' => $validated['migrated_from'] ?? null
+
         ]);
         $post->notify();
 

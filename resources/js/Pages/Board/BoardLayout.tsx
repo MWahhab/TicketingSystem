@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { usePage, router, Link } from "@inertiajs/react"
 import { DragDropContext } from "react-beautiful-dnd"
-import { Search, ChevronDown, User, LogOut } from "lucide-react"
+import { Search, ChevronDown, User, LogOut, Settings } from "lucide-react"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
@@ -17,8 +17,8 @@ import { PostFormDialog } from "@/Pages/Board/components/PostFormDialog"
 import DeleteButton from "@/Pages/Board/components/DeleteButton"
 import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell"
 import { DateFilter } from "./components/DateFilter"
+import { AISettingsDialog } from "@/Pages/Board/components/AiIntegrationFormDialog"
 
-// Context imports
 import { BoardProvider, useBoardContext } from "./BoardContext"
 
 const PreventCloseMenuItem = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<typeof DropdownMenuItem>>(
@@ -101,14 +101,16 @@ function InnerBoardLayout() {
         dateFrom,
         dateTo,
         dateField,
+        isPremium,
     } = useBoardContext()
 
-    // Initialize date states from context (passed from backend)
     const [activeDateFrom, setActiveDateFrom] = useState<Date | null>(dateFrom ? new Date(dateFrom) : null)
     const [activeDateTo, setActiveDateTo] = useState<Date | null>(dateTo ? new Date(dateTo) : null)
     const [isDateFilterActive, setIsDateFilterActive] = useState(!!dateFrom || !!dateTo)
 
-    // Rest of your state variables
+    const [aiIntegrationOpen, setAiIntegrationOpen] = useState(false)
+    const [selectedBoardForAI, setSelectedBoardForAI] = useState<{ id: string; title: string } | null>(null)
+
     const [didAutoOpen, setDidAutoOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedAssignees, setSelectedAssignees] = useState([])
@@ -167,32 +169,63 @@ function InnerBoardLayout() {
         }
     }
 
+    const openAIIntegration = (board: { id: string; title: string }) => {
+        setSelectedBoardForAI(board)
+        setAiIntegrationOpen(true)
+    }
+
     return (
         <div className="flex h-screen overflow-hidden bg-neutral-900 text-white">
             <div className="w-64 border-r border-zinc-700 p-4 flex flex-col min-h-0">
                 <h2 className="mb-4 text-lg font-semibold text-white">Projects</h2>
                 <ScrollArea className="flex-1 overflow-y-auto">
                     {boards.map((board: any) => (
-                        <Button
-                            key={board.id}
-                            variant="ghost"
-                            className="w-full justify-start mb-1 text-zinc-300 hover:text-white hover:bg-zinc-800"
-                            onClick={() => handleBoardClick(board.id)}
-                        >
-                            {board.title}
-                        </Button>
+                        <div key={board.id} className="flex items-center mb-1 group">
+                            <Button
+                                variant="ghost"
+                                className="flex-1 justify-start text-zinc-300 hover:text-white hover:bg-zinc-800"
+                                onClick={() => handleBoardClick(board.id)}
+                            >
+                                {board.title}
+                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-zinc-800 border-zinc-700 text-white">
+                                    <DropdownMenuItem
+                                        className="hover:bg-zinc-700 cursor-pointer"
+                                        onClick={() => console.log(`Edit board ${board.id}`)}
+                                    >
+                                        Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className="hover:bg-zinc-700 cursor-pointer"
+                                        onClick={() => openAIIntegration(board)}
+                                    >
+                                        AI Integration
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     ))}
                 </ScrollArea>
 
                 <div className="mt-auto pt-4 space-y-2">
-                    <BoardFormDialog/>
+                    <BoardFormDialog />
 
                     <div className="flex items-center gap-2 mt-3">
                         <Link
                             href={route("profile.edit")}
                             className="flex items-center justify-center w-10 h-10 rounded-md bg-zinc-800 hover:bg-zinc-700 transition-colors"
                         >
-                            <User className="h-5 w-5 text-zinc-300"/>
+                            <User className="h-5 w-5 text-zinc-300" />
                         </Link>
                         <Link
                             href={route("logout")}
@@ -201,7 +234,7 @@ function InnerBoardLayout() {
                             className="flex items-center justify-between w-full h-10 px-3 rounded-md bg-zinc-800 text-zinc-300 hover:bg-red-100 hover:text-red-900 transition-colors"
                         >
                             <span>Logout</span>
-                            <LogOut className="h-4 w-4"/>
+                            <LogOut className="h-4 w-4" />
                         </Link>
                     </div>
                 </div>
@@ -212,10 +245,10 @@ function InnerBoardLayout() {
                     <div className="flex items-center justify-between border-b border-zinc-700 p-4">
                         <div className="flex items-center space-x-2">
                             <h1 className="text-2xl font-bold text-white">{boardTitle}</h1>
-                            {boardId && <DeleteButton resourceId={boardId} type="Board"/>}
+                            {boardId && <DeleteButton resourceId={boardId} type="Board" />}
                         </div>
 
-                        <InlineNotificationCenter/>
+                        <InlineNotificationCenter />
 
                         <div className="flex items-center gap-3">
                             <PostFormDialog
@@ -422,6 +455,17 @@ function InnerBoardLayout() {
                             authUserId={authUserId}
                         />
                     )}
+
+                    {aiIntegrationOpen && selectedBoardForAI && (
+                        <AISettingsDialog
+                            isOpen={aiIntegrationOpen}
+                            onClose={() => setAiIntegrationOpen(false)}
+                            boardId={selectedBoardForAI.id}
+                            boardTitle={selectedBoardForAI.title}
+                            boards={boards}
+                            isPremium={isPremium}
+                        />
+                    )}
                 </div>
             </div>
         </div>
@@ -429,3 +473,4 @@ function InnerBoardLayout() {
 }
 
 export default BoardLayout
+

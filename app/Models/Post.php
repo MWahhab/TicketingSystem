@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deadline
  * @property int $fid_board
  * @property int $fid_user
+ * @property string $migrated_from
  * @property Carbon $created_at
  * @property Carbon $updated_at
  *
@@ -35,7 +36,7 @@ class Post extends Model implements NotificationServiceInterface
 
     protected $fillable = [
         'title', 'desc', 'priority', 'column', 'assignee_id', 'deadline',
-        'fid_board', 'fid_user'
+        'fid_board', 'fid_user', 'migrated_from'
     ];
 
     protected $casts = [

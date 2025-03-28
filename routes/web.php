@@ -10,6 +10,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use PremiumAddons\controllers\PremiumSettingsController;
+use PremiumAddons\controllers\PremiumSubscriptionsController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -42,6 +44,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/notifications', [NotificationController::class, 'index']);
     Route::get('/api/activity/{post}', [NotificationController::class, 'getActivityHistory']);
     Route::post('/api/notifications/mark-as-seen', [NotificationController::class, 'markAsSeen']);
+
+    // PREMIUM ROUTE
+    Route::resource('premiumSettings', PremiumSettingsController::class);
+    Route::get('/premiumSettings/board/{fid_board}/edit', [PremiumSettingsController::class, 'editByBoard']);
+    Route::get('/premiumSettings/board/{fid_board}/copy', [PremiumSettingsController::class, 'copy']);
+
+    Route::get('/premium/status', [PremiumSubscriptionsController::class, 'status']);
 });
 
 require __DIR__.'/auth.php';
