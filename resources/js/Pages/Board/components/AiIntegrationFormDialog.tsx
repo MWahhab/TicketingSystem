@@ -155,7 +155,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                         <FormControl>
                                             <Select onValueChange={field.onChange} value={field.value || ""}>
                                                 <SelectTrigger className="bg-zinc-700 text-white border-zinc-600">
-                                                    <SelectValue placeholder="Custom" />
+                                                    <SelectValue placeholder="Select board" />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-zinc-700 text-white border-zinc-600">
                                                     {boards
