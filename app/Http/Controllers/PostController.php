@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,10 +32,10 @@ class PostController extends Controller
      * Store a newly created post in storage.
      *
      * @param Request $request
-     *
+     * @param ImageService $imageService
      * @return Response
      */
-    public function store(Request $request): Response
+    public function store(Request $request, ImageService $imageService): Response
     {
         $validated = $request->validate([
             'title'         => 'required|string|max:255',
@@ -47,12 +48,11 @@ class PostController extends Controller
             'migrated_from' => 'nullable|string'
         ]);
 
-        /**
-         * @var Post $post
-         */
+        $descWithImages = $imageService->handlePostImages($validated['desc']);
+
         $post = Post::create([
             'title'         => $validated['title'],
-            'desc'          => $validated['desc'],
+            'desc'          => $descWithImages,
             'priority'      => $validated['priority'],
             'column'        => $validated['column'],
             'assignee_id'   => $validated['assignee_id'],
@@ -60,8 +60,8 @@ class PostController extends Controller
             'fid_board'     => $validated['fid_board'],
             'fid_user'      => Auth::id(),
             'migrated_from' => $validated['migrated_from'] ?? null
-
         ]);
+
         $post->notify();
 
         request()->session()->flash('success', 'New post has been created!');
@@ -109,11 +109,12 @@ class PostController extends Controller
     }
 
     /**
-     * @param Request $request
-     * @param Post $post
+     * @param Request      $request
+     * @param Post         $post
+     * @param ImageService $imageService
      * @return Response
      */
-    public function update(Request $request, Post $post): Response
+    public function update(Request $request, Post $post, ImageService $imageService): Response
     {
         $validated = $request->validate([
             'title'        => 'required|string|max:255',
@@ -127,10 +128,11 @@ class PostController extends Controller
 
         $original = clone($post);
 
-        $post->update($validated);
+        $descWithImages = $imageService->handlePostImages($validated['desc'], $original->desc);
+
+        $post->update(array_merge($validated, ['desc' => $descWithImages]));
 
         $post->setRawAttributes($original->getAttributes(), true);
-
         $post->notify();
 
         return Inertia::location('/boards/?board_id=' . $validated['fid_board']);
@@ -164,8 +166,9 @@ class PostController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Post $post): Response
+    public function destroy(Post $post, ImageService $imageService): Response
     {
+        $imageService->deleteAllImagesInDesc($post->desc);
         $boardFid = $post->fid_board;
         $post->delete();
 

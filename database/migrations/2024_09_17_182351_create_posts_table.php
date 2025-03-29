@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('posts', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->text('desc');
+            $table->longText('desc');
             $table->string('priority');
             $table->string('column');
             $table->foreignId('assignee_id')->constrained('users');

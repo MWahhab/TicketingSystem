@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\User;
+use App\Services\ImageService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,13 +38,15 @@ class CommentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, ImageService $imageService): JsonResponse
     {
         $validatedData = $request->validate([
             'content'  => 'required|string',
             'fid_post' => 'required|exists:posts,id',
         ]);
         $validatedData['fid_user'] = Auth::id();
+
+        $validatedData['content'] = $imageService->handlePostImages($validatedData['content']);
 
         /**
          * @var Comment $comment
@@ -75,11 +78,13 @@ class CommentController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Comment $comment)
+    public function update(Request $request, Comment $comment, ImageService $imageService): JsonResponse
     {
         $validatedData = $request->validate([
             'content'  => 'required|string',
         ]);
+
+        $validatedData['content'] = $imageService->handlePostImages($validatedData['content'], $comment->content);
 
         $comment->update($validatedData);
         $comment->notify();
@@ -90,11 +95,13 @@ class CommentController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Comment $comment): JsonResponse
+    public function destroy(Comment $comment, ImageService $imageService): JsonResponse
     {
         if ($comment->fid_user !== Auth::id()) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
+
+        $imageService->deleteAllImagesInDesc($comment->content);
 
         $comment->delete();
 
