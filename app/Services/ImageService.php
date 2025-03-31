@@ -24,6 +24,13 @@ class ImageService
     ];
 
     /**
+     * Base directory for storing images relative to the public folder.
+     *
+     * @var string
+     */
+    protected string $publicImagePath = 'images';
+
+    /**
      * Extracts image src paths from HTML description.
      *
      * @param  string $desc
@@ -64,7 +71,7 @@ class ImageService
                 }
 
                 $extension = $this->allowedMimeTypes[$mimeType];
-                $dir       = public_path('posts/images');
+                $dir       = public_path($this->publicImagePath);
                 if (!File::exists($dir)) {
                     File::makeDirectory($dir, 0755, true);
                 }
@@ -79,7 +86,7 @@ class ImageService
                     return '';
                 }
 
-                $publicPath = "/posts/images/{$filename}";
+                $publicPath = '/' . trim($this->publicImagePath, '/') . '/' . $filename;
                 return '<img src="' . e($publicPath) . '">';
             },
             $desc
@@ -137,7 +144,7 @@ class ImageService
     }
 
     /**
-     * Deletes an image from disk, scoped only to public/posts/images directory.
+     * Deletes an image from disk, scoped only to public/images directory.
      *
      * @param  string $path
      * @return void
@@ -145,8 +152,9 @@ class ImageService
     protected function deleteStorageImage(string $path): void
     {
         $parsedPath = parse_url($path, PHP_URL_PATH);
+        $baseUrl    = '/' . trim($this->publicImagePath, '/') . '/';
 
-        if (!str_starts_with($parsedPath, '/posts/images/')) {
+        if (!str_starts_with($parsedPath, $baseUrl)) {
             return;
         }
 
