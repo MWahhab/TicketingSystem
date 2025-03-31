@@ -153,19 +153,32 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                     <FormItem>
                                         <FormLabel className="text-white">Copy Setting From:</FormLabel>
                                         <FormControl>
-                                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                value={field.value || ""}
+                                                disabled={boards.filter((b) => b.id !== boardId).length === 0}
+                                            >
                                                 <SelectTrigger className="bg-zinc-700 text-white border-zinc-600">
-                                                    <SelectValue placeholder="Select board" />
+                                                    <SelectValue
+                                                        placeholder={
+                                                            boards.filter((b) => b.id !== boardId).length === 0
+                                                                ? "No other boards available"
+                                                                : "Select board"
+                                                        }
+                                                    />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-zinc-700 text-white border-zinc-600">
                                                     {boards
                                                         .filter((b) => b.id !== boardId)
                                                         .map((b) => (
-                                                            <SelectItem key={b.id} value={b.id.toString()}>{b.title}</SelectItem>
+                                                            <SelectItem key={b.id} value={b.id.toString()}>
+                                                                {b.title}
+                                                            </SelectItem>
                                                         ))}
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
+
                                         <FormMessage className="text-red-400" />
                                     </FormItem>
                                 )}
