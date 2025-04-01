@@ -18,9 +18,7 @@ import {
 import { Eye, EyeOff, Loader2, Check } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-// ----------------------
-// Zod Schema
-// ----------------------
+
 const formSchema = z
     .object({
         copyFrom: z.string().optional(),
@@ -42,9 +40,7 @@ const formSchema = z
         path: ["aiToken"],
     })
 
-// ----------------------
-// Component
-// ----------------------
+
 export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards, isPremium }) {
     const [showGithubToken, setShowGithubToken] = useState(false)
     const [showAiToken, setShowAiToken] = useState(false)
@@ -71,9 +67,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
         },
     })
 
-    // ----------------------
-    // Load form data
-    // ----------------------
+
     useEffect(() => {
         if (!isOpen) return
         setLoading(true)
@@ -109,9 +103,6 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
     useEffect(() => setShowGithubToken(!!githubRepo), [githubRepo])
     useEffect(() => setShowAiToken(!!aiProvider), [aiProvider])
 
-    // ----------------------
-    // Copy From Another Board
-    // ----------------------
     useEffect(() => {
         if (!copyFrom || copyFrom === "") return
         fetch(`/premiumSettings/board/${copyFrom}/copy`, {
@@ -140,9 +131,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
             })
     }, [copyFrom])
 
-    // ----------------------
-    // Submit
-    // ----------------------
+
     function onSubmit(values) {
         if (!isPremium) {
             toast({ variant: "destructive", title: "Premium subscription required" })
@@ -236,9 +225,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
             })
     }
 
-    // ----------------------
-    // Render
-    // ----------------------
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[550px] bg-zinc-800 text-white border border-zinc-700">
@@ -249,7 +236,6 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                 {!loading && (
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                            {/* COPY SETTINGS FROM */}
                             <FormField
                                 control={form.control}
                                 name="copyFrom"
@@ -296,7 +282,6 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                 )}
                             />
 
-                            {/* GITHUB REPO */}
                             <FormField
                                 control={form.control}
                                 name="githubRepo"
@@ -331,7 +316,6 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                 )}
                             />
 
-                            {/* GITHUB TOKEN */}
                             {showGithubToken && (
                                 <FormField
                                     control={form.control}
@@ -382,7 +366,6 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                 />
                             )}
 
-                            {/* AI PROVIDER */}
                             <FormField
                                 control={form.control}
                                 name="aiProvider"
@@ -434,7 +417,6 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                 )}
                             />
 
-                            {/* AI TOKEN */}
                             {showAiToken && (
                                 <FormField
                                     control={form.control}
@@ -481,7 +463,6 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                 />
                             )}
 
-                            {/* SUBMIT BUTTON */}
                             <Button
                                 type="submit"
                                 disabled={!isPremium || submitting}
