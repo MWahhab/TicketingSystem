@@ -51,6 +51,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/premiumSettings/board/{fid_board}/copy', [PremiumSettingsController::class, 'copy']);
 
     Route::get('/premium/status', [PremiumSubscriptionsController::class, 'status']);
+
+    Route::post('/premium/description/optimise', [PremiumSubscriptionsController::class, 'optimiseDescription']); // we need post id
+    Route::post('/premium/generate/pr', [PremiumSubscriptionsController::class, 'generatePullRequest']); // post id
 });
 
 require __DIR__.'/auth.php';

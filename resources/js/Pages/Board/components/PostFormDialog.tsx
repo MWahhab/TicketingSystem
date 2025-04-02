@@ -303,18 +303,85 @@ export function PostFormDialog({
                                                     <FormItem>
                                                         <div className="flex justify-between items-center mb-2">
                                                             <FormLabel className="text-white">Description</FormLabel>
-                                                            <Button
-                                                                onClick={(e) => {
-                                                                    e.preventDefault()
-                                                                    e.stopPropagation()
-                                                                    setIsPreview(!isPreview)
-                                                                }}
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-white hover:text-zinc-300"
-                                                            >
-                                                                {isPreview ? <EditIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                                                            </Button>
+                                                            <div className="flex items-center gap-2">
+                                                                {task && (
+                                                                    <>
+                                                                        <Button
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault()
+                                                                                e.stopPropagation()
+                                                                                Inertia.post("/premium/description/optimise", { post_id: task.id })
+                                                                            }}
+                                                                            className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
+                                                                            title="Optimize Description"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                width="14"
+                                                                                height="14"
+                                                                                viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                strokeWidth="2"
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                className="text-purple-400"
+                                                                            >
+                                                                                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                                                                                <path d="M5 3v4" />
+                                                                                <path d="M3 5h4" />
+                                                                                <path d="M19 17v4" />
+                                                                                <path d="M17 19h4" />
+                                                                            </svg>
+                                                                            <span>Optimize</span>
+                                                                        </Button>
+                                                                        <Button
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault()
+                                                                                e.stopPropagation()
+                                                                                Inertia.post("/premium/generate/pr", { post_id: task.id })
+                                                                            }}
+                                                                            className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
+                                                                            title="Generate PR"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                width="14"
+                                                                                height="14"
+                                                                                viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                strokeWidth="2"
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                className="text-teal-400"
+                                                                            >
+                                                                                <circle cx="18" cy="18" r="3" />
+                                                                                <circle cx="6" cy="6" r="3" />
+                                                                                <path d="M13 6h3a2 2 0 0 1 2 2v7" />
+                                                                                <path d="M6 9v12" />
+                                                                            </svg>
+                                                                            <span>Generate PR</span>
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+                                                                <Button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault()
+                                                                        e.stopPropagation()
+                                                                        setIsPreview(!isPreview)
+                                                                    }}
+                                                                    className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
+                                                                    title={isPreview ? "Edit" : "Preview"}
+                                                                >
+                                                                    {isPreview ? (
+                                                                        <EditIcon className="h-3.5 w-3.5 text-amber-400" />
+                                                                    ) : (
+                                                                        <EyeIcon className="h-3.5 w-3.5 text-amber-400" />
+                                                                    )}
+                                                                    <span>{isPreview ? "Edit" : "Preview"}</span>
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                         <FormControl>
                                                             <ExpandableTipTapTextArea
