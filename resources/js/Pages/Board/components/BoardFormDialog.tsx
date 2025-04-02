@@ -55,12 +55,11 @@ export function BoardFormDialog() {
     async function onSubmit(values: FormData) {
         const payload = {
             title: values.title,
-            columns: values.columns, // Array of strings
+            columns: values.columns,
         };
 
         Inertia.post("/boards", payload, {
             onSuccess: () => {
-                console.log("made it here to succeed");
                 setTimeout(() => {
                     form.reset();
                 }, 100);
@@ -68,7 +67,11 @@ export function BoardFormDialog() {
                 setIsDialogOpen(false);
             },
             onError: (errors) => {
-                console.error(errors);
+                toast({
+                    variant: "destructive",
+                    title: "An error occurred!",
+                    description: "Something went wrong. Please try again or check for latest updates.",
+                })
             },
         });
     }
