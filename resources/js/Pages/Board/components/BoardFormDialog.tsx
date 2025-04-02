@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Inertia } from "@inertiajs/inertia"
 
 import {
     Dialog,
@@ -52,39 +53,24 @@ export function BoardFormDialog() {
     })
 
     async function onSubmit(values: FormData) {
-        try {
-            const payload = {
-                title: values.title,
-                columns: values.columns, // Array of strings
-            }
+        const payload = {
+            title: values.title,
+            columns: values.columns, // Array of strings
+        };
 
-            const response = await axios.post("/boards", payload)
+        Inertia.post("/boards", payload, {
+            onSuccess: () => {
+                console.log("made it here to succeed");
+                setTimeout(() => {
+                    form.reset();
+                }, 100);
 
-            toast({
-                variant: "success",
-                title: "New board has been created!",
-                description: response.data.message,
-            })
-
-            form.reset()
-            setIsDialogOpen(false)
-        } catch (error: any) {
-            if (error.response && error.response.status === 422) {
-                const errors = error.response.data.errors
-                Object.keys(errors).forEach((key) => {
-                    form.setError(key as keyof FormData, {
-                        type: "server",
-                        message: errors[key][0],
-                    })
-                })
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "An error occurred!",
-                    description: "Something went wrong. Please try again or check for latest updates.",
-                })
-            }
-        }
+                setIsDialogOpen(false);
+            },
+            onError: (errors) => {
+                console.error(errors);
+            },
+        });
     }
 
     return (

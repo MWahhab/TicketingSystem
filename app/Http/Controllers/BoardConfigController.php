@@ -101,9 +101,9 @@ class BoardConfigController extends Controller
 
     /**
      * @param  Request          $request
-     * @return RedirectResponse
+     * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         $validated = $request->validate([
             'title'   => 'required|string|min:2|max:255',
@@ -121,9 +121,7 @@ class BoardConfigController extends Controller
             'fid_user' => Auth::id()
         ]);
 
-        $boardId = $board->id;
-
-        return redirect()->route("boards.index", ["board_id" => $boardId])->with('success', 'Board created successfully!');
+        return Inertia::location('/boards/?board_id=' . $board->id);
     }
 
     /**
