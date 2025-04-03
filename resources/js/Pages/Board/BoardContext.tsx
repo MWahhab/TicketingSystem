@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { router } from "@inertiajs/react";
 import { DropResult } from "react-beautiful-dnd";
+import {string} from "zod";
 
 interface Board {
     id: string;
@@ -103,7 +104,7 @@ const BoardContext = createContext<BoardContextValue>({
     onDragEnd: () => {},
     openDialog: () => {},
     closeDialog: () => {},
-    isPremium: false
+    isPremium: string
 });
 
 /**
@@ -134,7 +135,7 @@ export function BoardProvider({
 
     const [selectedTask, setSelectedTask]         = useState<Task | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [isPremium, setIsPremium]               = useState(false)
+    const [isPremium, setIsPremium]               = useState('standard')
 
     useEffect(() => {
         const initialColumns: Record<string, ColumnState> = {};
@@ -171,7 +172,7 @@ export function BoardProvider({
         })
             .then((res) => res.json())
             .then((data) => {
-                if (typeof data.isPremium === 'boolean') {
+                if (typeof data.isPremium === 'string') {
                     setIsPremium(data.isPremium);
                 }
             })

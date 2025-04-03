@@ -84,10 +84,10 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                     const settings = data.settings || {}
                     form.reset({
                         copyFrom: "",
-                        githubRepo: settings.repository_address || "",
+                        githubRepo:  settings.repository_address || "",
                         githubToken: settings.repository_token || "",
-                        aiProvider: settings.ai_model || "",
-                        aiToken: settings.ai_token || "",
+                        aiProvider:  settings.ai_model || "",
+                        aiToken:     settings.ai_token || "",
                     })
                 } else {
                     form.reset()
@@ -98,7 +98,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
 
     const githubRepo = form.watch("githubRepo")
     const aiProvider = form.watch("aiProvider")
-    const copyFrom = form.watch("copyFrom")
+    const copyFrom   = form.watch("copyFrom")
 
     useEffect(() => setShowGithubToken(!!githubRepo), [githubRepo])
     useEffect(() => setShowAiToken(!!aiProvider), [aiProvider])
@@ -133,7 +133,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
 
 
     function onSubmit(values) {
-        if (!isPremium) {
+        if (isPremium === 'standard') {
             toast({ variant: "destructive", title: "Premium subscription required" })
             return
         }
@@ -465,7 +465,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
 
                             <Button
                                 type="submit"
-                                disabled={!isPremium || submitting}
+                                disabled={isPremium === 'standard' || submitting}
                                 className="w-full bg-white text-zinc-900 hover:bg-zinc-100"
                             >
                                 {submitting ? (
@@ -473,7 +473,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin text-zinc-900" />
                                         <span>Processing...</span>
                                     </>
-                                ) : !isPremium ? (
+                                ) : isPremium === 'standard' ? (
                                     "Premium Required"
                                 ) : (
                                     "Apply Settings"

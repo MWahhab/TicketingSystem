@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SubscriptionTierEnums;
 use App\Models\Notification;
 use App\Models\Post;
 use App\Services\NotificationService;
@@ -9,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+
 
 class NotificationController extends Controller
 {
@@ -79,10 +81,16 @@ class NotificationController extends Controller
     public function getActivityHistory(Post $post): JsonResponse
     {
         $rawNotifications = Notification::where('fid_post', $post->id)
-            ->with(['user', 'createdBy'])
+            ->with(['user', 'createdBy', ])
             ->orderBy('created_at', 'desc')
             ->get()
             ->toArray();
+
+        $subscriptionTier = SubscriptionTierEnums::STANDARD->value;
+        if (class_exists(\PremiumAddons\services\PremiumSubscriptionService::class)) {
+            $subscriptionService = new \PremiumAddons\services\PremiumSubscriptionService();
+            $subscriptionTier    = $subscriptionService->getSubscriptionTier();
+        }
 
         $seenContent = [];
         foreach ($rawNotifications as $index => $notification) {
@@ -123,6 +131,6 @@ class NotificationController extends Controller
             $rawNotifications[$index]['created_by'] = $notification['created_by']['name'];
         }
 
-        return response()->json([$rawNotifications]);
+        return response()->json([$rawNotifications, ['subscriptionTier' => $subscriptionTier]]);
     }
 }

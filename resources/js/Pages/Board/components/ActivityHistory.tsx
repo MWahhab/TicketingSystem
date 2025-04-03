@@ -18,6 +18,7 @@ import {
     CalendarIcon,
     MessageSquareIcon,
     EyeIcon,
+    LockIcon,
 } from "lucide-react"
 import axios from "axios"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -48,6 +49,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
     const [isExpanded, setIsExpanded] = useState(false)
     const [visibleActivities, setVisibleActivities] = useState<Activity[]>([])
     const [showAllActivities, setShowAllActivities] = useState(false)
+    const [subscriptionTier, setSubscriptionTier] = useState("standard")
     const activitiesPerPage = 4
 
     useEffect(() => {
@@ -58,7 +60,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
         axios
             .get(`/api/activity/${postId}`)
             .then((response) => {
-                // Flatten the nested structure and map to desired format
                 const fetchedActivities = Object.values(response.data[0]).map((activity: any) => ({
                     id: activity.id,
                     type: activity.type,
@@ -75,9 +76,9 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                         : null,
                 }))
 
-                // Update state with the flattened and mapped activities
                 setActivities(fetchedActivities)
                 setVisibleActivities(fetchedActivities.slice(0, activitiesPerPage))
+                setSubscriptionTier(response.data[1].subscriptionTier)
             })
             .catch((error) => {
                 console.error(error)
@@ -108,61 +109,77 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
         }
     }
 
-    // Check if content contains HTML
     const containsHTML = (content: string): boolean => {
         return /<[a-z][\s\S]*>/i.test(content)
     }
 
-    // Component to display HTML preview popup
     const HTMLPreviewPopup: React.FC<{ content: string }> = ({ content }) => {
+        const isNotStandard = subscriptionTier !== "standard"
         const descChange = parseDescriptionChange(content)
+
+        // Dummy content for non-premium users
+        const dummyContent = `<h2>Sample Content</h2><p>This is a placeholder for premium content. Upgrade to access the full feature.</p>`
+        const displayContent = isNotStandard ? content : dummyContent
 
         if (!descChange) {
             return (
-                <div className="p-4 bg-zinc-800 rounded-md">
+                <div className="p-4 bg-zinc-800 rounded-md relative">
                     <h3 className="text-sm font-medium text-zinc-100 mb-2">HTML Preview</h3>
                     <div
                         className="p-3 bg-zinc-700 rounded border border-zinc-600 text-zinc-200"
-                        dangerouslySetInnerHTML={{ __html: content }}
+                        dangerouslySetInnerHTML={{ __html: displayContent }}
                     />
+
+                    {/* Premium overlay for standard users */}
+                    {!isNotStandard && (
+                        <div className="absolute inset-0 backdrop-blur-md bg-zinc-900/50 flex flex-col items-center justify-center z-10 rounded">
+                            <LockIcon className="h-10 w-10 text-zinc-400 mb-3" />
+                            <p className="text-zinc-200 font-medium text-center px-6">
+                                This feature is available only for premium users
+                            </p>
+                        </div>
+                    )}
                 </div>
             )
         }
 
         return (
-            <div className="p-4 bg-zinc-800 rounded-md w-full">
+            <div className="p-4 bg-zinc-800 rounded-md w-full relative">
                 <h3 className="text-sm font-medium text-zinc-100 mb-3">Description Change</h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <h4 className="text-xs font-medium text-zinc-400 mb-2">Previous</h4>
                         <div className="p-4 bg-zinc-700 rounded border border-zinc-600 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
-                            <FormattedHTML html={descChange.from} />
+                            <FormattedHTML html={isNotStandard ? descChange.from : dummyContent} />
                         </div>
                     </div>
                     <div>
                         <h4 className="text-xs font-medium text-zinc-400 mb-2">Current</h4>
                         <div className="p-4 bg-zinc-700 rounded border border-zinc-600 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
-                            <FormattedHTML html={descChange.to} />
+                            <FormattedHTML html={isNotStandard ? descChange.to : dummyContent} />
                         </div>
                     </div>
                 </div>
+
+                {!isNotStandard && (
+                    <div className="absolute inset-0 backdrop-blur-md bg-zinc-900/50 flex flex-col items-center justify-center z-10 rounded">
+                        <LockIcon className="h-10 w-10 text-zinc-400 mb-3" />
+                        <p className="text-zinc-200 font-medium text-center px-6">
+                            This feature is available only for premium users
+                        </p>
+                    </div>
+                )}
             </div>
         )
     }
 
-    // Component to properly format and render HTML with proper styling
     const FormattedHTML: React.FC<{ html: string }> = ({ html }) => {
-        // Process the HTML to apply proper styling
         const processedHTML = html
-            // Add styling to headings
             .replace(/<h([1-6])(.*?)>(.*?)<\/h\1>/g, '<h$1$2 style="margin-bottom: 0.5rem; font-weight: 600;">$3</h$1>')
-            // Add styling to paragraphs
             .replace(/<p(.*?)>(.*?)<\/p>/g, '<p$1 style="margin-bottom: 0.5rem;">$2</p>')
-            // Add styling to lists
             .replace(/<ul(.*?)>/g, '<ul$1 style="list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.5rem;">')
             .replace(/<ol(.*?)>/g, '<ol$1 style="list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.5rem;">')
             .replace(/<li(.*?)>(.*?)<\/li>/g, '<li$1 style="margin-bottom: 0.25rem;">$2</li>')
-            // Highlight changes (assuming changes are wrapped in <span> tags)
             .replace(
                 /<span(.*?)>(.*?)<\/span>/g,
                 '<span$1 style="background-color: rgba(59, 130, 246, 0.2); color: #fff;">$2</span>',
@@ -171,16 +188,12 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
         return <div dangerouslySetInnerHTML={{ __html: processedHTML }} />
     }
 
-    // Helper function to parse description changes with improved extraction
     const parseDescriptionChange = (content: string) => {
-        // Check if this is a description change
         if (content.includes("Desc changed from") && content.includes("to")) {
             try {
-                // For HTML content with tags, we need a more robust approach
                 let fromContent = ""
                 let toContent = ""
 
-                // Extract content between the first occurrence of 'from "' and the first occurrence of '" to'
                 const fromStartIndex = content.indexOf('from "') + 6
                 if (fromStartIndex > 6) {
                     const fromEndIndex = content.indexOf('" to', fromStartIndex)
@@ -189,7 +202,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                     }
                 }
 
-                // Extract content between the first occurrence of 'to "' and the last '"'
                 const toStartIndex = content.lastIndexOf('to "') + 4
                 if (toStartIndex > 4) {
                     const toEndIndex = content.lastIndexOf('"')
@@ -198,7 +210,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                     }
                 }
 
-                // If we couldn't extract properly, try a simpler approach
                 if (!fromContent || !toContent) {
                     const parts = content.split('" to "')
                     if (parts.length >= 2) {
@@ -219,10 +230,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
         return null
     }
 
-    // Add this function to the component to detect changes between old and new content
     const highlightChanges = (oldContent: string, newContent: string) => {
-        // This is a simplified approach - in a real app, you might want to use a diff library
-        // For now, we'll just wrap the entire new content in a span if it's different
         if (oldContent !== newContent) {
             return newContent
         }
@@ -265,7 +273,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                                                     <span>{activity.content}</span>
                                                 </div>
 
-                                                {/* Add eye icon for HTML content - moved to the right */}
                                                 {containsHTML(activity.content) && (
                                                     <TooltipProvider>
                                                         <Tooltip>
@@ -284,20 +291,41 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                                                                             <DescriptionChangePopup
                                                                                 oldContent={parseDescriptionChange(activity.content)?.from || ""}
                                                                                 newContent={parseDescriptionChange(activity.content)?.to || ""}
+                                                                                subscriptionTier={subscriptionTier}
                                                                             />
                                                                         ) : (
-                                                                            <div className="p-4 bg-zinc-800 rounded-md">
+                                                                            <div className="p-4 bg-zinc-800 rounded-md relative">
                                                                                 <h3 className="text-sm font-medium text-zinc-100 mb-2">HTML Preview</h3>
                                                                                 <div className="p-4 bg-zinc-700 rounded border border-zinc-600 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
-                                                                                    <HTMLRenderer html={activity.content} />
+                                                                                    <HTMLRenderer
+                                                                                        html={
+                                                                                            subscriptionTier !== "standard"
+                                                                                                ? activity.content
+                                                                                                : `<h2>Sample Content</h2><p>This is a placeholder for premium content. Upgrade to access the full feature.</p>`
+                                                                                        }
+                                                                                    />
                                                                                 </div>
+
+                                                                                {/* Premium overlay for standard users */}
+                                                                                {subscriptionTier !== "standard" && (
+                                                                                    <div className="absolute inset-0 backdrop-blur-md bg-zinc-900/50 flex flex-col items-center justify-center z-10 rounded">
+                                                                                        <LockIcon className="h-10 w-10 text-zinc-400 mb-3" />
+                                                                                        <p className="text-zinc-200 font-medium text-center px-6">
+                                                                                            This feature is available only for premium users
+                                                                                        </p>
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         )}
                                                                     </PopoverContent>
                                                                 </Popover>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
-                                                                <p>View rendered HTML</p>
+                                                                {subscriptionTier !== "standard" ? (
+                                                                    <p>View rendered HTML</p>
+                                                                ) : (
+                                                                    <p>HTML preview is a premium feature</p>
+                                                                )}
                                                             </TooltipContent>
                                                         </Tooltip>
                                                     </TooltipProvider>
