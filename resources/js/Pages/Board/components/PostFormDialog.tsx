@@ -100,8 +100,11 @@ export function PostFormDialog({
     const [isPreview, setIsPreview] = useState(!!task)
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
+    const [isOptimizing, setIsOptimizing] = useState(false)
 
     const { toast } = useToast()
+
+    const [originalDescription, setOriginalDescription] = useState("")
 
     const defaultValues = task
         ? {
@@ -307,34 +310,131 @@ export function PostFormDialog({
                                                                 {task && (
                                                                     <>
                                                                         <Button
-                                                                            onClick={(e) => {
+                                                                            disabled={isOptimizing}
+                                                                            onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
-                                                                                Inertia.post("/premium/description/optimise", { post_id: task.id })
+
+                                                                                if (isOptimizing) return
+                                                                                setIsOptimizing(true)
+
+                                                                                try {
+                                                                                    const { data } = await axios.post("/premium/description/optimise", {
+                                                                                        post_id: task.id,
+                                                                                    })
+
+                                                                                    if (data?.description) {
+                                                                                        // Save the original description only on success
+                                                                                        const currentDesc = form.getValues("desc")
+                                                                                        setOriginalDescription(currentDesc)
+                                                                                        form.setValue("desc", data.description)
+
+                                                                                        toast({
+                                                                                            title: "Description optimized",
+                                                                                            description: "Updated description has been set, but not saved yet.",
+                                                                                        })
+                                                                                    } else {
+                                                                                        toast({
+                                                                                            title: "No description returned",
+                                                                                            description: "The optimization service did not return any content.",
+                                                                                        })
+                                                                                    }
+                                                                                } catch (err) {
+                                                                                    toast({
+                                                                                        title: "Failed to optimize",
+                                                                                        description: "Something went wrong during the optimization.",
+                                                                                        variant: "destructive",
+                                                                                    })
+                                                                                    console.error(err)
+                                                                                } finally {
+                                                                                    setIsOptimizing(false)
+                                                                                }
                                                                             }}
                                                                             className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
                                                                             title="Optimize Description"
                                                                         >
-                                                                            <svg
-                                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                                width="14"
-                                                                                height="14"
-                                                                                viewBox="0 0 24 24"
-                                                                                fill="none"
-                                                                                stroke="currentColor"
-                                                                                strokeWidth="2"
-                                                                                strokeLinecap="round"
-                                                                                strokeLinejoin="round"
-                                                                                className="text-purple-400"
-                                                                            >
-                                                                                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                                                                                <path d="M5 3v4" />
-                                                                                <path d="M3 5h4" />
-                                                                                <path d="M19 17v4" />
-                                                                                <path d="M17 19h4" />
-                                                                            </svg>
-                                                                            <span>Optimize</span>
+                                                                            {isOptimizing ? (
+                                                                                <>
+                                                                                    <svg
+                                                                                        className="animate-spin h-3.5 w-3.5 text-purple-400"
+                                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                                        fill="none"
+                                                                                        viewBox="0 0 24 24"
+                                                                                    >
+                                                                                        <circle
+                                                                                            className="opacity-25"
+                                                                                            cx="12"
+                                                                                            cy="12"
+                                                                                            r="10"
+                                                                                            stroke="currentColor"
+                                                                                            strokeWidth="4"
+                                                                                        ></circle>
+                                                                                        <path
+                                                                                            className="opacity-75"
+                                                                                            fill="currentColor"
+                                                                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                                                        ></path>
+                                                                                    </svg>
+                                                                                    <span>Optimizing...</span>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <svg
+                                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                                        width="14"
+                                                                                        height="14"
+                                                                                        viewBox="0 0 24 24"
+                                                                                        fill="none"
+                                                                                        stroke="currentColor"
+                                                                                        strokeWidth="2"
+                                                                                        strokeLinecap="round"
+                                                                                        strokeLinejoin="round"
+                                                                                        className="text-purple-400"
+                                                                                    >
+                                                                                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                                                                                        <path d="M5 3v4" />
+                                                                                        <path d="M3 5h4" />
+                                                                                        <path d="M19 17v4" />
+                                                                                        <path d="M17 19h4" />
+                                                                                    </svg>
+                                                                                    <span>Optimize</span>
+                                                                                </>
+                                                                            )}
                                                                         </Button>
+                                                                        {originalDescription && (
+                                                                            <Button
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault()
+                                                                                    e.stopPropagation()
+                                                                                    form.setValue("desc", originalDescription)
+                                                                                    setOriginalDescription("") // Clear undo state so the button hides
+                                                                                    toast({
+                                                                                        title: "Description restored",
+                                                                                        description: "Original description has been restored.",
+                                                                                    })
+                                                                                }}
+                                                                                className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
+                                                                                title="Undo Optimization"
+                                                                            >
+                                                                                <svg
+                                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                                    width="14"
+                                                                                    height="14"
+                                                                                    viewBox="0 0 24 24"
+                                                                                    fill="none"
+                                                                                    stroke="currentColor"
+                                                                                    strokeWidth="2"
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    className="text-amber-400"
+                                                                                >
+                                                                                    <path d="M3 7v6h6" />
+                                                                                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                                                                                </svg>
+                                                                                <span>Undo</span>
+                                                                            </Button>
+                                                                        )}
+
                                                                         <Button
                                                                             onClick={(e) => {
                                                                                 e.preventDefault()

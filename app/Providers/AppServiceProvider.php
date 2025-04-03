@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,5 +27,6 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Vite::prefetch(concurrency: 3);
+        View::addLocation(base_path('PremiumAddons/templates'));
     }
 }

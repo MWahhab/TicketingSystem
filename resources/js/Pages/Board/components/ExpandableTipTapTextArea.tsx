@@ -20,7 +20,7 @@ export function ExpandableTipTapTextArea({ value, onChange, className, isPreview
                     className="bg-zinc-700 text-white border border-zinc-600 rounded-md p-4 min-h-[200px] prose prose-invert max-w-none overflow-y-auto"
                     dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                     style={{
-                        whiteSpace: 'pre-wrap',
+                        whiteSpace: 'normal',
                         wordBreak: 'break-word',
                         letterSpacing: 'normal',
                     }}
