@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/premium/description/optimise', [PremiumSubscriptionsController::class, 'optimiseDescription']);
     Route::post('/premium/generate/pr', [PremiumSubscriptionsController::class, 'generatePullRequest']);
+    Route::post('/premium/file-structure/get', [PremiumSubscriptionsController::class, 'getFileStructure']);
 });
 
 require __DIR__.'/auth.php';

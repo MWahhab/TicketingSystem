@@ -8,6 +8,7 @@ import { useForm, useWatch } from "react-hook-form"
 import { Inertia } from "@inertiajs/inertia"
 import { Button } from "@/components/ui/button"
 import { ExpandableTipTapTextArea } from "./ExpandableTipTapTextArea"
+import { FileBrowser } from "./post-form-dialog-components/file-browser"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -23,6 +24,12 @@ import CommentSection from "@/Pages/Board/components/CommentSection"
 import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmation"
 import ActivityHistory from "@/Pages/Board/components/ActivityHistory"
 import LinkedIssuesSection from "@/Pages/Board/components/LinkedIssues"
+import axios from "axios"
+
+interface FileItem {
+    path: string
+    content: string
+}
 
 const Portal = ({ children }: { children: React.ReactNode }) => {
     return createPortal(children, document.body)
@@ -101,6 +108,11 @@ export function PostFormDialog({
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
     const [isOptimizing, setIsOptimizing] = useState(false)
+    const [isGeneratingPR, setIsGeneratingPR] = useState(false)
+    const [fileStructure, setFileStructure] = useState<FileItem[]>([])
+
+    const [isFileBrowserOpen, setIsFileBrowserOpen] = useState(false)
+    const [selectedPRFiles, setSelectedPRFiles] = useState<string[]>([])
 
     const { toast } = useToast()
 
@@ -391,7 +403,7 @@ export function PostFormDialog({
                                                                                         strokeLinejoin="round"
                                                                                         className="text-purple-400"
                                                                                     >
-                                                                                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                                                                                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z" />
                                                                                         <path d="M5 3v4" />
                                                                                         <path d="M3 5h4" />
                                                                                         <path d="M19 17v4" />
@@ -436,32 +448,90 @@ export function PostFormDialog({
                                                                         )}
 
                                                                         <Button
-                                                                            onClick={(e) => {
+                                                                            disabled={isGeneratingPR}
+                                                                            onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
-                                                                                Inertia.post("/premium/generate/pr", { post_id: task.id })
+
+                                                                                if (isGeneratingPR) return
+                                                                                setIsGeneratingPR(true)
+
+                                                                                try {
+                                                                                    const response = await axios.post("/premium/file-structure/get", {
+                                                                                        post_id: task.id,
+                                                                                    })
+
+                                                                                    // Only open the file browser after we get a successful response
+                                                                                    if (response.data && response.data.fileStructure) {
+                                                                                        setFileStructure(response.data.fileStructure)
+                                                                                        setIsFileBrowserOpen(true)
+                                                                                    } else {
+                                                                                        toast({
+                                                                                            title: "Error",
+                                                                                            description: "Failed to retrieve file structure",
+                                                                                            variant: "destructive",
+                                                                                        })
+                                                                                    }
+                                                                                } catch (error) {
+                                                                                    console.error("Error generating PR:", error)
+                                                                                    toast({
+                                                                                        title: "Error",
+                                                                                        description: "Failed to generate PR files",
+                                                                                        variant: "destructive",
+                                                                                    })
+                                                                                } finally {
+                                                                                    setIsGeneratingPR(false)
+                                                                                }
                                                                             }}
                                                                             className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
                                                                             title="Generate PR"
                                                                         >
-                                                                            <svg
-                                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                                width="14"
-                                                                                height="14"
-                                                                                viewBox="0 0 24 24"
-                                                                                fill="none"
-                                                                                stroke="currentColor"
-                                                                                strokeWidth="2"
-                                                                                strokeLinecap="round"
-                                                                                strokeLinejoin="round"
-                                                                                className="text-teal-400"
-                                                                            >
-                                                                                <circle cx="18" cy="18" r="3" />
-                                                                                <circle cx="6" cy="6" r="3" />
-                                                                                <path d="M13 6h3a2 2 0 0 1 2 2v7" />
-                                                                                <path d="M6 9v12" />
-                                                                            </svg>
-                                                                            <span>Generate PR</span>
+                                                                            {isGeneratingPR ? (
+                                                                                <>
+                                                                                    <svg
+                                                                                        className="animate-spin h-3.5 w-3.5 text-teal-400"
+                                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                                        fill="none"
+                                                                                        viewBox="0 0 24 24"
+                                                                                    >
+                                                                                        <circle
+                                                                                            className="opacity-25"
+                                                                                            cx="12"
+                                                                                            cy="12"
+                                                                                            r="10"
+                                                                                            stroke="currentColor"
+                                                                                            strokeWidth="4"
+                                                                                        ></circle>
+                                                                                        <path
+                                                                                            className="opacity-75"
+                                                                                            fill="currentColor"
+                                                                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                                                        ></path>
+                                                                                    </svg>
+                                                                                    <span>Generating...</span>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <svg
+                                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                                        width="14"
+                                                                                        height="14"
+                                                                                        viewBox="0 0 24 24"
+                                                                                        fill="none"
+                                                                                        stroke="currentColor"
+                                                                                        strokeWidth="2"
+                                                                                        strokeLinecap="round"
+                                                                                        strokeLinejoin="round"
+                                                                                        className="text-teal-400"
+                                                                                    >
+                                                                                        <circle cx="18" cy="18" r="3" />
+                                                                                        <circle cx="6" cy="6" r="3" />
+                                                                                        <path d="M13 6h3a2 2 0 0 1 2 2v7" />
+                                                                                        <path d="M6 9v12" />
+                                                                                    </svg>
+                                                                                    <span>Generate PR</span>
+                                                                                </>
+                                                                            )}
                                                                         </Button>
                                                                     </>
                                                                 )}
@@ -719,6 +789,29 @@ export function PostFormDialog({
             </Dialog>
             {showDeleteConfirmation && (
                 <DeleteConfirmationDialog id={task?.id ?? ""} type="Post" isOpen={true} onClose={handleDialogClose} />
+            )}
+            {isFileBrowserOpen && (
+                <FileBrowser
+                    isOpen={isFileBrowserOpen}
+                    onClose={() => setIsFileBrowserOpen(false)}
+                    fileStructure={fileStructure}
+                    onFilesSelected={(files) => {
+                        setSelectedPRFiles(files)
+                        setIsFileBrowserOpen(false)
+                        if (files.length > 0) {
+                            Inertia.post("/premium/generate/pr", {
+                                post_id: task.id,
+                                context_files: files,
+                            })
+                        } else {
+                            Inertia.post("/premium/generate/pr", {
+                                post_id: task.id,
+                                context_files: [],
+                            })
+                        }
+                    }}
+                    postId={task?.id}
+                />
             )}
         </>
     )
