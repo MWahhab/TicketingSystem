@@ -799,15 +799,21 @@ export function PostFormDialog({
                         setSelectedPRFiles(files)
                         setIsFileBrowserOpen(false)
                         if (files.length > 0) {
+                            setIsGeneratingPR(true);
                             Inertia.post("/premium/generate/pr", {
                                 post_id: task.id,
-                                context_files: files,
-                            })
+                                context_files: files.length > 0 ? files : [],
+                            }, {
+                                onFinish: () => setIsGeneratingPR(false),
+                            });
                         } else {
+                            setIsGeneratingPR(true);
                             Inertia.post("/premium/generate/pr", {
                                 post_id: task.id,
-                                context_files: [],
-                            })
+                                context_files: files.length > 0 ? files : [],
+                            }, {
+                                onFinish: () => setIsGeneratingPR(false),
+                            });
                         }
                     }}
                     postId={task?.id}
