@@ -78,6 +78,7 @@ interface PostFormDialogProps {
     task?: Task
     onClose?: () => void
     authUserId: string
+    isPremium: string // Changed from boolean to string
 }
 
 interface Comment {
@@ -87,6 +88,10 @@ interface Comment {
     createdAt: string
 }
 
+const hasPremiumAccess = (premiumLevel: string): boolean => {
+    return premiumLevel === "pro" || premiumLevel === "premium"
+}
+
 export function PostFormDialog({
                                    boards = [],
                                    assignees = [],
@@ -94,6 +99,7 @@ export function PostFormDialog({
                                    task,
                                    onClose,
                                    authUserId,
+                                   isPremium,
                                }: PostFormDialogProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(!!task)
 
@@ -237,7 +243,7 @@ export function PostFormDialog({
     }
 
     const fetchBranches = async () => {
-        if (!task || !task.id) return
+        if (!task || !task.id || !hasPremiumAccess(isPremium)) return
 
         setIsLoadingBranches(true)
         try {
@@ -251,7 +257,6 @@ export function PostFormDialog({
                 toast({
                     title: "Error",
                     description: "Failed to load branches",
-                    variant: "destructive",
                 })
             }
         } catch (error) {
@@ -259,7 +264,6 @@ export function PostFormDialog({
             toast({
                 title: "Error",
                 description: "Failed to load branches",
-                variant: "destructive",
             })
         } finally {
             setIsLoadingBranches(false)
@@ -267,10 +271,10 @@ export function PostFormDialog({
     }
 
     useEffect(() => {
-        if (isDialogOpen && task && task.id) {
+        if (isDialogOpen && task && task.id && hasPremiumAccess(isPremium)) {
             fetchBranches()
         }
-    }, [isDialogOpen, task])
+    }, [isDialogOpen, task, isPremium])
 
     const handleDialogOpenChange = (open: boolean) => {
         if (!open) {
@@ -363,7 +367,7 @@ export function PostFormDialog({
                                                                 {task && (
                                                                     <>
                                                                         <Button
-                                                                            disabled={isOptimizing}
+                                                                            disabled={isOptimizing || !hasPremiumAccess(isPremium)}
                                                                             onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
@@ -372,6 +376,7 @@ export function PostFormDialog({
                                                                                 setIsOptimizing(true)
 
                                                                                 try {
+                                                                                    console.log(isPremium)
                                                                                     const { data } = await axios.post("/premium/description/optimise", {
                                                                                         post_id: task.id,
                                                                                     })
@@ -404,7 +409,9 @@ export function PostFormDialog({
                                                                                 }
                                                                             }}
                                                                             className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
-                                                                            title="Optimize Description"
+                                                                            title={
+                                                                                !hasPremiumAccess(isPremium) ? "This is a paid feature" : "Optimize Description"
+                                                                            }
                                                                         >
                                                                             {isOptimizing ? (
                                                                                 <>
@@ -432,6 +439,23 @@ export function PostFormDialog({
                                                                                 </>
                                                                             ) : (
                                                                                 <>
+                                                                                    {!hasPremiumAccess(isPremium) && (
+                                                                                        <svg
+                                                                                            xmlns="http://www.w3.org/2000/svg"
+                                                                                            width="14"
+                                                                                            height="14"
+                                                                                            viewBox="0 0 24 24"
+                                                                                            fill="none"
+                                                                                            stroke="currentColor"
+                                                                                            strokeWidth="2"
+                                                                                            strokeLinecap="round"
+                                                                                            strokeLinejoin="round"
+                                                                                            className="text-zinc-400 mr-1"
+                                                                                        >
+                                                                                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                                                                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                                                        </svg>
+                                                                                    )}
                                                                                     <svg
                                                                                         xmlns="http://www.w3.org/2000/svg"
                                                                                         width="14"
@@ -489,7 +513,7 @@ export function PostFormDialog({
                                                                         )}
 
                                                                         <Button
-                                                                            disabled={isGeneratingPR || isDescriptionModified}
+                                                                            disabled={isGeneratingPR || isDescriptionModified || !hasPremiumAccess(isPremium)}
                                                                             onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
@@ -525,7 +549,11 @@ export function PostFormDialog({
                                                                             }}
                                                                             className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
                                                                             title={
-                                                                                isDescriptionModified ? "Save changes before generating PR" : "Generate PR"
+                                                                                !hasPremiumAccess(isPremium)
+                                                                                    ? "This is a paid feature"
+                                                                                    : isDescriptionModified
+                                                                                        ? "Save changes before generating PR"
+                                                                                        : "Generate PR"
                                                                             }
                                                                         >
                                                                             {isGeneratingPR ? (
@@ -554,6 +582,23 @@ export function PostFormDialog({
                                                                                 </>
                                                                             ) : (
                                                                                 <>
+                                                                                    {!hasPremiumAccess(isPremium) && (
+                                                                                        <svg
+                                                                                            xmlns="http://www.w3.org/2000/svg"
+                                                                                            width="14"
+                                                                                            height="14"
+                                                                                            viewBox="0 0 24 24"
+                                                                                            fill="none"
+                                                                                            stroke="currentColor"
+                                                                                            strokeWidth="2"
+                                                                                            strokeLinecap="round"
+                                                                                            strokeLinejoin="round"
+                                                                                            className="text-zinc-400 mr-1"
+                                                                                        >
+                                                                                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                                                                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                                                        </svg>
+                                                                                    )}
                                                                                     <svg
                                                                                         xmlns="http://www.w3.org/2000/svg"
                                                                                         width="14"
@@ -815,8 +860,30 @@ export function PostFormDialog({
                                             {task && (
                                                 <div className="mt-4">
                                                     <h3 className="text-white font-medium mb-2">Branches</h3>
-                                                    <div className="bg-zinc-700 rounded-md border border-zinc-600 p-2 max-h-[150px] overflow-y-auto">
-                                                        {isLoadingBranches ? (
+                                                    <div
+                                                        className="bg-zinc-700 rounded-md border border-zinc-600 p-2 max-h-[150px] overflow-y-auto"
+                                                        title={!hasPremiumAccess(isPremium) ? "This is a paid feature" : ""}
+                                                    >
+                                                        {!hasPremiumAccess(isPremium) ? (
+                                                            <div className="flex items-center py-2">
+                                                                <svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    width="16"
+                                                                    height="16"
+                                                                    viewBox="0 0 24 24"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth="2"
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    className="text-zinc-400 mr-2"
+                                                                >
+                                                                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                                                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                                </svg>
+                                                                <span className="text-sm text-zinc-400">This is a paid feature</span>
+                                                            </div>
+                                                        ) : isLoadingBranches ? (
                                                             <div className="flex items-center justify-center py-2">
                                                                 <svg
                                                                     className="animate-spin h-5 w-5 text-white"
@@ -879,7 +946,9 @@ export function PostFormDialog({
                                                     <button
                                                         type="button"
                                                         onClick={fetchBranches}
-                                                        className="mt-2 text-xs text-zinc-400 hover:text-white flex items-center"
+                                                        disabled={!hasPremiumAccess(isPremium)}
+                                                        className={`mt-2 text-xs ${!hasPremiumAccess(isPremium) ? "text-zinc-600" : "text-zinc-400 hover:text-white"} flex items-center`}
+                                                        title={!hasPremiumAccess(isPremium) ? "This is a paid feature" : "Refresh branches"}
                                                     >
                                                         <svg
                                                             xmlns="http://www.w3.org/2000/svg"
@@ -948,8 +1017,7 @@ export function PostFormDialog({
                                     description: "Your pull request was generated and is ready to be reviewed.",
                                 })
 
-                                await fetchBranches();
-
+                                await fetchBranches()
                             } else {
                                 toast({
                                     title: "Pull request failed",

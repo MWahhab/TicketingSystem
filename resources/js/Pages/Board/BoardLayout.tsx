@@ -256,6 +256,7 @@ function InnerBoardLayout() {
                                 assignees={assignees}
                                 priorities={priorities}
                                 authUserId={authUserId}
+                                isPremium={isPremium}
                             />
 
                             <div className="flex items-center gap-2">
@@ -453,6 +454,7 @@ function InnerBoardLayout() {
                             task={selectedTask}
                             onClose={closeDialog}
                             authUserId={authUserId}
+                            isPremium={isPremium}
                         />
                     )}
 
