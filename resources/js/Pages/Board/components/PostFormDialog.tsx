@@ -119,6 +119,9 @@ export function PostFormDialog({
     const [originalDescription, setOriginalDescription] = useState("")
     const [isDescriptionModified, setIsDescriptionModified] = useState(false)
 
+    const [branches, setBranches] = useState<Array<{ name: string; url: string; protected: boolean }>>([])
+    const [isLoadingBranches, setIsLoadingBranches] = useState(false)
+
     const defaultValues = task
         ? {
             title: task.title || "",
@@ -232,6 +235,42 @@ export function PostFormDialog({
     const toggleExpansion = () => {
         setIsExpanded(!isExpanded)
     }
+
+    const fetchBranches = async () => {
+        if (!task || !task.id) return
+
+        setIsLoadingBranches(true)
+        try {
+            const response = await axios.post("/premium/branches/get", {
+                post_id: task.id,
+            })
+
+            if (response.data && response.data.data) {
+                setBranches(response.data.data)
+            } else {
+                toast({
+                    title: "Error",
+                    description: "Failed to load branches",
+                    variant: "destructive",
+                })
+            }
+        } catch (error) {
+            console.error("Error fetching branches:", error)
+            toast({
+                title: "Error",
+                description: "Failed to load branches",
+                variant: "destructive",
+            })
+        } finally {
+            setIsLoadingBranches(false)
+        }
+    }
+
+    useEffect(() => {
+        if (isDialogOpen && task && task.id) {
+            fetchBranches()
+        }
+    }, [isDialogOpen, task])
 
     const handleDialogOpenChange = (open: boolean) => {
         if (!open) {
@@ -773,6 +812,95 @@ export function PostFormDialog({
                                                     </FormItem>
                                                 )}
                                             />
+                                            {task && (
+                                                <div className="mt-4">
+                                                    <h3 className="text-white font-medium mb-2">Branches</h3>
+                                                    <div className="bg-zinc-700 rounded-md border border-zinc-600 p-2 max-h-[150px] overflow-y-auto">
+                                                        {isLoadingBranches ? (
+                                                            <div className="flex items-center justify-center py-2">
+                                                                <svg
+                                                                    className="animate-spin h-5 w-5 text-white"
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    fill="none"
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <circle
+                                                                        className="opacity-25"
+                                                                        cx="12"
+                                                                        cy="12"
+                                                                        r="10"
+                                                                        stroke="currentColor"
+                                                                        strokeWidth="4"
+                                                                    ></circle>
+                                                                    <path
+                                                                        className="opacity-75"
+                                                                        fill="currentColor"
+                                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                                    ></path>
+                                                                </svg>
+                                                                <span className="ml-2 text-sm text-zinc-300">Loading branches...</span>
+                                                            </div>
+                                                        ) : branches.length > 0 ? (
+                                                            <ul className="space-y-1">
+                                                                {branches.map((branch, index) => (
+                                                                    <li key={index} className="text-sm">
+                                                                        <a
+                                                                            href={branch.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-teal-400 hover:text-teal-300 hover:underline flex items-center"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                width="16"
+                                                                                height="16"
+                                                                                viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                strokeWidth="2"
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                className="mr-1"
+                                                                            >
+                                                                                <line x1="6" y1="3" x2="6" y2="15"></line>
+                                                                                <circle cx="18" cy="6" r="3"></circle>
+                                                                                <circle cx="6" cy="18" r="3"></circle>
+                                                                                <path d="M18 9a9 9 0 0 1-9 9"></path>
+                                                                            </svg>
+                                                                            {branch.name}
+                                                                        </a>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : (
+                                                            <p className="text-sm text-zinc-400 py-1">No branches available for this post.</p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={fetchBranches}
+                                                        className="mt-2 text-xs text-zinc-400 hover:text-white flex items-center"
+                                                    >
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            width="12"
+                                                            height="12"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            className="mr-1"
+                                                        >
+                                                            <path d="M21 2v6h-6"></path>
+                                                            <path d="M3 12a9 9 0 0 1 15-6.7l3-3"></path>
+                                                            <path d="M3 12a9 9 0 0 0 15 6.7l3 3"></path>
+                                                        </svg>
+                                                        Refresh
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </form>
@@ -803,33 +931,40 @@ export function PostFormDialog({
                     isOpen={isFileBrowserOpen}
                     onClose={() => setIsFileBrowserOpen(false)}
                     fileStructure={fileStructure}
-                    onFilesSelected={(files) => {
+                    onFilesSelected={async (files) => {
                         setSelectedPRFiles(files)
                         setIsFileBrowserOpen(false)
-                        if (files.length > 0) {
-                            setIsGeneratingPR(true)
-                            Inertia.post(
-                                "/premium/generate/pr",
-                                {
-                                    post_id: task.id,
-                                    context_files: files.length > 0 ? files : [],
-                                },
-                                {
-                                    onFinish: () => setIsGeneratingPR(false),
-                                },
-                            )
-                        } else {
-                            setIsGeneratingPR(true)
-                            Inertia.post(
-                                "/premium/generate/pr",
-                                {
-                                    post_id: task.id,
-                                    context_files: files.length > 0 ? files : [],
-                                },
-                                {
-                                    onFinish: () => setIsGeneratingPR(false),
-                                },
-                            )
+                        setIsGeneratingPR(true)
+
+                        try {
+                            const { data } = await axios.post("/premium/generate/pr", {
+                                post_id: task.id,
+                                context_files: files,
+                            })
+
+                            if (data?.success) {
+                                toast({
+                                    title: "Pull request successful!",
+                                    description: "Your pull request was generated and is ready to be reviewed.",
+                                })
+
+                                await fetchBranches();
+
+                            } else {
+                                toast({
+                                    title: "Pull request failed",
+                                    description: data?.message || "Unknown error occurred.",
+                                    variant: "destructive",
+                                })
+                            }
+                        } catch (err) {
+                            toast({
+                                title: "Server error",
+                                description: "An unexpected error occurred while generating the pull request.",
+                                variant: "destructive",
+                            })
+                        } finally {
+                            setIsGeneratingPR(false)
                         }
                     }}
                     postId={task?.id}
