@@ -8,8 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { FileIcon, FolderIcon } from "lucide-react"
-
-// Add import for the FileItem type
 import type { FileItem } from "@/app/types/file-browser"
 
 interface FileBrowserProps {
@@ -27,73 +25,85 @@ const Portal = ({ children }: { children: React.ReactNode }) => {
 export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStructure }: FileBrowserProps) {
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+    const [totalTokens, setTotalTokens] = useState(0)
     const [localFileStructure] = useState(fileStructure)
 
-    const capacityUsed = Math.min(Math.floor((selectedItems.size / 100) * 100), 100)
+    const capacityUsed = Math.min(Math.floor((totalTokens / 6000) * 100), 100)
 
     useEffect(() => {
         if (isOpen) {
             setSelectedItems(new Set())
             setExpandedFolders(new Set())
+            setTotalTokens(0)
         }
     }, [isOpen])
 
-    /**
-     * Recursively select an item (file or folder) and all its descendants.
-     */
-    const selectItem = (item: FileItem, selected: Set<string>) => {
-        selected.add(item.path)
-        if (item.children && item.children.length > 0) {
-            item.children.forEach((child) => selectItem(child, selected))
+    const getTotalTokens = (item: FileItem): number => {
+        let total = item.estimatedTokens ?? 0
+        if (item.children?.length) {
+            item.children.forEach((child) => {
+                total += getTotalTokens(child)
+            })
+        }
+        return total
+    }
+
+    const selectItem = (item: FileItem, selected: Set<string>, tokenCounter: { total: number }) => {
+        if ((tokenCounter.total + (item.estimatedTokens ?? 0)) > 6000) return
+        if (!selected.has(item.path)) {
+            selected.add(item.path)
+            tokenCounter.total += item.estimatedTokens ?? 0
+        }
+        if (item.children?.length) {
+            item.children.forEach((child) => selectItem(child, selected, tokenCounter))
         }
     }
 
-    /**
-     * Recursively deselect an item (file or folder) and all its descendants.
-     */
     const deselectItem = (item: FileItem, selected: Set<string>) => {
         selected.delete(item.path)
-        if (item.children && item.children.length > 0) {
+        if (item.children?.length) {
             item.children.forEach((child) => deselectItem(child, selected))
         }
     }
 
-    /**
-     * Toggle selection for a file.
-     */
     const toggleFileSelection = (file: FileItem) => {
         const newSelected = new Set(selectedItems)
+        let newTotal = totalTokens
+
         if (newSelected.has(file.path)) {
             newSelected.delete(file.path)
+            newTotal -= file.estimatedTokens ?? 0
         } else {
+            if ((totalTokens + (file.estimatedTokens ?? 0)) > 6000) return
             newSelected.add(file.path)
+            newTotal += file.estimatedTokens ?? 0
         }
+
         setSelectedItems(newSelected)
+        setTotalTokens(newTotal)
     }
 
-    /**
-     * Toggle selection for a folder.
-     * This will recursively select/deselect the folder and its descendants.
-     * Also, it auto-expands the folder when selecting.
-     */
     const toggleFolderSelection = (folder: FileItem) => {
         const newSelected = new Set(selectedItems)
         const newExpanded = new Set(expandedFolders)
+        let newTotal = totalTokens
+
         if (newSelected.has(folder.path)) {
-            // Deselect folder and all its descendants
             deselectItem(folder, newSelected)
+            const tokensRemoved = getTotalTokens(folder)
+            newTotal -= tokensRemoved
         } else {
-            // Select folder and all its descendants and expand it
-            selectItem(folder, newSelected)
+            const tokenCounter = { total: newTotal }
+            selectItem(folder, newSelected, tokenCounter)
+            newTotal = tokenCounter.total
             newExpanded.add(folder.id)
         }
+
         setSelectedItems(newSelected)
         setExpandedFolders(newExpanded)
+        setTotalTokens(newTotal)
     }
 
-    /**
-     * Checks if any descendant of the folder is selected.
-     */
     const checkSomeSelected = (folder: FileItem, selected: Set<string>): boolean => {
         if (!folder.children || folder.children.length === 0) return false
         for (const child of folder.children) {
@@ -103,9 +113,6 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
         return false
     }
 
-    /**
-     * Toggle folder expansion (without affecting selection)
-     */
     const toggleFolderExpansion = (id: string) => {
         const newExpanded = new Set(expandedFolders)
         if (newExpanded.has(id)) {
@@ -116,32 +123,22 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
         setExpandedFolders(newExpanded)
     }
 
-    /**
-     * Handles submitting the selected items.
-     */
     const handleSubmit = () => {
         onFilesSelected(Array.from(selectedItems))
         onClose()
     }
 
-    /**
-     * Handles skipping file selection.
-     */
     const handleSkip = () => {
         onFilesSelected([])
         onClose()
     }
 
-    /**
-     * Recursively render file/folder structure.
-     */
     const renderFileTree = (items: FileItem[]) => {
         return items.map((item) => {
             if (item.type === "folder") {
                 const isSelected = selectedItems.has(item.path)
                 const isEmpty = !item.children || item.children.length === 0
-                const someSelected =
-                    !isSelected && item.children && item.children.length > 0 ? checkSomeSelected(item, selectedItems) : false
+                const someSelected = !isSelected && item.children?.length > 0 ? checkSomeSelected(item, selectedItems) : false
 
                 return (
                     <div key={item.id} className="select-none">
@@ -158,7 +155,7 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
                                 <FolderIcon className="h-4 w-4 mr-2 text-blue-400" />
                                 <span className="text-sm text-white">{item.name}</span>
                                 {isEmpty && <span className="ml-2 text-xs text-zinc-400">(empty)</span>}
-                                {item.size && <span className="ml-auto text-xs text-zinc-400">{item.size}</span>}
+                                {item.estimatedTokens && <span className="ml-auto text-xs text-zinc-400">{item.estimatedTokens} tokens</span>}
                             </div>
                         </div>
                         {expandedFolders.has(item.id) && item.children && item.children.length > 0 && (
@@ -178,7 +175,7 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
                         <div className="flex items-center flex-1">
                             <FileIcon className="h-4 w-4 mr-2 text-zinc-400" />
                             <span className="text-sm text-white">{item.name}</span>
-                            {item.size && <span className="ml-auto text-xs text-zinc-400">{item.size}</span>}
+                            {item.estimatedTokens && <span className="ml-auto text-xs text-zinc-400">{item.estimatedTokens} tokens</span>}
                         </div>
                     </div>
                 )
@@ -199,10 +196,12 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
                     </div>
 
                     <div className="flex items-center justify-between">
-                        <div className="text-sm text-zinc-400">{selectedItems.size} items selected</div>
+                        <div className="text-sm text-zinc-400">
+                            {selectedItems.size} items — {totalTokens.toLocaleString()} tokens
+                        </div>
                         <div className="flex items-center gap-2 flex-1 max-w-[200px]">
                             <Progress value={capacityUsed} className="h-2 bg-zinc-700" />
-                            <span className="text-xs text-zinc-400">{capacityUsed}% of capacity used</span>
+                            <span className="text-xs text-zinc-400">{capacityUsed}% / 100%</span>
                         </div>
                         <div className="flex gap-2">
                             <Button onClick={handleSkip} className="bg-zinc-500 text-white hover:bg-zinc-400">
@@ -222,4 +221,3 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
         </Portal>
     )
 }
-
