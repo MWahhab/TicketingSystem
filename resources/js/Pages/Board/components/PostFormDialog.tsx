@@ -117,6 +117,7 @@ export function PostFormDialog({
     const { toast } = useToast()
 
     const [originalDescription, setOriginalDescription] = useState("")
+    const [isDescriptionModified, setIsDescriptionModified] = useState(false)
 
     const defaultValues = task
         ? {
@@ -217,6 +218,7 @@ export function PostFormDialog({
                 },
             })
         }
+        setIsDescriptionModified(false)
     }
 
     const handleDialogClose = () => {
@@ -336,10 +338,10 @@ export function PostFormDialog({
                                                                                     })
 
                                                                                     if (data?.description) {
-                                                                                        // Save the original description only on success
                                                                                         const currentDesc = form.getValues("desc")
                                                                                         setOriginalDescription(currentDesc)
                                                                                         form.setValue("desc", data.description)
+                                                                                        setIsDescriptionModified(true)
 
                                                                                         toast({
                                                                                             title: "Description optimized",
@@ -419,7 +421,7 @@ export function PostFormDialog({
                                                                                     e.preventDefault()
                                                                                     e.stopPropagation()
                                                                                     form.setValue("desc", originalDescription)
-                                                                                    setOriginalDescription("") // Clear undo state so the button hides
+                                                                                    setOriginalDescription("")
                                                                                     toast({
                                                                                         title: "Description restored",
                                                                                         description: "Original description has been restored.",
@@ -448,7 +450,7 @@ export function PostFormDialog({
                                                                         )}
 
                                                                         <Button
-                                                                            disabled={isGeneratingPR}
+                                                                            disabled={isGeneratingPR || isDescriptionModified}
                                                                             onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
@@ -461,7 +463,6 @@ export function PostFormDialog({
                                                                                         post_id: task.id,
                                                                                     })
 
-                                                                                    // Only open the file browser after we get a successful response
                                                                                     if (response.data && response.data.fileStructure) {
                                                                                         setFileStructure(response.data.fileStructure)
                                                                                         setIsFileBrowserOpen(true)
@@ -484,7 +485,9 @@ export function PostFormDialog({
                                                                                 }
                                                                             }}
                                                                             className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
-                                                                            title="Generate PR"
+                                                                            title={
+                                                                                isDescriptionModified ? "Save changes before generating PR" : "Generate PR"
+                                                                            }
                                                                         >
                                                                             {isGeneratingPR ? (
                                                                                 <>
@@ -529,7 +532,7 @@ export function PostFormDialog({
                                                                                         <path d="M13 6h3a2 2 0 0 1 2 2v7" />
                                                                                         <path d="M6 9v12" />
                                                                                     </svg>
-                                                                                    <span>Generate PR</span>
+                                                                                    <span>{isDescriptionModified ? "Save Changes First" : "Generate PR"}</span>
                                                                                 </>
                                                                             )}
                                                                         </Button>
@@ -556,7 +559,12 @@ export function PostFormDialog({
                                                         <FormControl>
                                                             <ExpandableTipTapTextArea
                                                                 value={field.value}
-                                                                onChange={field.onChange}
+                                                                onChange={(value) => {
+                                                                    field.onChange(value)
+                                                                    if (value !== defaultValues.desc) {
+                                                                        setIsDescriptionModified(true)
+                                                                    }
+                                                                }}
                                                                 className="bg-zinc-700 text-white border border-zinc-600 rounded-md focus-within:border-white focus-within:ring-1 focus-within:ring-white"
                                                                 isPreview={isPreview}
                                                                 assignees={assignees}
@@ -799,21 +807,29 @@ export function PostFormDialog({
                         setSelectedPRFiles(files)
                         setIsFileBrowserOpen(false)
                         if (files.length > 0) {
-                            setIsGeneratingPR(true);
-                            Inertia.post("/premium/generate/pr", {
-                                post_id: task.id,
-                                context_files: files.length > 0 ? files : [],
-                            }, {
-                                onFinish: () => setIsGeneratingPR(false),
-                            });
+                            setIsGeneratingPR(true)
+                            Inertia.post(
+                                "/premium/generate/pr",
+                                {
+                                    post_id: task.id,
+                                    context_files: files.length > 0 ? files : [],
+                                },
+                                {
+                                    onFinish: () => setIsGeneratingPR(false),
+                                },
+                            )
                         } else {
-                            setIsGeneratingPR(true);
-                            Inertia.post("/premium/generate/pr", {
-                                post_id: task.id,
-                                context_files: files.length > 0 ? files : [],
-                            }, {
-                                onFinish: () => setIsGeneratingPR(false),
-                            });
+                            setIsGeneratingPR(true)
+                            Inertia.post(
+                                "/premium/generate/pr",
+                                {
+                                    post_id: task.id,
+                                    context_files: files.length > 0 ? files : [],
+                                },
+                                {
+                                    onFinish: () => setIsGeneratingPR(false),
+                                },
+                            )
                         }
                     }}
                     postId={task?.id}
@@ -824,4 +840,3 @@ export function PostFormDialog({
 }
 
 export default React.memo(PostFormDialog)
-
