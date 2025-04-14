@@ -386,6 +386,7 @@ export function PostFormDialog({
                                                                                         setOriginalDescription(currentDesc)
                                                                                         form.setValue("desc", data.description)
                                                                                         setIsDescriptionModified(true)
+                                                                                        setIsPreview(true)
 
                                                                                         toast({
                                                                                             title: "Description optimized",
