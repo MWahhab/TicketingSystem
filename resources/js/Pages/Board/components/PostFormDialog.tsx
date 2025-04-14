@@ -1013,14 +1013,14 @@ export function PostFormDialog({
 
                             if (data?.success) {
                                 toast({
-                                    title: "Pull request successful!",
+                                    title: "Branch successful!",
                                     description: "Your pull request was generated and is ready to be reviewed.",
                                 })
 
                                 await fetchBranches()
                             } else {
                                 toast({
-                                    title: "Pull request failed",
+                                    title: "Branch failed",
                                     description: data?.message || "Unknown error occurred.",
                                     variant: "destructive",
                                 })

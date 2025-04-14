@@ -59,10 +59,12 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
         }
     }
 
-    const deselectItem = (item: FileItem, selected: Set<string>) => {
-        selected.delete(item.path)
+    const deselectItem = (item: FileItem, selected: Set<string>, tokenCounter: { total: number }) => {
+        if (selected.delete(item.path)) {
+            tokenCounter.total -= item.estimatedTokens ?? 0
+        }
         if (item.children?.length) {
-            item.children.forEach((child) => deselectItem(child, selected))
+            item.children.forEach((child) => deselectItem(child, selected, tokenCounter))
         }
     }
 
@@ -88,21 +90,20 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
         const newExpanded = new Set(expandedFolders)
         let newTotal = totalTokens
 
+        const tokenCounter = { total: newTotal }
+
         if (newSelected.has(folder.path)) {
-            deselectItem(folder, newSelected)
-            const tokensRemoved = getTotalTokens(folder)
-            newTotal -= tokensRemoved
+            deselectItem(folder, newSelected, tokenCounter)
         } else {
-            const tokenCounter = { total: newTotal }
             selectItem(folder, newSelected, tokenCounter)
-            newTotal = tokenCounter.total
-            newExpanded.add(folder.id)
+            newExpanded.add(folder.id) // only expand when selecting
         }
 
         setSelectedItems(newSelected)
         setExpandedFolders(newExpanded)
-        setTotalTokens(newTotal)
+        setTotalTokens(Math.max(0, tokenCounter.total))
     }
+
 
     const checkSomeSelected = (folder: FileItem, selected: Set<string>): boolean => {
         if (!folder.children || folder.children.length === 0) return false
