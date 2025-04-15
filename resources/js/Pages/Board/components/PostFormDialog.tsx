@@ -253,11 +253,6 @@ export function PostFormDialog({
 
             if (response.data && response.data.data) {
                 setBranches(response.data.data)
-            } else {
-                toast({
-                    title: "Error",
-                    description: "Failed to load branches",
-                })
             }
         } catch (error) {
             console.error("Error fetching branches:", error)
@@ -289,6 +284,25 @@ export function PostFormDialog({
             setIsDialogOpen(true)
         }
     }
+
+    const checkQueueStatus = async () => {
+        if (!task?.id || !hasPremiumAccess(isPremium)) return
+        try {
+            const { data } = await axios.post("/premium/queue/status", {
+                post_id: task.id,
+            })
+
+            if (data?.queued) {
+                setIsGeneratingPR(true)
+            }
+        } catch (err) {
+            console.error("Failed to check queue status:", err)
+        }
+    }
+
+    useEffect(() => {
+        checkQueueStatus()
+    }, [])
 
     return (
         <>
@@ -1027,9 +1041,11 @@ export function PostFormDialog({
                                 })
                             }
                         } catch (err) {
+                            const message = err?.response?.data?.message
+
                             toast({
-                                title: "Server error",
-                                description: "An unexpected error occurred while generating the pull request.",
+                                title: "Branch failed",
+                                description: message || "An unexpected error occurred while generating the pull request.",
                                 variant: "destructive",
                             })
                         } finally {

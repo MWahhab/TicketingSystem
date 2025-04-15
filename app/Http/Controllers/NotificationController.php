@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use PremiumAddons\services\PremiumSubscriptionService;
 
 
 class NotificationController extends Controller
@@ -87,8 +88,8 @@ class NotificationController extends Controller
             ->toArray();
 
         $subscriptionTier = SubscriptionTierEnums::STANDARD->value;
-        if (class_exists(\PremiumAddons\services\PremiumSubscriptionService::class)) {
-            $subscriptionService = new \PremiumAddons\services\PremiumSubscriptionService();
+        if (class_exists(PremiumSubscriptionService::class)) {
+            $subscriptionService = new PremiumSubscriptionService();
             $subscriptionTier    = $subscriptionService->getSubscriptionTier();
         }
 

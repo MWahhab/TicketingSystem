@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use PremiumAddons\controllers\PremiumSettingsController;
 use PremiumAddons\controllers\PremiumSubscriptionsController;
+use PremiumAddons\controllers\PRQueueController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -56,6 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/premium/generate/pr', [PremiumSubscriptionsController::class, 'generatePullRequest']);
     Route::post('/premium/file-structure/get', [PremiumSubscriptionsController::class, 'getFileStructure']);
     Route::post('/premium/branches/get', [PremiumSubscriptionsController::class, 'getBranches']);
+    Route::post('/premium/queue/status', [PRQueueController::class, 'getQueueStatus']);
 });
 
 require __DIR__.'/auth.php';
