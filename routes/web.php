@@ -47,17 +47,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/notifications/mark-as-seen', [NotificationController::class, 'markAsSeen']);
 
     // PREMIUM ROUTE
-    Route::resource('premiumSettings', PremiumSettingsController::class);
-    Route::get('/premiumSettings/board/{fid_board}/edit', [PremiumSettingsController::class, 'editByBoard']);
-    Route::get('/premiumSettings/board/{fid_board}/copy', [PremiumSettingsController::class, 'copy']);
+    if (is_dir(base_path('PremiumAddons'))) {
+        Route::resource('premiumSettings', PremiumSettingsController::class);
+        Route::get('/premiumSettings/board/{fid_board}/edit', [PremiumSettingsController::class, 'editByBoard']);
+        Route::get('/premiumSettings/board/{fid_board}/copy', [PremiumSettingsController::class, 'copy']);
 
-    Route::get('/premium/status', [PremiumSubscriptionsController::class, 'status']);
+        Route::get('/premium/status', [PremiumSubscriptionsController::class, 'status']);
 
-    Route::post('/premium/description/optimise', [PremiumSubscriptionsController::class, 'optimiseDescription']);
-    Route::post('/premium/generate/pr', [PremiumSubscriptionsController::class, 'generatePullRequest']);
-    Route::post('/premium/file-structure/get', [PremiumSubscriptionsController::class, 'getFileStructure']);
-    Route::post('/premium/branches/get', [PremiumSubscriptionsController::class, 'getBranches']);
-    Route::post('/premium/queue/status', [PRQueueController::class, 'getQueueStatus']);
+        Route::post('/premium/description/optimise', [PremiumSubscriptionsController::class, 'optimiseDescription']);
+        Route::post('/premium/generate/pr', [PremiumSubscriptionsController::class, 'generatePullRequest']);
+        Route::post('/premium/file-structure/get', [PremiumSubscriptionsController::class, 'getFileStructure']);
+        Route::post('/premium/branches/get', [PremiumSubscriptionsController::class, 'getBranches']);
+        Route::post('/premium/queue/status', [PRQueueController::class, 'getQueueStatus']);
+    }
 });
 
 require __DIR__.'/auth.php';

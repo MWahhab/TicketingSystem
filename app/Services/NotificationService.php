@@ -13,6 +13,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use PremiumAddons\models\PRQueue;
 
 class NotificationService
 {
@@ -42,6 +43,11 @@ class NotificationService
 
                 break;
             case $object instanceof BoardConfig:
+
+                break;
+            case is_dir(base_path('PremiumAddons')) && $object instanceof PRQueue:
+                $notifications = $this->parsePRQueueNotifications($object);
+                Notification::insert($notifications);
                 break;
             default:
                 throw new \InvalidArgumentException('Unsupported object type for notification.');
@@ -420,4 +426,80 @@ class NotificationService
 
         return $notifications;
     }
+
+    /**
+     * @param PRQueue $object $object
+     * @return array
+     */
+    private function parsePRQueueNotifications(PRQueue $object): array
+    {
+        $post           = $object->post()->with('board')->first();
+        $boardName      = $post->board->title;
+        $truncatedTitle = Str::limit($post->title, 5, '...');
+
+        $recipients = [
+            $post->assignee_id,
+            $post->fid_user,
+        ];
+
+        $messages = [];
+
+        $changes = $object->getChanges();
+        if (empty($changes)) {
+            $submitter = User::find($object->fid_user)->name;
+            $messages[] = sprintf(
+                '%s submitted branch generation on post #%d: %s (%s)',
+                $submitter,
+                $post->id,
+                $truncatedTitle,
+                $boardName
+            );
+        } else {
+            if (isset($changes['outcome'])) {
+                $statusMap = [
+                    'success' => 'successful',
+                    'failed'  => 'failed',
+                ];
+
+                $status = $statusMap[$object->outcome] ?? null;
+                if (! $status) {
+                    return [];
+                }
+
+                $messages[] = sprintf(
+                    'Branch creation %s on post #%d: %s',
+                    $status,
+                    $post->id,
+                    $truncatedTitle
+                );
+            }
+        }
+
+        if (empty($messages)) {
+            return [];
+        }
+
+        $notifications = [];
+        $actorId       = $object->fid_user;
+
+        $recipients = array_unique($recipients);
+
+        foreach ($recipients as $recipientId) {
+            foreach ($messages as $content) {
+                $notifications[] = [
+                    'created_by' => $actorId,
+                    'type'       => NotificationTypeEnums::BRANCH->value,
+                    'content'    => $content,
+                    'fid_post'   => $post->id,
+                    'fid_board'  => $post->fid_board,
+                    'fid_user'   => $recipientId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+        }
+
+        return $notifications;
+    }
+
 }

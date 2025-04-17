@@ -8,4 +8,5 @@ enum NotificationTypeEnums: string
     case POST         = 'post';
     case BOARD        = 'board';
     case LINKED_ISSUE = 'linked_issue';
+    case BRANCH       = 'branch';
 }

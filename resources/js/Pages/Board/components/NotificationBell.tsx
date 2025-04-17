@@ -1,111 +1,111 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect } from "react";
-import { Bell, X, MessageSquare, FileText, Layout, Link } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import axios from "axios";
-import { useBoardContext } from "../BoardContext";
-import { router } from "@inertiajs/react";
+import { useState, useEffect } from "react"
+import { Bell, X, MessageSquare, FileText, Layout, Link, GitBranch } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import axios from "axios"
+import { useBoardContext } from "../BoardContext"
+import { router } from "@inertiajs/react"
 
 interface Notification {
-    id: string;
-    fid_post: string;
-    fid_board: string;
-    content: string;
-    time: string;
-    type: "comment" | "post" | "board" | "linked_issue";
-    additionalCount: number;
-    seen: boolean;
+    id: string
+    fid_post: string
+    fid_board: string
+    content: string
+    time: string
+    type: "comment" | "post" | "board" | "linked_issue" | "branch"
+    additionalCount: number
+    seen: boolean
 }
 
 const typeColors = {
     comment: "bg-blue-500",
     post: "bg-green-500",
     board: "bg-purple-500",
-    linked_issue: "bg-purple-500"
-};
+    linked_issue: "bg-purple-500",
+    branch: "bg-violet-500",
+}
 
 const typeIcons = {
     comment: MessageSquare,
     post: FileText,
     board: Layout,
-    linked_issue: Link
-};
+    linked_issue: Link,
+    branch: GitBranch,
+}
 
 const useNotifications = () => {
-    const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [unseenCount, setUnseenCount] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [notifications, setNotifications] = useState<Notification[]>([])
+    const [unseenCount, setUnseenCount] = useState(0)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
     const fetchNotifications = async () => {
         try {
-            const response = await axios.get("/api/notifications");
-            setNotifications(response.data.notifications);
-            setUnseenCount(response.data.unseenCount);
-            setLoading(false);
+            const response = await axios.get("/api/notifications")
+            setNotifications(response.data.notifications)
+            setUnseenCount(response.data.unseenCount)
+            setLoading(false)
         } catch (err) {
-            setError("Failed to fetch notifications");
-            setLoading(false);
+            setError("Failed to fetch notifications")
+            setLoading(false)
         }
-    };
+    }
 
     useEffect(() => {
-        fetchNotifications();
-        const interval = setInterval(fetchNotifications, 60000); // Refresh every minute
-        return () => clearInterval(interval);
-    }, []);
+        fetchNotifications()
+        const interval = setInterval(fetchNotifications, 60000) // Refresh every minute
+        return () => clearInterval(interval)
+    }, [])
 
-    return { notifications, unseenCount, loading, error, refetch: fetchNotifications };
-};
+    return { notifications, unseenCount, loading, error, refetch: fetchNotifications }
+}
 
 /**
  * Export default as you had, but we'll rename it to InlineNotificationCenter
  * so it matches how you're importing it in BoardLayout.
  */
 export default function InlineNotificationCenter() {
-    const { boardId: currentBoardId, openDialog } = useBoardContext();
-    const { notifications, unseenCount, loading, error, refetch } = useNotifications();
-    const [isOpen, setIsOpen] = useState(false);
+    const { boardId: currentBoardId, openDialog } = useBoardContext()
+    const { notifications, unseenCount, loading, error, refetch } = useNotifications()
+    const [isOpen, setIsOpen] = useState(false)
 
     const handleClose = () => {
         if (unseenCount > 0) {
             axios
                 .post("/api/notifications/mark-as-seen")
                 .then(() => refetch())
-                .catch((error) =>
-                    console.error("Error marking notifications as seen:", error)
-                );
+                .catch((error) => console.error("Error marking notifications as seen:", error))
         }
-        setIsOpen(false);
-    };
+        setIsOpen(false)
+    }
 
     const handleBellClick = () => {
         if (isOpen) {
-            handleClose();
+            handleClose()
         } else {
-            setIsOpen(true);
+            setIsOpen(true)
         }
-    };
+    }
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
+    if (loading) return <div>Loading...</div>
+    if (error) return <div>Error: {error}</div>
 
     function onNotificationClick(notification: Notification) {
-        const { fid_post, fid_board } = notification;
+        const { fid_post, fid_board } = notification
         if (fid_board === currentBoardId) {
-            openDialog(fid_post);
+            openDialog(fid_post)
         } else {
-            router.get(`/boards?board_id=${fid_board}&openTask=${fid_post}`);
+            router.get(`/boards?board_id=${fid_board}&openTask=${fid_post}`)
         }
     }
 
     function renderNotificationsInner(notifs: Notification[]) {
         return notifs.map((notification) => {
-            const IconComponent = typeIcons[notification.type];
+            const IconComponent = typeIcons[notification.type]
             return (
                 <div
                     key={notification.id}
@@ -113,9 +113,7 @@ export default function InlineNotificationCenter() {
                     data-notification-post-id={notification.fid_post}
                     data-notification-board-id={notification.fid_board}
                     className={`p-4 border-b cursor-pointer last:border-b-0 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 ${
-                        notification.seen
-                            ? "bg-white dark:bg-gray-800"
-                            : "bg-blue-50 dark:bg-blue-900"
+                        notification.seen ? "bg-white dark:bg-gray-800" : "bg-blue-50 dark:bg-blue-900"
                     }`}
                 >
                     <div className="flex items-start space-x-4">
@@ -125,9 +123,7 @@ export default function InlineNotificationCenter() {
                         <div className="flex-1 min-w-0">
                             <p
                                 className={`text-sm font-medium mb-1 line-clamp-2 ${
-                                    notification.seen
-                                        ? "text-gray-900 dark:text-gray-100"
-                                        : "text-blue-800 dark:text-blue-200"
+                                    notification.seen ? "text-gray-900 dark:text-gray-100" : "text-blue-800 dark:text-blue-200"
                                 }`}
                             >
                                 {notification.content}
@@ -138,21 +134,15 @@ export default function InlineNotificationCenter() {
                                 </p>
                             )}
                             <div className="flex items-center space-x-2">
-                <span
-                    className={`inline-block w-2 h-2 rounded-full ${typeColors[notification.type]}`}
-                />
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {notification.time}
-                                </p>
+                                <span className={`inline-block w-2 h-2 rounded-full ${typeColors[notification.type]}`} />
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{notification.time}</p>
                             </div>
                         </div>
-                        {!notification.seen && (
-                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        )}
+                        {!notification.seen && <div className="w-2 h-2 bg-red-500 rounded-full"></div>}
                     </div>
                 </div>
-            );
-        });
+            )
+        })
     }
 
     return (
@@ -165,10 +155,7 @@ export default function InlineNotificationCenter() {
             >
                 <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                 {unseenCount > 0 && (
-                    <Badge
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold"
-                    >
+                    <Badge variant="destructive" className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold">
                         {unseenCount}
                     </Badge>
                 )}
@@ -176,19 +163,14 @@ export default function InlineNotificationCenter() {
             {isOpen && (
                 <div className="absolute bottom-16 right-0 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
                     <div className="p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
-                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                            Notifications
-                        </h3>
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Notifications</h3>
                         <Button variant="ghost" size="icon" onClick={handleClose}>
                             <X className="h-4 w-4 text-gray-600 dark:text-gray-300" />
                         </Button>
                     </div>
                     <Tabs defaultValue="all" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-700 p-1">
-                            <TabsTrigger
-                                value="all"
-                                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"
-                            >
+                        <TabsList className="grid w-full grid-cols-4 bg-gray-100 dark:bg-gray-700 p-1">
+                            <TabsTrigger value="all" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600">
                                 All
                             </TabsTrigger>
                             <TabsTrigger
@@ -197,31 +179,28 @@ export default function InlineNotificationCenter() {
                             >
                                 Comments
                             </TabsTrigger>
-                            <TabsTrigger
-                                value="post"
-                                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"
-                            >
+                            <TabsTrigger value="post" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600">
                                 Posts
+                            </TabsTrigger>
+                            <TabsTrigger value="branch" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600">
+                                Branches
                             </TabsTrigger>
                         </TabsList>
                         <ScrollArea className="h-[300px] overflow-y-auto">
-                            <TabsContent value="all">
-                                {renderNotificationsInner(notifications)}
-                            </TabsContent>
+                            <TabsContent value="all">{renderNotificationsInner(notifications)}</TabsContent>
                             <TabsContent value="comment">
-                                {renderNotificationsInner(
-                                    notifications.filter((n) => n.type === "comment")
-                                )}
+                                {renderNotificationsInner(notifications.filter((n) => n.type === "comment"))}
                             </TabsContent>
                             <TabsContent value="post">
-                                {renderNotificationsInner(
-                                    notifications.filter((n) => n.type === "post")
-                                )}
+                                {renderNotificationsInner(notifications.filter((n) => n.type === "post"))}
+                            </TabsContent>
+                            <TabsContent value="branch">
+                                {renderNotificationsInner(notifications.filter((n) => n.type === "branch"))}
                             </TabsContent>
                         </ScrollArea>
                     </Tabs>
                 </div>
             )}
         </div>
-    );
+    )
 }
