@@ -253,6 +253,9 @@ export function PostFormDialog({
 
             if (response.data && response.data.data) {
                 setBranches(response.data.data)
+                if (isGeneratingPR && response.data.data.length > 0) {
+                    setIsGeneratingPR(false)
+                }
             }
         } catch (error) {
             console.error("Error fetching branches:", error)
@@ -1028,8 +1031,8 @@ export function PostFormDialog({
 
                             if (data?.success) {
                                 toast({
-                                    title: "Branch successful!",
-                                    description: "Your pull request was generated and is ready to be reviewed.",
+                                    title: "Queued successfully!",
+                                    description: data.message,
                                 })
 
                                 await fetchBranches()
@@ -1039,6 +1042,8 @@ export function PostFormDialog({
                                     description: data?.message || "Unknown error occurred.",
                                     variant: "destructive",
                                 })
+
+                                setIsGeneratingPR(false)
                             }
                         } catch (err) {
                             const message = err?.response?.data?.message
@@ -1048,7 +1053,7 @@ export function PostFormDialog({
                                 description: message || "An unexpected error occurred while generating the pull request.",
                                 variant: "destructive",
                             })
-                        } finally {
+
                             setIsGeneratingPR(false)
                         }
                     }}
