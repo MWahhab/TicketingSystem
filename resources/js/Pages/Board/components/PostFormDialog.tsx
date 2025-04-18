@@ -503,6 +503,7 @@ export function PostFormDialog({
                                                                                     e.stopPropagation()
                                                                                     form.setValue("desc", originalDescription)
                                                                                     setOriginalDescription("")
+                                                                                    setIsDescriptionModified(false)
                                                                                     toast({
                                                                                         title: "Description restored",
                                                                                         description: "Original description has been restored.",
