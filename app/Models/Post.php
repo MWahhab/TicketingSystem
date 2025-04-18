@@ -27,7 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  *
  * @property-read User $assignee
- * @property-read User $author
+ * @property-read User $creator
  * @property-read BoardConfig $board
  */
 class Post extends Model implements NotificationServiceInterface

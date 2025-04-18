@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\NotificationTypeEnums;
-use app\Interfaces\NotificationServiceInterface;
 use App\Models\BoardConfig;
 use App\Models\Comment;
 use App\Models\LinkedIssues;
@@ -13,7 +12,9 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use PremiumAddons\enums\PRQueueOutcomeEnum;
 use PremiumAddons\models\PRQueue;
+use PremiumAddons\services\PRQueueService;
 
 class NotificationService
 {
@@ -428,78 +429,98 @@ class NotificationService
     }
 
     /**
-     * @param PRQueue $object $object
+     * @param PRQueue $queue
      * @return array
      */
-    private function parsePRQueueNotifications(PRQueue $object): array
+    private function parsePRQueueNotifications(PRQueue $queue): array
     {
-        $post           = $object->post()->with('board')->first();
-        $boardName      = $post->board->title;
-        $truncatedTitle = Str::limit($post->title, 5, '...');
+        $post       = $queue->post()->with(['board', 'creator'])->firstOrFail();
+        $title      = Str::limit($post->title, 5, '…');
+        $changes    = $queue->getChanges();
+        $maxRetries = PRQueueService::MAX_RETRIES;
 
-        $recipients = [
-            $post->assignee_id,
-            $post->fid_user,
-        ];
+        $event = $this->classifyQueueEvent($queue, $changes, $maxRetries);
 
-        $messages = [];
-
-        $changes = $object->getChanges();
-        if (empty($changes)) {
-            $submitter = User::find($object->fid_user)->name;
-            $messages[] = sprintf(
-                '%s submitted branch generation on post #%d: %s (%s)',
-                $submitter,
-                $post->id,
-                $truncatedTitle,
-                $boardName
-            );
-        } else {
-            if (isset($changes['outcome'])) {
-                $statusMap = [
-                    'success' => 'successful',
-                    'failed'  => 'failed',
-                ];
-
-                $status = $statusMap[$object->outcome] ?? null;
-                if (! $status) {
-                    return [];
-                }
-
-                $messages[] = sprintf(
-                    'Branch creation %s on post #%d: %s',
-                    $status,
-                    $post->id,
-                    $truncatedTitle
-                );
-            }
-        }
-
-        if (empty($messages)) {
+        if (!$event) {
             return [];
         }
 
-        $notifications = [];
-        $actorId       = $object->fid_user;
+        $message      = $this->renderQueueNotification($event, $post, $title);
+        $actorId      = $queue->fid_user;
+        $recipientIds = array_unique([$post->assignee_id, $actorId]);
+        $now          = now();
 
-        $recipients = array_unique($recipients);
-
-        foreach ($recipients as $recipientId) {
-            foreach ($messages as $content) {
-                $notifications[] = [
-                    'created_by' => $actorId,
-                    'type'       => NotificationTypeEnums::BRANCH->value,
-                    'content'    => $content,
-                    'fid_post'   => $post->id,
-                    'fid_board'  => $post->fid_board,
-                    'fid_user'   => $recipientId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-        }
-
-        return $notifications;
+        return array_map(fn($userId) => [
+            'created_by' => $actorId,
+            'type'       => NotificationTypeEnums::BRANCH->value,
+            'content'    => $message,
+            'fid_post'   => $post->id,
+            'fid_board'  => $post->fid_board,
+            'fid_user'   => $userId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $recipientIds);
     }
 
+    private function renderQueueNotification(string $event, Post $post, string $title): string
+    {
+        $board = $post->board->title;
+
+        return match ($event) {
+            'submitted' => sprintf(
+                '%s submitted branch generation on post #%d: %s (%s)',
+                $post->creator->name,
+                $post->id,
+                $title,
+                $board
+            ),
+            'max_retries_failed' => sprintf(
+                'Branch generation failed on post #%d: %s (%s). '
+                . 'Reached the maximum number of retry attempts. '
+                . 'Try splitting the issue into smaller parts and try again.',
+                $post->id,
+                $title,
+                $board
+            ),
+            'outcome_success' => sprintf(
+                'Branch creation successful on post #%d: %s (%s)',
+                $post->id,
+                $title,
+                $board
+            ),
+            'outcome_failed' => sprintf(
+                'Branch creation failed on post #%d: %s (%s)',
+                $post->id,
+                $title,
+                $board
+            ),
+            default => throw new \RuntimeException("Unknown event: {$event}"),
+        };
+    }
+
+    /**
+     * @param PRQueue $queue
+     * @param array   $changes
+     * @param int     $maxRetries
+     * @return string|null
+     */
+    private function classifyQueueEvent(PRQueue $queue, array $changes, int $maxRetries): ?string
+    {
+        if (empty($changes)) {
+            return 'submitted';
+        }
+
+        if (isset($changes['outcome']) &&
+            $queue->retries >= $maxRetries &&
+            $queue->outcome === PRQueueOutcomeEnum::Failure->value)
+        {
+            return 'max_retries_failed';
+        }
+
+        if (isset($changes['outcome'])) {
+            return $queue->outcome === 'success' ? 'outcome_success' : 'outcome_failed';
+        }
+
+        return null;
+    }
 }
