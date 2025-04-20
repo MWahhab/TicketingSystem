@@ -1,160 +1,200 @@
 import type React from "react"
-import { diffWords } from "diff"
+import { diffChars, diffLines } from "diff"
+
+// Helper function to strip HTML tags while preserving word boundaries
+const stripHtml = (html: string): string => {
+  if (!html) return ""
+  return html
+      .replace(/<br\s*\/?>/gi, " ")
+      .replace(/<\/?[^>]+(>|$)/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+}
 
 interface DiffViewerProps {
   oldText: string
   newText: string
+  mode?: "inline" | "side-by-side"
+  stripTags?: boolean
 }
 
-const DiffViewer: React.FC<DiffViewerProps> = ({ oldText, newText }) => {
-  // Parse HTML to extract structured content
-  const parseHTML = (html: string) => {
-    try {
-      // Create a temporary DOM element
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(html, "text/html")
-
-      // Extract elements
-      const elements: { type: string; content: string }[] = []
-
-      // Process heading elements
-      const headings = doc.querySelectorAll("h1, h2, h3, h4, h5, h6")
-      headings.forEach((heading) => {
-        elements.push({
-          type: heading.tagName.toLowerCase(),
-          content: heading.textContent || "",
-        })
-      })
-
-      // Process paragraphs and list items
-      const paragraphs = doc.querySelectorAll("p, li")
-      paragraphs.forEach((p) => {
-        elements.push({
-          type: p.tagName.toLowerCase(),
-          content: p.textContent || "",
-        })
-      })
-
-      return elements
-    } catch (error) {
-      console.error("Error parsing HTML:", error)
-      return [{ type: "text", content: html }]
+const DiffViewer: React.FC<DiffViewerProps> = ({ oldText, newText, mode = "inline", stripTags = true }) => {
+  // Process text based on stripTags option
+  const processText = (text: string): string => {
+    let processed = text || ""
+    if (stripTags) {
+      processed = stripHtml(processed)
     }
+    return processed
   }
 
-  // Extract structured content from both HTML strings
-  const oldElements = parseHTML(oldText)
-  const newElements = parseHTML(newText)
+  const processedOldText = processText(oldText)
+  const processedNewText = processText(newText)
 
-  // Compare elements by type and find differences
-  const renderDiff = () => {
-    const results: JSX.Element[] = []
+  // Pre-tokenize the text to ensure word boundaries are preserved
+  const tokenizeText = (text: string): string => {
+    // Add a special non-printing character after each word boundary
+    // This ensures spaces are properly preserved in the diff
+    return text.replace(/(\S)(\s+)(\S)/g, '$1$2\u200B$3');
+  }
 
-    // First, compare headings (they're usually what changes)
-    const oldHeadings = oldElements.filter((el) => el.type.startsWith("h"))
-    const newHeadings = newElements.filter((el) => el.type.startsWith("h"))
+  // Simple text-only diff that focuses on showing only what changed
+  const renderSimpleDiff = () => {
+    // Use pre-tokenized character-level diff
+    const charDiff = diffChars(
+        tokenizeText(processedOldText),
+        tokenizeText(processedNewText)
+    )
 
-    if (oldHeadings.length > 0 || newHeadings.length > 0) {
-      results.push(
-          <div key="headings" className="mb-4">
-            <h4 className="text-xs font-medium text-zinc-400 mb-2">Headings</h4>
-            {oldHeadings.length > 0 && newHeadings.length > 0 ? (
-                // Compare heading content
-                renderTextDiff(oldHeadings[0].content, newHeadings[0].content)
-            ) : (
-                // One side has a heading, the other doesn't
-                <div className="flex flex-col gap-2">
-                  {oldHeadings.length > 0 && (
-                      <div className="bg-red-900/30 border-l-2 border-red-500 py-1 px-2">{oldHeadings[0].content}</div>
-                  )}
-                  {newHeadings.length > 0 && (
-                      <div className="bg-green-900/30 border-l-2 border-green-500 py-1 px-2">{newHeadings[0].content}</div>
-                  )}
-                </div>
-            )}
-          </div>,
+    // Post-process to remove the special character
+    const processedDiff = charDiff.map(part => ({
+      ...part,
+      value: part.value.replace(/\u200B/g, '')
+    }));
+
+    // If the diff is small enough, show character-level changes
+    if (processedDiff.length < 200) {
+      return (
+          <div className="flex flex-wrap">
+            {processedDiff.map((part, index) => {
+              // Skip rendering large unchanged parts to focus on changes
+              if (!part.added && !part.removed && part.value.length > 100) {
+                const start = part.value.substring(0, 40)
+                const end = part.value.substring(part.value.length - 40)
+                return (
+                    <span key={index} className="text-gray-400">
+                      {start}
+                      <span className="text-gray-500"> [...] </span>
+                      {end}
+                    </span>
+                )
+              }
+
+              // Only apply styling to added or removed parts
+              const className = part.added
+                  ? "bg-green-900/30 border-green-500 border-b"
+                  : part.removed
+                      ? "bg-red-900/30 border-red-500 border-b"
+                      : ""
+
+              return (
+                  <span key={index} className={className}>
+                    {part.value}
+                  </span>
+              )
+            })}
+          </div>
       )
     }
 
-    // Compare paragraphs and list items
-    const oldContent = oldElements.filter((el) => !el.type.startsWith("h"))
-    const newContent = newElements.filter((el) => !el.type.startsWith("h"))
-
-    // Only show content diff if there are actual differences
-    let contentDiffers = false
-
-    if (oldContent.length !== newContent.length) {
-      contentDiffers = true
-    } else {
-      for (let i = 0; i < oldContent.length; i++) {
-        if (oldContent[i].content !== newContent[i].content) {
-          contentDiffers = true
-          break
-        }
-      }
-    }
-
-    if (contentDiffers) {
-      results.push(
-          <div key="content" className="mt-4">
-            <h4 className="text-xs font-medium text-zinc-400 mb-2">Content</h4>
-            <div className="flex flex-col gap-2">
-              {oldContent.map((el, i) => {
-                const newEl = newContent[i]
-                if (!newEl || el.content !== newEl.content) {
-                  return (
-                      <div key={`old-${i}`} className="bg-red-900/30 border-l-2 border-red-500 py-1 px-2">
-                        {el.content}
-                      </div>
-                  )
-                }
-                return null
-              })}
-
-              {newContent.map((el, i) => {
-                const oldEl = oldContent[i]
-                if (!oldEl || el.content !== oldEl.content) {
-                  return (
-                      <div key={`new-${i}`} className="bg-green-900/30 border-l-2 border-green-500 py-1 px-2">
-                        {el.content}
-                      </div>
-                  )
-                }
-                return null
-              })}
-            </div>
-          </div>,
-      )
-    }
-
-    return results
-  }
-
-  // Render word-by-word diff for text
-  const renderTextDiff = (oldText: string, newText: string) => {
-    const diff = diffWords(oldText, newText)
+    // For larger diffs, use line-by-line comparison
+    const lineDiff = diffLines(processedOldText, processedNewText)
 
     return (
-        <div className="flex flex-wrap">
-          {diff.map((part, index) => {
+        <div className="flex flex-col gap-1">
+          {lineDiff.map((part, index) => {
+            if (!part.added && !part.removed) {
+              // For unchanged parts, only show context around changes
+              const lines = part.value.split("\n")
+              let displayText = part.value
+
+              if (lines.length > 4) {
+                // Show only first and last two lines for context
+                const firstLines = lines.slice(0, 2).join("\n")
+                const lastLines = lines.slice(-2).join("\n")
+                displayText = `${firstLines}\n[...]\n${lastLines}`
+              }
+
+              return (
+                  <span key={index} className="text-gray-400">
+                    {displayText}
+                  </span>
+              )
+            }
+
             const className = part.added
-                ? "bg-green-900/30 border-green-500 border-b"
-                : part.removed
-                    ? "bg-red-900/30 border-red-500 border-b"
-                    : ""
+                ? "bg-green-900/30 border-l-2 border-green-500 pl-2"
+                : "bg-red-900/30 border-l-2 border-red-500 pl-2"
 
             return (
-                <span key={index} className={className}>
-              {part.value}
-            </span>
+                <div key={index} className={className}>
+                  {part.value}
+                </div>
             )
           })}
         </div>
     )
   }
 
-  return <div className="text-sm">{renderDiff()}</div>
+  // Side by side diff view with improved highlighting
+  const renderSideBySideDiff = () => {
+    // Use pre-tokenized character-level diff
+    const charDiff = diffChars(
+        tokenizeText(processedOldText),
+        tokenizeText(processedNewText)
+    )
+
+    // Post-process to remove the special character
+    const processedDiff = charDiff.map(part => ({
+      ...part,
+      value: part.value.replace(/\u200B/g, '')
+    }));
+
+    // Extract the left side (old text) with highlighting
+    const oldTextHighlighted = (
+        <div className="whitespace-pre-wrap">
+          {processedDiff.map((part, index) => {
+            if (part.removed) {
+              return (
+                  <span key={index} className="bg-red-900/30 border-red-500 border-b">
+                    {part.value}
+                  </span>
+              )
+            } else if (!part.added) {
+              return <span key={index}>{part.value}</span>
+            }
+            return null
+          })}
+        </div>
+    )
+
+    // Extract the right side (new text) with highlighting
+    const newTextHighlighted = (
+        <div className="whitespace-pre-wrap">
+          {processedDiff.map((part, index) => {
+            if (part.added) {
+              return (
+                  <span key={index} className="bg-green-900/30 border-green-500 border-b">
+                    {part.value}
+                  </span>
+              )
+            } else if (!part.removed) {
+              return <span key={index}>{part.value}</span>
+            }
+            return null
+          })}
+        </div>
+    )
+
+    return (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="border-r pr-4">
+            <h4 className="text-xs font-medium text-zinc-400 mb-2">Previous</h4>
+            {oldTextHighlighted}
+          </div>
+          <div>
+            <h4 className="text-xs font-medium text-zinc-400 mb-2">Current</h4>
+            {newTextHighlighted}
+          </div>
+        </div>
+    )
+  }
+
+  return (
+      <div className="text-sm">
+        {mode === "side-by-side" ? renderSideBySideDiff() : renderSimpleDiff()}
+      </div>
+  )
 }
 
 export default DiffViewer
-
