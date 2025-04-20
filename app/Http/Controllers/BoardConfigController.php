@@ -20,35 +20,12 @@ class BoardConfigController extends Controller
      */
     public function index(Request $request, BoardService $boardService): Response
     {
-        $dateFrom  = null;
-        $dateTo    = null;
         $dateField = $request->input('date_field', 'created_at');
 
         try {
-            if ($request->has('date_from') && !empty($request->input('date_from'))) {
-                $dateFrom = Carbon::parse($request->input('date_from'))->startOfDay();
-            }
-
-            if ($request->has('date_to') && !empty($request->input('date_to'))) {
-                $dateTo = Carbon::parse($request->input('date_to'))->endOfDay();
-            } elseif ($dateFrom !== null) {
-                $dateTo = $dateFrom->copy()->endOfDay();
-            }
+            list($dateFrom, $dateTo) = $this->parseDates($request);
         } catch (\Exception $e) {
-            return Inertia::render('Board/Index', [
-                'columns'       => [],
-                'posts'         => [],
-                'boards'        => [],
-                'boardsColumns' => [],
-                'assignees'     => [],
-                'priorities'    => PrioritiesEnum::cases(),
-                'boardTitle'    => 'Invalid Date Format',
-                'boardId'       => null,
-                'dateField'     => 'created_at',
-                'authUserId'    => Auth::id(),
-                'openPostId'    => null,
-                'error'         => 'Invalid date format provided. Please use a valid date format (e.g., YYYY-MM-DD).'
-            ]);
+            return $this->emptyResponse();
         }
 
         $validDateFields = ['created_at', 'updated_at', 'deadline'];
@@ -155,6 +132,46 @@ class BoardConfigController extends Controller
         $board->delete();
 
         return redirect()->route("boards.index", ["board_id" => null])->with("Success! ", "Board deleted");
+    }
+
+    private function emptyResponse(): Response
+    {
+        return Inertia::render('Board/Index', [
+            'columns'       => [],
+            'posts'         => [],
+            'boards'        => [],
+            'boardsColumns' => [],
+            'assignees'     => [],
+            'priorities'    => PrioritiesEnum::cases(),
+            'boardTitle'    => 'Invalid Date Format',
+            'boardId'       => null,
+            'dateField'     => 'created_at',
+            'authUserId'    => Auth::id(),
+            'openPostId'    => null,
+            'error'         => 'Invalid date format provided. Please use a valid date format (e.g., YYYY-MM-DD).'
+        ]);
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     */
+    public function parseDates(Request $request): array
+    {
+        $dateFrom = null;
+        $dateTo   = null;
+
+        if ($request->has('date_from') && !empty($request->input('date_from'))) {
+            $dateFrom = Carbon::parse($request->input('date_from'))->startOfDay();
+        }
+
+        if ($request->has('date_to') && !empty($request->input('date_to'))) {
+            $dateTo = Carbon::parse($request->input('date_to'))->endOfDay();
+        } elseif ($dateFrom !== null) {
+            $dateTo = $dateFrom->copy()->endOfDay();
+        }
+
+        return array($dateFrom, $dateTo);
     }
 }
 

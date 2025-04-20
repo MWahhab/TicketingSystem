@@ -37,30 +37,11 @@ class PostController extends Controller
      */
     public function store(Request $request, ImageService $imageService): Response
     {
-        $validated = $request->validate([
-            'title'         => 'required|string|max:255',
-            'desc'          => 'required|string',
-            'priority'      => 'required|string|max:255',
-            'column'        => 'required|string|max:255',
-            'assignee_id'   => 'required|exists:users,id',
-            'deadline'      => 'nullable|date',
-            'fid_board'     => 'required|exists:board_configs,id',
-            'migrated_from' => 'nullable|string'
-        ]);
+        $validated = $this->validatePost($request);
 
-        $descWithImages = $imageService->handlePostImages($validated['desc']);
-
-        $post = Post::create([
-            'title'         => $validated['title'],
-            'desc'          => $descWithImages,
-            'priority'      => $validated['priority'],
-            'column'        => $validated['column'],
-            'assignee_id'   => $validated['assignee_id'],
-            'deadline'      => $validated['deadline'],
-            'fid_board'     => $validated['fid_board'],
-            'fid_user'      => Auth::id(),
-            'migrated_from' => $validated['migrated_from'] ?? null
-        ]);
+        $validated['desc']      = $imageService->handlePostImages($validated['desc']);
+        $validated['fid_user']  = Auth::id();
+        $post                   = Post::create($validated);
 
         $post->notify();
 
@@ -116,17 +97,8 @@ class PostController extends Controller
      */
     public function update(Request $request, Post $post, ImageService $imageService): Response
     {
-        $validated = $request->validate([
-            'title'        => 'required|string|max:255',
-            'desc'         => 'required|string',
-            'priority'     => 'required|string|max:255',
-            'column'       => 'required|string|max:255',
-            'assignee_id'  => 'required|exists:users,id',
-            'deadline'     => 'nullable|date',
-            'fid_board'    => 'required|exists:board_configs,id'
-        ]);
-
-        $original = clone($post);
+        $validated = $this->validatePost($request);
+        $original  = clone($post);
 
         $descWithImages = $imageService->handlePostImages($validated['desc'], $original->desc);
 
@@ -173,5 +145,23 @@ class PostController extends Controller
         $post->delete();
 
         return Inertia::location('/boards/?board_id=' . $boardFid);
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     */
+    private function validatePost(Request $request): array
+    {
+        return $request->validate([
+            'title'         => 'required|string|max:255',
+            'desc'          => 'required|string',
+            'priority'      => 'required|string|max:255',
+            'column'        => 'required|string|max:255',
+            'assignee_id'   => 'required|exists:users,id',
+            'deadline'      => 'nullable|date',
+            'fid_board'     => 'required|exists:board_configs,id',
+            'migrated_from' => 'nullable|string'
+        ]);
     }
 }
