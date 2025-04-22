@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Enums\LinkTypeEnums;
+use App\Http\Requests\LinkedIssueRequest;
+use App\Http\Requests\UpdateLinkedIssueRequest;
 use App\Models\LinkedIssues;
 use App\Services\LinkedIssuesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class LinkedIssuesController extends Controller
 {
@@ -25,7 +27,7 @@ class LinkedIssuesController extends Controller
 
         return response()->json([
             'issues'     => $linkedIssues,
-            'link_types' => array_map(fn($case) => ['name' => $case->value, 'value' => $case->value], LinkTypeEnums::cases())
+            'link_types' => LinkTypeEnums::asSelectArray()
         ]);
     }
 
@@ -40,40 +42,37 @@ class LinkedIssuesController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, LinkedIssuesService $linkedIssuesService): JsonResponse
+    public function store(LinkedIssueRequest $request, LinkedIssuesService $linkedIssuesService): JsonResponse
     {
-        $validatedData = $request->validate([
-            'fid_origin_post'  => 'required|exists:posts,id',
-            'fid_related_post' => 'required|exists:posts,id',
-            'link_type'        => ['required', Rule::in(array_column(LinkTypeEnums::cases(), 'value'))],
-        ]);
-
+        $validatedData = $request->validated();
         $validatedData['fid_user'] = Auth::id();
 
-        $linkedIssue = LinkedIssues::firstOrCreate([
-            'fid_origin_post'  => $validatedData['fid_origin_post'],
-            'fid_related_post' => $validatedData['fid_related_post'],
-            'link_type'        => $validatedData['link_type'],
-        ], $validatedData);
+        return DB::transaction(function () use ($validatedData, $linkedIssuesService) {
+            $linkedIssue = LinkedIssues::firstOrCreate([
+                'fid_origin_post'  => $validatedData['fid_origin_post'],
+                'fid_related_post' => $validatedData['fid_related_post'],
+                'link_type'        => $validatedData['link_type'],
+            ], $validatedData);
 
-        if (!$linkedIssue->wasRecentlyCreated) {
-            return response()->json(['message' => 'This link already exists'], 422);
-        }
+            if (!$linkedIssue->wasRecentlyCreated) {
+                return response()->json(['message' => 'This link already exists'], 422);
+            }
 
-        $reverseLinkType = $linkedIssuesService->getReverseStatus($validatedData['link_type']);
+            $reverseLinkType = $linkedIssuesService->getReverseStatus($validatedData['link_type']);
 
-        LinkedIssues::firstOrCreate([
-            'fid_origin_post'  => $validatedData['fid_related_post'],
-            'fid_related_post' => $validatedData['fid_origin_post'],
-            'link_type'        => $reverseLinkType,
-        ], [
-            'fid_user' => Auth::id(),
-        ]);
+            LinkedIssues::updateOrCreate([
+                'fid_origin_post'  => $validatedData['fid_related_post'],
+                'fid_related_post' => $validatedData['fid_origin_post'],
+            ], [
+                'link_type' => $reverseLinkType,
+                'fid_user'  => Auth::id(),
+            ]);
 
-        $linkedIssue->load(['creator', 'relatedPost']);
-        $linkedIssue->notify();
+            $linkedIssue->load(['creator', 'relatedPost']);
+            $linkedIssue->notify();
 
-        return response()->json($linkedIssue);
+            return response()->json($linkedIssue);
+        });
     }
 
     /**
@@ -95,28 +94,28 @@ class LinkedIssuesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, LinkedIssues $linkedIssue, LinkedIssuesService $linkedIssuesService): JsonResponse
+    public function update(UpdateLinkedIssueRequest $request, LinkedIssues $linkedIssue, LinkedIssuesService $linkedIssuesService): JsonResponse
     {
-        $validatedData = $request->validate([
-            'link_type' => ['required', Rule::in(array_column(LinkTypeEnums::cases(), 'value'))],
-        ]);
+        $validatedData = $request->validated();
 
-        $linkedIssue->update(['link_type' => $validatedData['link_type']]);
+        return DB::transaction(function () use ($validatedData, $linkedIssue, $linkedIssuesService) {
+            $linkedIssue->update(['link_type' => $validatedData['link_type']]);
 
-        $reverseLinkType = $linkedIssuesService->getReverseStatus($validatedData['link_type']);
-        $reverseLink     = LinkedIssues::firstOrNew([
-            'fid_origin_post'  => $linkedIssue->fid_related_post,
-            'fid_related_post' => $linkedIssue->fid_origin_post,
-        ]);
-        $reverseLink->fill([
-            'link_type' => $reverseLinkType,
-            'fid_user'  => $reverseLink->fid_user ?? Auth::id(),
-        ])->save();
+            $reverseLinkType = $linkedIssuesService->getReverseStatus($validatedData['link_type']);
 
-        $linkedIssue->load(['creator', 'relatedPost']);
-        $linkedIssue->notify();
+            LinkedIssues::updateOrCreate([
+                'fid_origin_post'  => $linkedIssue->fid_related_post,
+                'fid_related_post' => $linkedIssue->fid_origin_post,
+            ], [
+                'link_type' => $reverseLinkType,
+                'fid_user'  => Auth::id(),
+            ]);
 
-        return response()->json($linkedIssue);
+            $linkedIssue->load(['creator', 'relatedPost']);
+            $linkedIssue->notify();
+
+            return response()->json($linkedIssue);
+        });
     }
 
     /**
@@ -124,20 +123,25 @@ class LinkedIssuesController extends Controller
      */
     public function destroy(LinkedIssues $linkedIssue, LinkedIssuesService $linkedIssuesService): JsonResponse
     {
-        $reverseLinkType = $linkedIssuesService->getReverseStatus($linkedIssue->link_type);
+        return DB::transaction(function () use ($linkedIssue, $linkedIssuesService) {
+            $notificationData = clone $linkedIssue;
 
-        $reverseLink = LinkedIssues::where('fid_origin_post', $linkedIssue->fid_related_post)
-            ->where('fid_related_post', $linkedIssue->fid_origin_post)
-            ->where('link_type', $reverseLinkType)
-            ->first();
+            $reverseLinkType = $linkedIssuesService->getReverseStatus($linkedIssue->link_type);
 
-        if ($reverseLink) {
-            $reverseLink->delete();
-        }
+            $reverseLink = LinkedIssues::where('fid_origin_post', $linkedIssue->fid_related_post)
+                ->where('fid_related_post', $linkedIssue->fid_origin_post)
+                ->where('link_type', $reverseLinkType)
+                ->first();
 
-        $linkedIssue->delete();
-        $linkedIssue->notify();
+            if ($reverseLink) {
+                $reverseLink->delete();
+            }
 
-        return response()->json(['message' => 'Linked issue deleted successfully']);
+            $linkedIssue->delete();
+
+            $notificationData->notify();
+
+            return response()->json(['message' => 'Linked issue deleted successfully']);
+        });
     }
 }

@@ -78,7 +78,7 @@ interface PostFormDialogProps {
     task?: Task
     onClose?: () => void
     authUserId: string
-    isPremium: string // Changed from boolean to string
+    isPremium: string
 }
 
 interface Comment {
@@ -393,7 +393,6 @@ export function PostFormDialog({
                                                                                 setIsOptimizing(true)
 
                                                                                 try {
-                                                                                    console.log(isPremium)
                                                                                     const { data } = await axios.post("/premium/description/optimise", {
                                                                                         post_id: task.id,
                                                                                     })

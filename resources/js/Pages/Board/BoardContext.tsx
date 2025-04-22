@@ -172,8 +172,9 @@ export function BoardProvider({
         })
             .then((res) => res.json())
             .then((data) => {
-                if (typeof data.isPremium === 'string') {
-                    setIsPremium(data.isPremium);
+                console.log('Received data:', data);
+                if (typeof data?.data?.isPremium === 'string') {
+                    setIsPremium(data.data.isPremium);
                 }
             })
             .catch((err) => {
