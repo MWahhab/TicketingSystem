@@ -326,7 +326,7 @@ export function PostFormDialog({
                         <DialogHeader>
                             <div className="flex items-center">
                                 <DialogTitle className="text-white text-2xl flex items-center">
-                                    {task ? "Edit Post" : "Create New Post"}
+                                    {task ? ("Editing Post #" + task.id) : "Create New Post"}
                                 </DialogTitle>
                                 {task && (
                                     <Button
