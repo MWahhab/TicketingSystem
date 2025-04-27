@@ -123,4 +123,7 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'generation_cap_standard' => env('MAXIMUM_CODE_GENERATION_COUNT_STANDARD', 0),
+    'generation_cap_pro'      => env('MAXIMUM_CODE_GENERATION_COUNT_PRO', 5),
+    'generation_cap_premium'  => env('MAXIMUM_CODE_GENERATION_COUNT_PREMIUM', 15),
 ];

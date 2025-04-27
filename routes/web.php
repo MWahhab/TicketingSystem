@@ -59,6 +59,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/premium/file-structure/get', [PremiumSubscriptionsController::class, 'getFileStructure']);
         Route::post('/premium/branches/get', [PremiumSubscriptionsController::class, 'getBranches']);
         Route::post('/premium/queue/status', [PRQueueController::class, 'getQueueStatus']);
+        Route::post('/premium/generation/count', [PremiumSubscriptionsController::class, 'getGenerationCount']);
     }
 });
 

@@ -128,6 +128,9 @@ export function PostFormDialog({
     const [branches, setBranches] = useState<Array<{ name: string; url: string; protected: boolean }>>([])
     const [isLoadingBranches, setIsLoadingBranches] = useState(false)
 
+    const [generationCount, setGenerationCount] = useState<number | null>(null)
+    const [generationCap, setGenerationCap] = useState<number | null>(null)
+
     const defaultValues = task
         ? {
             title: task.title || "",
@@ -274,6 +277,24 @@ export function PostFormDialog({
         }
     }, [isDialogOpen, task, isPremium])
 
+    useEffect(() => {
+        const fetchGenerationCount = async () => {
+            try {
+                const { data } = await axios.post("/premium/generation/count")
+                if (data) {
+                    setGenerationCount(data.generation_count)
+                    setGenerationCap(data.generation_cap)
+                }
+            } catch (err) {
+                console.error("Failed to fetch generation count:", err)
+            }
+        }
+
+        if (hasPremiumAccess(isPremium)) {
+            fetchGenerationCount()
+        }
+    }, [isPremium])
+
     const handleDialogOpenChange = (open: boolean) => {
         if (!open) {
             document.querySelectorAll('[data-state="open"]').forEach((el) => {
@@ -326,7 +347,7 @@ export function PostFormDialog({
                         <DialogHeader>
                             <div className="flex items-center">
                                 <DialogTitle className="text-white text-2xl flex items-center">
-                                    {task ? ("Editing Post #" + task.id) : "Create New Post"}
+                                    {task ? "Editing Post #" + task.id : "Create New Post"}
                                 </DialogTitle>
                                 {task && (
                                     <Button
@@ -531,7 +552,12 @@ export function PostFormDialog({
                                                                         )}
 
                                                                         <Button
-                                                                            disabled={isGeneratingPR || isDescriptionModified || !hasPremiumAccess(isPremium)}
+                                                                            disabled={
+                                                                                isGeneratingPR ||
+                                                                                isDescriptionModified ||
+                                                                                !hasPremiumAccess(isPremium) ||
+                                                                                (hasPremiumAccess(isPremium) && generationCount === 0)
+                                                                            }
                                                                             onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
@@ -571,7 +597,9 @@ export function PostFormDialog({
                                                                                     ? "This is a paid feature"
                                                                                     : isDescriptionModified
                                                                                         ? "Save changes before generating PR"
-                                                                                        : "Generate PR"
+                                                                                        : generationCount === 0
+                                                                                            ? "No generations left"
+                                                                                            : "Generate PR"
                                                                             }
                                                                         >
                                                                             {isGeneratingPR ? (
@@ -600,7 +628,8 @@ export function PostFormDialog({
                                                                                 </>
                                                                             ) : (
                                                                                 <>
-                                                                                    {!hasPremiumAccess(isPremium) && (
+                                                                                    {(!hasPremiumAccess(isPremium) ||
+                                                                                        (hasPremiumAccess(isPremium) && generationCount === 0)) && (
                                                                                         <svg
                                                                                             xmlns="http://www.w3.org/2000/svg"
                                                                                             width="14"
@@ -634,7 +663,11 @@ export function PostFormDialog({
                                                                                         <path d="M13 6h3a2 2 0 0 1 2 2v7" />
                                                                                         <path d="M6 9v12" />
                                                                                     </svg>
-                                                                                    <span>{isDescriptionModified ? "Save Changes First" : "Generate PR"}</span>
+                                                                                    <span>
+                                            {isDescriptionModified
+                                                ? "Save Changes First"
+                                                : `Generate PR${hasPremiumAccess(isPremium) && generationCount !== null && generationCap !== null ? ` (${generationCount}/${generationCap})` : ""}`}
+                                          </span>
                                                                                 </>
                                                                             )}
                                                                         </Button>
