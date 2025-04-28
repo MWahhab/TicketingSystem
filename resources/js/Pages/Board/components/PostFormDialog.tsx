@@ -1061,12 +1061,23 @@ export function PostFormDialog({
                                 post_id: task.id,
                                 context_files: files,
                             })
+                            if (generationCount < 1) {
+                                toast({
+                                    title: "Generation count",
+                                    description: "You have no generations left this week.",
+                                    variant: "destructive",
+                                })
+
+                                return;
+                            }
 
                             if (data?.success) {
                                 toast({
                                     title: "Queued successfully!",
                                     description: data.message,
                                 })
+
+                                setGenerationCount(generationCount - 1)
 
                                 await fetchBranches()
                             } else {
