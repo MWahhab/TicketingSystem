@@ -345,30 +345,68 @@ export function PostFormDialog({
                         }`}
                     >
                         <DialogHeader>
-                            <div className="flex items-center">
-                                <DialogTitle className="text-white text-2xl flex items-center">
-                                    {task ? "Editing Post #" + task.id : "Create New Post"}
-                                </DialogTitle>
+                            <div className="flex items-center w-full">
+                                <div className="flex items-center gap-2">
+                                    <DialogTitle className="text-white text-2xl flex items-center">
+                                        {task ? "Editing Post #" + task.id : "Create New Post"}
+                                    </DialogTitle>
+                                    {task && (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={onDelete}
+                                                className="text-red-400 hover:text-red-300 hover:bg-red-100/10 p-1"
+                                            >
+                                                <Trash2Icon className="h-5 w-5" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={toggleExpansion}
+                                                className="text-zinc-400 hover:text-zinc-300 hover:bg-zinc-100/10 p-1"
+                                            >
+                                                {isExpanded ? <Minimize2Icon className="h-5 w-5" /> : <Maximize2Icon className="h-5 w-5" />}
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+
                                 {task && (
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={onDelete}
-                                        className="ml-2 text-red-400 hover:text-red-300 hover:bg-red-100/10 p-1"
+                                        onClick={() => {
+                                            const url = `${window.location.origin}/boards?board_id=${task.fid_board}&post_id=${task.id}`;
+                                            navigator.clipboard.writeText(url);
+                                            toast({
+                                                title: "Link copied",
+                                                description: "Post link has been copied to clipboard",
+                                            });
+                                        }}
+                                        className="ml-auto text-purple-400 hover:text-zinc-300 hover:bg-zinc-100/10 p-1 mr-8"
+                                        title="Copy link to post"
                                     >
-                                        <Trash2Icon className="h-5 w-5" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="20"
+                                            height="20"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            className="h-5 w-5"
+                                        >
+                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                        </svg>
                                     </Button>
                                 )}
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={toggleExpansion}
-                                    className="ml-2 text-zinc-400 hover:text-zinc-300 hover:bg-zinc-100/10 p-1"
-                                >
-                                    {isExpanded ? <Minimize2Icon className="h-5 w-5" /> : <Maximize2Icon className="h-5 w-5" />}
-                                </Button>
                             </div>
                         </DialogHeader>
+
 
                         <div
                             className={`overflow-y-auto pr-4 ${isExpanded ? "h-[calc(98vh-180px)]" : "max-h-[calc(100vh-240px)]"}`}
@@ -1068,7 +1106,7 @@ export function PostFormDialog({
                                     variant: "destructive",
                                 })
 
-                                return;
+                                return
                             }
 
                             if (data?.success) {
