@@ -8,6 +8,7 @@ use App\Models\Comment;
 use App\Models\LinkedIssues;
 use App\Models\Notification;
 use App\Models\Post;
+use App\Models\PostWatcher;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -70,6 +71,8 @@ class NotificationService
         $userIds[$post->assignee_id] = true;
         $userIds[$post->fid_user]    = true;
 
+        $userIds        = $userIds + $this->getWatcherIds($object->fid_post);
+
         $truncatedTitle = Str::limit($post->title, 5, '...');
         $scopeContext   = "#" . $object->fid_post . ": " . $truncatedTitle . $boardName;
 
@@ -111,6 +114,8 @@ class NotificationService
 
         $userIds[$object->assignee_id] = true;
         $userIds[$object->fid_user]    = true;
+
+        $userIds = $userIds + $this->getWatcherIds($object->id);
 
         $board          = BoardConfig::find($object->fid_board);
         $boardName      = $board->title;
@@ -384,13 +389,15 @@ class NotificationService
         /** @var Post $relatedPost */
         $relatedPost = $object->relatedPost;
 
-        $userIds     = array_unique([
-            $object->fid_user,
-            $relatedPost->assignee_id,
-            $relatedPost->fid_user,
-            $post->assignee_id,
-            $post->fid_user,
-        ]);
+        $userIds     = array_unique(array_merge([
+                $object->fid_user,
+                $relatedPost->assignee_id,
+                $relatedPost->fid_user,
+                $post->assignee_id,
+                $post->fid_user,
+            ],
+            array_keys($this->getWatcherIds($post->id))
+        ));
 
         $userName   = $object->creator->name ?? 'Unknown User';
 
@@ -434,6 +441,9 @@ class NotificationService
      */
     private function parsePRQueueNotifications(PRQueue $queue): array
     {
+        /**
+         * @var Post $post
+         */
         $post       = $queue->post()->with(['board', 'creator'])->firstOrFail();
         $title      = Str::limit($post->title, 5, '…');
         $changes    = $queue->getChanges();
@@ -447,8 +457,12 @@ class NotificationService
 
         $message      = $this->renderQueueNotification($event, $post, $title);
         $actorId      = $queue->fid_user;
-        $recipientIds = array_unique([$post->assignee_id, $actorId]);
-        $now          = now();
+        $recipientIds = array_unique(array_merge(
+            [$post->assignee_id, $actorId],
+            array_keys($this->getWatcherIds($post->id))
+        ));
+
+        $now = now();
 
         return array_map(fn($userId) => [
             'created_by' => $actorId,
@@ -522,5 +536,24 @@ class NotificationService
         }
 
         return null;
+    }
+
+    /**
+     * @param int $postId
+     * @return array
+     */
+    private function getWatcherIds(int $postId): array
+    {
+        $watcherIds = [];
+        /**
+         * @var $watchers PostWatcher
+         */
+        $watchers   = PostWatcher::where('post_fid', $postId)->get();
+
+        foreach ($watchers as $watcher) {
+            $watcherIds[$watcher->user_fid] = true;
+        }
+
+        return $watcherIds;
     }
 }

@@ -9,6 +9,7 @@ import { Inertia } from "@inertiajs/inertia"
 import { Button } from "@/components/ui/button"
 import { ExpandableTipTapTextArea } from "./ExpandableTipTapTextArea"
 import { FileBrowser } from "./post-form-dialog-components/file-browser"
+import { WatcherButton } from "./post-form-dialog-components/watcher-button"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -69,6 +70,11 @@ interface Task {
     fid_board: string
     post_author: string
     comments?: Comment[]
+    watchers?: Array<{
+        watcher_id: number
+        id: number
+        name: string
+    }>
 }
 
 interface PostFormDialogProps {
@@ -151,6 +157,7 @@ export function PostFormDialog({
             deadline: null,
             fid_board: "",
             post_author: "",
+            watchers: [],
         }
 
     const form = useForm<FormData>({
@@ -247,6 +254,8 @@ export function PostFormDialog({
 
     const fetchBranches = async () => {
         if (!task || !task.id || !hasPremiumAccess(isPremium)) return
+
+        console.log(task)
 
         setIsLoadingBranches(true)
         try {
@@ -373,40 +382,42 @@ export function PostFormDialog({
                                 </div>
 
                                 {task && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            const url = `${window.location.origin}/boards?board_id=${task.fid_board}&post_id=${task.id}`;
-                                            navigator.clipboard.writeText(url);
-                                            toast({
-                                                title: "Link copied",
-                                                description: "Post link has been copied to clipboard",
-                                            });
-                                        }}
-                                        className="ml-auto text-purple-400 hover:text-zinc-300 hover:bg-zinc-100/10 p-1 mr-8"
-                                        title="Copy link to post"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            width="20"
-                                            height="20"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            className="h-5 w-5"
+                                    <div className="ml-auto flex items-center">
+                                        <WatcherButton postId={task.id} userId={authUserId} watchers={task.watchers || []} />
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                const url = `${window.location.origin}/boards?board_id=${task.fid_board}&post_id=${task.id}`
+                                                navigator.clipboard.writeText(url)
+                                                toast({
+                                                    title: "Link copied",
+                                                    description: "Post link has been copied to clipboard",
+                                                })
+                                            }}
+                                            className="text-purple-400 hover:text-purple-300 hover:bg-zinc-100/10 p-1 mr-8"
+                                            title="Copy link to post"
                                         >
-                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                                        </svg>
-                                    </Button>
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                className="h-5 w-5"
+                                            >
+                                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                            </svg>
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
                         </DialogHeader>
-
 
                         <div
                             className={`overflow-y-auto pr-4 ${isExpanded ? "h-[calc(98vh-180px)]" : "max-h-[calc(100vh-240px)]"}`}

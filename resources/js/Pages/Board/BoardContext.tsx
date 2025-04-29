@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import { router } from "@inertiajs/react";
 import { DropResult } from "react-beautiful-dnd";
-import {string} from "zod";
 
 interface Board {
     id: string;
@@ -32,6 +31,13 @@ interface Task {
     deadline: string | null;
     fid_board: string;
     post_author: string;
+    watchers: Watcher[];
+}
+
+interface Watcher {
+    watcher_id: number;
+    id: number;
+    name: string;
 }
 
 interface ColumnState {
@@ -72,7 +78,7 @@ interface BoardContextValue {
     dateFrom?: string | null;
     dateTo?: string | null;
     dateField?: string | null;
-    isPremium: boolean;
+    isPremium: string;
 
     columns: Record<string, ColumnState>;
     tasks: Record<string, Task>;
@@ -84,6 +90,8 @@ interface BoardContextValue {
     onDragEnd: (result: DropResult) => void;
     openDialog: (taskId: string) => void;
     closeDialog: () => void;
+
+    updateTaskWatchers: (taskId: string, watchers: Watcher[]) => void;
 }
 
 const BoardContext = createContext<BoardContextValue>({
@@ -104,7 +112,8 @@ const BoardContext = createContext<BoardContextValue>({
     onDragEnd: () => {},
     openDialog: () => {},
     closeDialog: () => {},
-    isPremium: string
+    isPremium: "standard",
+    updateTaskWatchers: () => {},
 });
 
 /**
@@ -151,7 +160,11 @@ export function BoardProvider({
         const initialTasks: Record<string, Task> = {};
         postsArray.forEach((task) => {
             const taskId = task.id.toString();
-            initialTasks[taskId] = { ...task, id: taskId };
+            initialTasks[taskId] = {
+                ...task,
+                id: taskId,
+                watchers: task.watchers || []
+            };
 
             const colId = task.column.toString();
             if (initialColumns[colId]) {
@@ -307,6 +320,33 @@ export function BoardProvider({
         setSelectedTask(null);
     }, []);
 
+    /**
+     * Update watchers for a specific task
+     */
+    const updateTaskWatchers = useCallback((taskId: string, watchers: Watcher[]) => {
+        setTasks((prevTasks) => {
+            if (!prevTasks[taskId]) return prevTasks;
+
+            return {
+                ...prevTasks,
+                [taskId]: {
+                    ...prevTasks[taskId],
+                    watchers: watchers
+                }
+            };
+        });
+
+        setSelectedTask((prevSelectedTask) => {
+            if (prevSelectedTask && prevSelectedTask.id === taskId) {
+                return {
+                    ...prevSelectedTask,
+                    watchers: watchers
+                };
+            }
+            return prevSelectedTask;
+        });
+    }, []);
+
     return (
         <BoardContext.Provider
             value={{
@@ -329,7 +369,8 @@ export function BoardProvider({
                 onDragEnd,
                 openDialog,
                 closeDialog,
-                isPremium
+                isPremium,
+                updateTaskWatchers
             }}
         >
             {children}

@@ -3,33 +3,71 @@
 namespace App\Services;
 
 use App\Models\BoardConfig;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class BoardService
 {
     /**
-     * Gets each board with their respective posts and each post with their respective comments. If $boardId is null -
-     * assumed this is the first render and attempts to retrieve the first board config found in the table.
+     * Get the board data for display.
      *
-     * @param  $boardId
-     * @param  $dateFrom
-     * @param  $dateTo
-     * @param  $dateField
+     * @param int|null $boardId
+     * @param Carbon|null $dateFrom
+     * @param Carbon|null $dateTo
+     * @param string $dateField
      * @return array|null
      */
-    public function getBoardData($boardId = null, $dateFrom = null, $dateTo = null, $dateField = 'created_at'): ?array
+    public function getBoardData(?int $boardId = null, ?Carbon $dateFrom = null, ?Carbon $dateTo = null, string $dateField = 'created_at'): ?array
     {
-        $board = BoardConfig::with([
+        $board = $this->getBoard($boardId, $dateFrom, $dateTo, $dateField);
+
+        if (!$board || !$board->exists()) {
+            return [
+                'columns'    => [],
+                'posts'      => [],
+                'boardTitle' => 'No Board Found',
+                'id'         => null,
+            ];
+        }
+
+        $columns = is_array($board->columns) ? $board->columns : [];
+
+        $posts = $this->formatPosts($board->posts);
+
+        return [
+            'columns'    => $columns,
+            'posts'      => $posts,
+            'boardTitle' => $board->title ?? 'Untitled Board',
+            'id'         => $board->id,
+        ];
+    }
+
+    /**
+     * Fetch the board with posts and related data.
+     *
+     * @param int|null $boardId
+     * @param Carbon|null $dateFrom
+     * @param Carbon|null $dateTo
+     * @param string $dateField
+     * @return BoardConfig|null
+     */
+    private function getBoard(?int $boardId, ?Carbon $dateFrom, ?Carbon $dateTo, string $dateField): ?BoardConfig
+    {
+        return BoardConfig::with([
             'posts.assignee:id,name',
             'posts.comments' => function ($query) {
                 $query->orderBy('created_at', 'desc')->with('creator:id,name');
             },
-        ])
-            ->with(['posts' => function ($query) use ($dateFrom, $dateTo, $dateField) {
-                $query->orderByRaw("CASE 
-                    WHEN priority = 'high' THEN 1
-                    WHEN priority = 'medium' THEN 2
-                    WHEN priority = 'low' THEN 3
-                    ELSE 4 END");
+            'posts.watchers.user:id,name', // ← preload watchers and their users
+            'posts' => function ($query) use ($dateFrom, $dateTo, $dateField) {
+                $query->orderByRaw("
+                    CASE 
+                        WHEN priority = 'high' THEN 1
+                        WHEN priority = 'medium' THEN 2
+                        WHEN priority = 'low' THEN 3
+                        ELSE 4
+                    END
+                ");
 
                 if ($dateFrom) {
                     $query->whereDate($dateField, '>=', $dateFrom->toDateString());
@@ -42,26 +80,20 @@ class BoardService
                 if (!$dateFrom && !$dateTo) {
                     $query->limit(100);
                 }
-            }])
+            },
+        ])
+            ->when($boardId, fn($query) => $query->find($boardId), fn($query) => $query->first());
+    }
 
-            ->when($boardId, function ($query) use ($boardId) {
-                return $query->find($boardId);
-            }, function ($query) {
-                return $query->first();
-            });
-
-        if (!$board->exists()) {
-            return [
-                'columns'    => [],
-                'posts'      => [],
-                'boardTitle' => 'No Board Found',
-                'id'         => null
-            ];
-        }
-
-        $columns = is_array($board->columns) ? $board->columns : [];
-
-        $posts   = $board->posts ? $board->posts->map(function ($post) {
+    /**
+     * Format posts into array structure for frontend.
+     *
+     * @param Collection|null $posts
+     * @return array
+     */
+    private function formatPosts(?Collection $posts): array
+    {
+        return $posts ? $posts->map(function ($post) {
             return [
                 'id'          => $post->id,
                 'title'       => $post->title,
@@ -84,15 +116,14 @@ class BoardService
                         'createdAt' => $comment->created_at->toDateTimeString(),
                     ];
                 })->toArray() : [],
+                'watchers'    => $post->watchers ? $post->watchers->map(function ($watcher) {
+                    return [
+                        'watcher_id' => $watcher->id,
+                        'id'         => $watcher->user->id,
+                        'name'       => $watcher->user->name,
+                    ];
+                })->toArray() : [],
             ];
         })->toArray() : [];
-
-        return [
-            'columns'    => $columns,
-            'posts'      => $posts,
-            'boardTitle' => $board->title ?? 'Untitled Board',
-            'id'         => $board->id
-        ];
     }
 }
-

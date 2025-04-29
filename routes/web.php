@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BoardConfigController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\LinkedIssuesController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\PostWatcherController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +40,11 @@ Route::middleware('auth')->group(function () {
     Route::resource('posts', PostController::class);
     Route::resource('comments', CommentController::class);
     Route::resource('linkedIssues', LinkedIssuesController::class);
+
+    Route::post('/post-watchers', [PostWatcherController::class, 'store']);
+    Route::delete('/post-watchers', [PostWatcherController::class, 'destroy']);
+
+    Route::get('/users/list', [RegisteredUserController::class, 'getUsers']);
 
     Route::post('/move/{post}', [PostController::class, 'move']);
     Route::get('/postSearch', [PostController::class, 'search']);

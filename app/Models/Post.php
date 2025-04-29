@@ -82,4 +82,12 @@ class Post extends Model implements NotificationServiceInterface
     {
         return $this->hasMany(LinkedIssues::class, 'fid_origin_post');
     }
+
+    /**
+     * @return HasMany
+     */
+    public function watchers(): HasMany
+    {
+        return $this->hasMany(PostWatcher::class, 'post_fid');
+    }
 }
