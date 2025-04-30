@@ -15,6 +15,17 @@ use Illuminate\Support\Carbon;
  * @property int         $user_fid
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read \App\Models\Post $post
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PostWatcher newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PostWatcher newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PostWatcher query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PostWatcher whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PostWatcher whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PostWatcher wherePostFid($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PostWatcher whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PostWatcher whereUserFid($value)
+ * @mixin \Eloquent
  */
 class PostWatcher extends Model
 {

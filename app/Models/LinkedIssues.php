@@ -19,6 +19,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int    $fid_user
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ * @property-read \App\Models\User $creator
+ * @property-read \App\Models\Post $post
+ * @property-read \App\Models\Post $relatedPost
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues whereFidOriginPost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues whereFidRelatedPost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues whereFidUser($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues whereLinkType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LinkedIssues whereUpdatedAt($value)
+ * @mixin \Eloquent
  */
 class LinkedIssues extends Model implements NotificationServiceInterface
 {

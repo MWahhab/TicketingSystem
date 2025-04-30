@@ -1,6 +1,6 @@
 <?php
 
-namespace app\Traits;
+namespace App\Traits;
 
 use App\Services\NotificationService;
 

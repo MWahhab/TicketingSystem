@@ -18,9 +18,19 @@ use Illuminate\Support\Carbon;
  * @property int $fid_user
  * @property Carbon $created_at
  * @property Carbon $updated_at
- *
  * @property-read \App\Models\Post $post
  * @property-read User $user
+ * @property-read \App\Models\User $creator
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment whereContent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment whereFidPost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment whereFidUser($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Comment whereUpdatedAt($value)
+ * @mixin \Eloquent
  */
 
 class Comment extends Model implements NotificationServiceInterface

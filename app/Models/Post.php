@@ -25,10 +25,31 @@ use Illuminate\Support\Carbon;
  * @property string $migrated_from
  * @property Carbon $created_at
  * @property Carbon $updated_at
- *
  * @property-read User $assignee
  * @property-read User $creator
  * @property-read BoardConfig $board
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Comment> $comments
+ * @property-read int|null $comments_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\LinkedIssues> $linkedIssues
+ * @property-read int|null $linked_issues_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PostWatcher> $watchers
+ * @property-read int|null $watchers_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereAssigneeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereColumn($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereDeadline($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereDesc($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereFidBoard($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereFidUser($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereMigratedFrom($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post wherePriority($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Post whereUpdatedAt($value)
+ * @mixin \Eloquent
  */
 class Post extends Model implements NotificationServiceInterface
 {

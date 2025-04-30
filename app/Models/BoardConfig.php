@@ -19,8 +19,20 @@ use Illuminate\Support\Carbon;
  * @property int $fid_user
  * @property Carbon $created_at
  * @property Carbon $updated_at
- *
  * @property-read User $owner
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Post> $posts
+ * @property-read int|null $posts_count
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig whereColumns($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig whereFidUser($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardConfig whereUpdatedAt($value)
+ * @mixin \Eloquent
  */
 class BoardConfig extends Model implements NotificationServiceInterface
 {

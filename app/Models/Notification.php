@@ -20,10 +20,23 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $seen_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
- *
  * @property-read Post $post
  * @property-read User $user
  * @property-read User $createdBy
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereContent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereCreatedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereFidBoard($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereFidPost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereFidUser($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereSeenAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereUpdatedAt($value)
+ * @mixin \Eloquent
  */
 
 class Notification extends Model
@@ -33,7 +46,7 @@ class Notification extends Model
     /**
      * The attributes that are mass assignable.
      *
-     * @var array
+     * @property array|string[] $fillable
      */
     protected $fillable = [
         'type',
@@ -48,7 +61,7 @@ class Notification extends Model
     /**
      * The attributes that should be cast to native types.
      *
-     * @var array
+     * @property array $casts
      */
     protected $casts = [
         'seen_at' => 'datetime',
