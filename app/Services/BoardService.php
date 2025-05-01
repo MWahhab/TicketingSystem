@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\DataTransferObjects\BoardFilterDataTransferObject;
 use App\Models\BoardConfig;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class BoardService
@@ -11,15 +11,10 @@ class BoardService
     /**
      * Get the board data for display.
      *
-     * @param int|null $boardId
-     * @param Carbon|null $dateFrom
-     * @param Carbon|null $dateTo
-     * @param string $dateField
-     * @return array|null
      */
-    public function getBoardData(?int $boardId = null, ?Carbon $dateFrom = null, ?Carbon $dateTo = null, string $dateField = 'created_at'): ?array
+    public function getBoardData(BoardFilterDataTransferObject $boardFilterDTO): ?array
     {
-        $board = $this->getBoard($boardId, $dateFrom, $dateTo, $dateField);
+        $board = $this->getBoard($boardFilterDTO);
 
         if (!$board || !$board->exists()) {
             return [
@@ -31,8 +26,7 @@ class BoardService
         }
 
         $columns = is_array($board->columns) ? $board->columns : [];
-
-        $posts = $this->formatPosts($board->posts);
+        $posts   = $this->formatPosts($board->posts);
 
         return [
             'columns'    => $columns,
@@ -45,20 +39,20 @@ class BoardService
     /**
      * Fetch the board with posts and related data.
      *
-     * @param int|null $boardId
-     * @param Carbon|null $dateFrom
-     * @param Carbon|null $dateTo
-     * @param string $dateField
-     * @return BoardConfig|null
      */
-    private function getBoard(?int $boardId, ?Carbon $dateFrom, ?Carbon $dateTo, string $dateField): ?BoardConfig
+    private function getBoard(BoardFilterDataTransferObject $boardFilterDTO): ?BoardConfig
     {
+        $boardId   = $boardFilterDTO->getBoardId();
+        $dateFrom  = $boardFilterDTO->getDateFrom();
+        $dateTo    = $boardFilterDTO->getDateTo();
+        $dateField = $boardFilterDTO->getFilterColumn();
+
         return BoardConfig::with([
             'posts.assignee:id,name',
             'posts.comments' => function ($query) {
                 $query->orderBy('created_at', 'desc')->with('creator:id,name');
             },
-            'posts.watchers.user:id,name', // ← preload watchers and their users
+            'posts.watchers.user:id,name',
             'posts' => function ($query) use ($dateFrom, $dateTo, $dateField) {
                 $query->orderByRaw("
                     CASE 
@@ -82,14 +76,12 @@ class BoardService
                 }
             },
         ])
-            ->when($boardId, fn($query) => $query->find($boardId), fn($query) => $query->first());
+            ->when($boardId, fn ($query) => $query->find($boardId), fn ($query) => $query->first());
     }
 
     /**
      * Format posts into array structure for frontend.
      *
-     * @param Collection|null $posts
-     * @return array
      */
     private function formatPosts(?Collection $posts): array
     {

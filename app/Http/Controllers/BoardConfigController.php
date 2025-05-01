@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\BoardFilterDataTransferObject;
 use App\Enums\PrioritiesEnum;
 use App\Models\BoardConfig;
 use App\Models\User;
@@ -20,26 +21,17 @@ class BoardConfigController extends Controller
      */
     public function index(Request $request, BoardService $boardService): Response
     {
-        $dateField = $request->input('date_field', 'created_at');
-
         try {
-            list($dateFrom, $dateTo) = $this->parseDates($request);
+            [$dateFrom, $dateTo] = $this->parseDates($request);
         } catch (\Exception $e) {
             return $this->emptyResponse();
         }
 
-        $validDateFields = ['created_at', 'updated_at', 'deadline'];
-        $dateField       = in_array($dateField, $validDateFields) ? $dateField : 'created_at';
+        $filterDTO  = $this->makeBoardFilterDTO($request, $dateFrom, $dateTo);
 
-        $boardData  = $boardService->getBoardData(
-            (int)$request->input('board_id'),
-            $dateFrom,
-            $dateTo,
-            $dateField
-       );
-
+        $boardData  = $boardService->getBoardData($filterDTO);
         $boards     = BoardConfig::select('id', 'title', 'columns')->get();
-        $boardLinks = $boards->map(fn($b) => ['id' => $b->id,'title' => $b->title]);
+        $boardLinks = $boards->map(fn ($b) => ['id' => $b->id, 'title' => $b->title]);
         $assignees  = User::select('id', 'name')->get();
 
         $openPostId = null;
@@ -63,7 +55,7 @@ class BoardConfigController extends Controller
             'openPostId'    => $openPostId,
             'dateFrom'      => $dateFrom?->format('Y-m-d'),
             'dateTo'        => $dateTo?->format('Y-m-d'),
-            'dateField'     => $dateField,
+            'dateField'     => $filterDTO->getFilterColumn(),
         ]);
     }
 
@@ -75,10 +67,6 @@ class BoardConfigController extends Controller
         //
     }
 
-    /**
-     * @param  Request          $request
-     * @return \Symfony\Component\HttpFoundation\Response
-     */
     public function store(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         $validated = $request->validate([
@@ -94,7 +82,7 @@ class BoardConfigController extends Controller
         $board = BoardConfig::create([
             'title'    => $validated['title'],
             'columns'  => $validated['columns'],
-            'fid_user' => Auth::id()
+            'fid_user' => Auth::id(),
         ]);
 
         return Inertia::location('/boards/?board_id=' . $board->id);
@@ -127,11 +115,11 @@ class BoardConfigController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(BoardConfig $board):RedirectResponse
+    public function destroy(BoardConfig $board): RedirectResponse
     {
         $board->delete();
 
-        return redirect()->route("boards.index", ["board_id" => null])->with("Success! ", "Board deleted");
+        return redirect()->route('boards.index', ['board_id' => null])->with('Success! ', 'Board deleted');
     }
 
     private function emptyResponse(): Response
@@ -148,14 +136,10 @@ class BoardConfigController extends Controller
             'dateField'     => 'created_at',
             'authUserId'    => Auth::id(),
             'openPostId'    => null,
-            'error'         => 'Invalid date format provided. Please use a valid date format (e.g., YYYY-MM-DD).'
+            'error'         => 'Invalid date format provided. Please use a valid date format (e.g., YYYY-MM-DD).',
         ]);
     }
 
-    /**
-     * @param Request $request
-     * @return array
-     */
     public function parseDates(Request $request): array
     {
         $dateFrom = null;
@@ -171,7 +155,22 @@ class BoardConfigController extends Controller
             $dateTo = $dateFrom->copy()->endOfDay();
         }
 
-        return array($dateFrom, $dateTo);
+        return [$dateFrom, $dateTo];
     }
-}
 
+    private function makeBoardFilterDTO(Request $request, ?Carbon $dateFrom, ?Carbon $dateTo): BoardFilterDataTransferObject
+    {
+        $validDateFields = ['created_at', 'updated_at', 'deadline'];
+        $dateField       = $request->input('date_field', 'created_at');
+
+        $dateField = in_array($dateField, $validDateFields, true) ? $dateField : 'created_at';
+
+        return new BoardFilterDataTransferObject([
+            'boardId'      => (int) $request->input('board_id'),
+            'filterColumn' => $dateField,
+            'dateFrom'     => $dateFrom,
+            'dateTo'       => $dateTo,
+        ]);
+    }
+
+}
