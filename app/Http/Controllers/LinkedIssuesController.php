@@ -27,16 +27,8 @@ class LinkedIssuesController extends Controller
 
         return response()->json([
             'issues'     => $linkedIssues,
-            'link_types' => LinkTypeEnums::asSelectArray()
+            'link_types' => LinkTypeEnums::asSelectArray(),
         ]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
     }
 
     /**
@@ -44,7 +36,7 @@ class LinkedIssuesController extends Controller
      */
     public function store(LinkedIssueRequest $request, LinkedIssuesService $linkedIssuesService): JsonResponse
     {
-        $validatedData = $request->validated();
+        $validatedData             = $request->validated();
         $validatedData['fid_user'] = Auth::id();
 
         return DB::transaction(function () use ($validatedData, $linkedIssuesService) {

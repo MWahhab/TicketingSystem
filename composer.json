@@ -15,6 +15,7 @@
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.5",
         "fakerphp/faker": "^1.23",
+        "friendsofphp/php-cs-fixer": "^3.66",
         "laravel/breeze": "^2.2",
         "laravel/pint": "^1.13",
         "laravel/sail": "^1.26",
@@ -53,7 +54,8 @@
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
         ],
-        "phpstan": "phpstan analyse"
+        "phpstan": "phpstan analyse",
+        "fix": "php-cs-fixer fix"
     },
     "extra": {
         "laravel": {
