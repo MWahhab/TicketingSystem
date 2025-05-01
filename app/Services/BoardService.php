@@ -63,11 +63,11 @@ class BoardService
                     END
                 ");
 
-                if ($dateFrom) {
+                if ($dateFrom instanceof \Carbon\Carbon) {
                     $query->whereDate($dateField, '>=', $dateFrom->toDateString());
                 }
 
-                if ($dateTo) {
+                if ($dateTo instanceof \Carbon\Carbon) {
                     $query->whereDate($dateField, '<=', $dateTo->toDateString());
                 }
 
@@ -81,41 +81,34 @@ class BoardService
 
     /**
      * Format posts into array structure for frontend.
-     *
      */
     private function formatPosts(?Collection $posts): array
     {
-        return $posts ? $posts->map(function ($post) {
-            return [
-                'id'          => $post->id,
-                'title'       => $post->title,
-                'desc'        => $post->desc,
-                'priority'    => $post->priority,
-                'column'      => $post->column,
-                'assignee_id' => $post->assignee_id,
-                'deadline'    => $post->deadline,
-                'fid_board'   => $post->fid_board,
-                'assignee'    => $post->assignee ? [
-                    'id'   => $post->assignee->id,
-                    'name' => $post->assignee->name,
-                ] : null,
-                'post_author' => $post->creator->name,
-                'comments'    => $post->comments ? $post->comments->map(function ($comment) {
-                    return [
-                        'id'        => $comment->id,
-                        'content'   => $comment->content,
-                        'author'    => $comment->creator ? $comment->creator->name : 'Unknown',
-                        'createdAt' => $comment->created_at->toDateTimeString(),
-                    ];
-                })->toArray() : [],
-                'watchers'    => $post->watchers ? $post->watchers->map(function ($watcher) {
-                    return [
-                        'watcher_id' => $watcher->id,
-                        'id'         => $watcher->user->id,
-                        'name'       => $watcher->user->name,
-                    ];
-                })->toArray() : [],
-            ];
-        })->toArray() : [];
+        return $posts instanceof \Illuminate\Support\Collection ? $posts->map(fn($post) => [
+            'id'          => $post->id,
+            'title'       => $post->title,
+            'desc'        => $post->desc,
+            'priority'    => $post->priority,
+            'column'      => $post->column,
+            'assignee_id' => $post->assignee_id,
+            'deadline'    => $post->deadline,
+            'fid_board'   => $post->fid_board,
+            'assignee'    => $post->assignee ? [
+                'id'   => $post->assignee->id,
+                'name' => $post->assignee->name,
+            ] : null,
+            'post_author' => $post->creator->name,
+            'comments'    => $post->comments ? $post->comments->map(fn($comment) => [
+                'id'        => $comment->id,
+                'content'   => $comment->content,
+                'author'    => $comment->creator ? $comment->creator->name : 'Unknown',
+                'createdAt' => $comment->created_at->toDateTimeString(),
+            ])->toArray() : [],
+            'watchers'    => $post->watchers ? $post->watchers->map(fn($watcher) => [
+                'watcher_id' => $watcher->id,
+                'id'         => $watcher->user->id,
+                'name'       => $watcher->user->name,
+            ])->toArray() : [],
+        ])->toArray() : [];
     }
 }

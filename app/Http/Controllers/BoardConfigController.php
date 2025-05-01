@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,6 +25,7 @@ class BoardConfigController extends Controller
         try {
             [$dateFrom, $dateTo] = $this->parseDates($request);
         } catch (\Exception $e) {
+            Log::error($e->getMessage());
             return $this->emptyResponse();
         }
 
