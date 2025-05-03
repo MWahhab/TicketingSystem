@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CalendarIcon, Trash2Icon, EyeIcon, EditIcon, Maximize2Icon, Minimize2Icon } from "lucide-react"
+import { CalendarIcon, Trash, Eye, Edit, Maximize2Icon, Minimize2Icon, Link2 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
@@ -367,7 +367,7 @@ export function PostFormDialog({
                                                 onClick={onDelete}
                                                 className="text-red-400 hover:text-red-300 hover:bg-red-100/10 p-1"
                                             >
-                                                <Trash2Icon className="h-5 w-5" />
+                                                <Trash className="h-5 w-5" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
@@ -398,21 +398,7 @@ export function PostFormDialog({
                                             className="text-purple-400 hover:text-purple-300 hover:bg-zinc-100/10 p-1 mr-8"
                                             title="Copy link to post"
                                         >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="20"
-                                                height="20"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                className="h-5 w-5"
-                                            >
-                                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                                            </svg>
+                                            <Link2 className="h-5 w-5" />
                                         </Button>
                                     </div>
                                 )}
@@ -732,9 +718,9 @@ export function PostFormDialog({
                                                                     title={isPreview ? "Edit" : "Preview"}
                                                                 >
                                                                     {isPreview ? (
-                                                                        <EditIcon className="h-3.5 w-3.5 text-amber-400" />
+                                                                        <Edit className="h-5 w-5 text-amber-400" />
                                                                     ) : (
-                                                                        <EyeIcon className="h-3.5 w-3.5 text-amber-400" />
+                                                                        <Eye className="h-5 w-5 text-amber-400" />
                                                                     )}
                                                                     <span>{isPreview ? "Edit" : "Preview"}</span>
                                                                 </Button>

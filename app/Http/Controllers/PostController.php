@@ -164,4 +164,20 @@ class PostController extends Controller
             'migrated_from' => 'nullable|string'
         ]);
     }
+
+    public function pin(Request $request, Post $post): Response
+    {
+        $request->validate([
+            'pinned' => 'required|integer',
+        ]);
+
+        $original     = clone($post);
+        $post->pinned = (int) $request->input('pinned');
+
+        $post->save();
+
+        $post->setRawAttributes($original->getAttributes(), true);
+
+        return response()->noContent();
+    }
 }

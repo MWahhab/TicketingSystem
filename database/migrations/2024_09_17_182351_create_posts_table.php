@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('title');
             $table->longText('desc');
             $table->string('priority');
+            $table->boolean('pinned')->nullable()->default(false);
             $table->string('column');
             $table->foreignId('assignee_id')->constrained('users');
             $table->date('deadline')->nullable();

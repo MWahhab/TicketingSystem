@@ -54,6 +54,7 @@ class BoardService
             },
             'posts.watchers.user:id,name',
             'posts' => function ($query) use ($dateFrom, $dateTo, $dateField) {
+                $query->orderByDesc('pinned');
                 $query->orderByRaw("
                     CASE 
                         WHEN priority = 'high' THEN 1
@@ -89,6 +90,7 @@ class BoardService
             'title'       => $post->title,
             'desc'        => $post->desc,
             'priority'    => $post->priority,
+            'pinned'      => $post->pinned,
             'column'      => $post->column,
             'assignee_id' => $post->assignee_id,
             'deadline'    => $post->deadline,

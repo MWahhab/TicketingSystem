@@ -437,6 +437,11 @@ function InnerBoardLayout() {
                                             selectedPriorities.length === 0 || selectedPriorities.includes(task.priority.toLowerCase())
                                         return matchesSearch && matchesAssignee && matchesAuthor && matchesPriority
                                     })
+                                    .sort((a, b) => {
+                                        if (a.pinned === 1 && b.pinned !== 1) return -1
+                                        if (a.pinned !== 1 && b.pinned === 1) return 1
+                                        return 0
+                                    })
                                 return (
                                     <div key={column.id} className="flex-1 min-w-[250px] max-w-screen">
                                         <Column column={column} tasks={columnTasks} />
@@ -475,4 +480,3 @@ function InnerBoardLayout() {
 }
 
 export default BoardLayout
-

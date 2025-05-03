@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string $title
  * @property string $desc
  * @property string $priority
+ * @property int    $pinned
  * @property string $column
  * @property int $assignee_id
  * @property Carbon|null $deadline
@@ -56,7 +57,7 @@ class Post extends Model implements NotificationServiceInterface
     use HasFactory, HasNotificationService;
 
     protected $fillable = [
-        'title', 'desc', 'priority', 'column', 'assignee_id', 'deadline',
+        'title', 'desc', 'priority', 'pinned', 'column', 'assignee_id', 'deadline',
         'fid_board', 'fid_user', 'migrated_from'
     ];
 

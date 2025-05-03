@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/users/list', [RegisteredUserController::class, 'getUsers']);
 
     Route::post('/move/{post}', [PostController::class, 'move']);
+    Route::post('/pin/{post}', [PostController::class, 'pin']);
     Route::get('/postSearch', [PostController::class, 'search']);
 
     Route::get('/api/notifications', [NotificationController::class, 'index']);
