@@ -520,9 +520,19 @@ function InnerBoardLayout() {
                                 })
                                 .sort((a: FilterableTask, b: FilterableTask) => {
                                     if (!a || !b) return 0;
-                                    if (a.pinned === 1 && b.pinned !== 1) return -1
-                                    if (a.pinned !== 1 && b.pinned === 1) return 1
-                                    return 0
+
+                                    if (a.pinned === 1 && b.pinned !== 1) return -1; // Pinned a comes first
+                                    if (a.pinned !== 1 && b.pinned === 1) return 1;  // Pinned b comes first
+
+                                    const priorityOrder: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
+                                    const priorityA = priorityOrder[a.priority?.toLowerCase() || 'low'] || 0;
+                                    const priorityB = priorityOrder[b.priority?.toLowerCase() || 'low'] || 0;
+
+                                    if (priorityA !== priorityB) {
+                                        return priorityB - priorityA; // Higher priority value comes first
+                                    }
+
+                                    return 0; // Keep original relative order if pinned and priority are the same
                                 })
                             return (
                                 <div key={column.id} className="flex-1 min-w-[250px] max-w-screen">
