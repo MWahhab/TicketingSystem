@@ -96,7 +96,7 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
             deselectItem(folder, newSelected, tokenCounter)
         } else {
             selectItem(folder, newSelected, tokenCounter)
-            newExpanded.add(folder.id) // only expand when selecting
+            newExpanded.add(folder.id) 
         }
 
         setSelectedItems(newSelected)
