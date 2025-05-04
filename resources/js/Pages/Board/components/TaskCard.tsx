@@ -39,7 +39,7 @@ export function TaskCard({ task }: { task: Task }) {
         <Card
             onClick={() => openDialog(task.id)}
             data-post-id={task.id}
-            className={`mb-4 shadow-md hover:shadow-lg transition-all duration-300 ${
+            className={`mb-4 shadow-md hover:shadow-lg transition duration-300 ease-in-out transition-shadow transition-colors ${
                 task.pinned === 1
                     ? "bg-gradient-to-br from-gray-50 to-white border-l-amber-400 border-l-2"
                     : "bg-gradient-to-br from-gray-50 to-white"
@@ -61,15 +61,15 @@ export function TaskCard({ task }: { task: Task }) {
                     </div>
                     <button
                         onClick={handleStarClick}
-                        className={`group -mr-1 p-1 rounded-full transition-colors hover:bg-gray-100`}
+                        className={`group -mr-1 p-1 rounded-full transition-colors duration-200 hover:bg-gray-100`}
                         aria-label={task.pinned === 1 ? "Unstar task" : "Star task"}
                     >
                         {task.pinned === 1 ? (
                             <Pin
-                                className="w-4 h-4 stroke-zinc-700 fill-zinc-700 transition-all"
+                                className="w-4 h-4 stroke-zinc-700 fill-zinc-700 transition-colors duration-200"
                             />
                         ) : (
-                            <PinOff className="w-4 h-4 stroke-gray-400 group-hover:stroke-gray-600 transition-all" />
+                            <PinOff className="w-4 h-4 stroke-gray-400 group-hover:stroke-gray-600 transition-colors duration-200" />
                         )}
                     </button>
                 </div>
