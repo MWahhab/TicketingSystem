@@ -619,7 +619,7 @@ export function PostFormDialog({
                                                                                     console.error("Error generating PR:", error)
                                                                                     toast({
                                                                                         title: "Error",
-                                                                                        description: "Failed to generate PR files",
+                                                                                        description: error.response.data.error || "Failed to generate PR files",
                                                                                         variant: "destructive",
                                                                                     })
                                                                                 } finally {
