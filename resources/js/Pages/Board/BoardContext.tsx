@@ -232,40 +232,73 @@ export function BoardProvider({
         }))
 
         setColumns((prevColumns) => {
-            const startColumn = prevColumns[source.droppableId]
-            const finishColumn = prevColumns[destination.droppableId]
+            const currentTasks = tasks;
 
-            if (startColumn === finishColumn) {
-                const newTaskIds = Array.from(startColumn.taskIds)
-                newTaskIds.splice(source.index, 1)
-                newTaskIds.splice(destination.index, 0, draggableId)
+            const sourceColumn = prevColumns[source.droppableId];
+            const finishColumn = prevColumns[destination.droppableId];
 
-                const newColumn = {
-                    ...startColumn,
-                    taskIds: newTaskIds,
-                }
-                return {
-                    ...prevColumns,
-                    [newColumn.id]: newColumn,
-                }
+            const sourceStateTaskIds = Array.from(sourceColumn.taskIds);
+            const destStateTaskIds =
+                source.droppableId === destination.droppableId
+                    ? sourceStateTaskIds
+                    : Array.from(finishColumn.taskIds);
+
+            const removalIndex = sourceStateTaskIds.findIndex((id) => id === draggableId);
+            if (removalIndex === -1) {
+                console.error("Dragged item not found in source column state");
+                return prevColumns;
             }
 
-            const startTaskIds = Array.from(startColumn.taskIds)
-            startTaskIds.splice(source.index, 1)
+            sourceStateTaskIds.splice(removalIndex, 1);
 
-            const finishTaskIds = Array.from(finishColumn.taskIds)
-            finishTaskIds.splice(destination.index, 0, draggableId)
+            const destTaskObjects = prevColumns[destination.droppableId].taskIds
+                 .map(tid => currentTasks[tid])
+                 .filter(task => !!task);
 
-            return {
-                ...prevColumns,
-                [startColumn.id]: {
-                    ...startColumn,
-                    taskIds: startTaskIds,
-                },
-                [finishColumn.id]: {
-                    ...finishColumn,
-                    taskIds: finishTaskIds,
-                },
+            const sortedDestTaskObjects = [...destTaskObjects].sort((a, b) => {
+                if (a.pinned === 1 && b.pinned !== 1) return -1;
+                if (a.pinned !== 1 && b.pinned === 1) return 1;
+                return 0;
+            });
+
+            const sortedDestTaskIds = sortedDestTaskObjects.map(t => t.id);
+
+            const targetItemId = sortedDestTaskIds[destination.index];
+
+            let insertionIndex;
+            if (targetItemId) {
+                insertionIndex = destStateTaskIds.findIndex(id => id === targetItemId);
+                if (insertionIndex === -1) {
+                    console.warn("Target item for insertion not found in destination state, adding to end.");
+                    insertionIndex = destStateTaskIds.length;
+                }
+            } else {
+                insertionIndex = destStateTaskIds.length;
+            }
+
+            const finalDestTaskIds = (source.droppableId === destination.droppableId) ? sourceStateTaskIds : destStateTaskIds;
+            finalDestTaskIds.splice(insertionIndex, 0, draggableId);
+
+            if (source.droppableId === destination.droppableId) {
+                return {
+                    ...prevColumns,
+                    [source.droppableId]: {
+                        ...sourceColumn,
+                        taskIds: finalDestTaskIds,
+                    },
+                };
+            } else {
+                return {
+                    ...prevColumns,
+                    [source.droppableId]: {
+                        ...sourceColumn,
+                        taskIds: sourceStateTaskIds,
+                    },
+                    [destination.droppableId]: {
+                        ...finishColumn,
+                        taskIds: finalDestTaskIds,
+                    },
+                };
             }
         })
 
@@ -290,7 +323,7 @@ export function BoardProvider({
             .catch((error) => {
                 console.error("Error during fetch:", error)
             })
-    }, [])
+    }, [tasks])
 
     /**
      * Open the PostFormDialog for a specific Task
