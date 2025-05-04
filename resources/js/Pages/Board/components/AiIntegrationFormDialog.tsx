@@ -257,7 +257,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[550px] bg-gradient-to-b from-zinc-900 to-zinc-950 text-zinc-200 border border-white/10">
+            <DialogContent className="sm:max-w-[550px] bg-gradient-to-b from-zinc-800 to-zinc-900 text-zinc-200 border border-white/10">
                 <DialogHeader>
                     <DialogTitle className="text-zinc-100 text-2xl">AI Settings for {boardTitle}</DialogTitle>
                 </DialogHeader>

@@ -193,7 +193,7 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
     return (
         <Portal>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="bg-gradient-to-b from-zinc-900 to-zinc-950 text-zinc-200 border border-white/10 sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col shadow-xl">
+                <DialogContent className="bg-gradient-to-b from-zinc-800 to-zinc-900 text-zinc-200 border border-white/10 sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col shadow-xl">
                     <DialogHeader className="flex flex-row items-center justify-between">
                         <DialogTitle className="text-zinc-100 text-lg font-semibold">Select Context Files</DialogTitle>
                     </DialogHeader>

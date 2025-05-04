@@ -16,10 +16,10 @@ interface Task {
     pinned?: number
 }
 
-const priorityColors: { [key in Task["priority"]]: string } = {
-    high: "bg-red-500",
-    medium: "bg-yellow-500",
-    low: "bg-green-500",
+const priorityColors: { [key in Task["priority"]]: { bg: string; ring: string } } = {
+    high: { bg: "bg-red-500", ring: "ring-red-500/30" },
+    medium: { bg: "bg-yellow-500", ring: "ring-yellow-500/30" },
+    low: { bg: "bg-green-500", ring: "ring-green-500/30" },
 }
 
 function getInitials(name: string) {
@@ -39,52 +39,46 @@ export function TaskCard({ task }: { task: Task }) {
         <Card
             onClick={() => openDialog(task.id)}
             data-post-id={task.id}
-            className={`mb-4 shadow-md hover:shadow-lg transition duration-300 ease-in-out transition-shadow transition-colors ${
-                task.pinned === 1
-                    ? "bg-gradient-to-br from-gray-50 to-white border-l-amber-400 border-l-2"
-                    : "bg-gradient-to-br from-gray-50 to-white"
-            } border border-gray-200 cursor-pointer`}
+            className={`
+                mb-4 shadow-md hover:shadow-lg transition duration-150 ease-in-out
+                bg-zinc-800 hover:bg-zinc-700/50 border border-white/10 cursor-pointer rounded-lg
+                ${task.pinned === 1 ? "border-l-blue-400 border-l-2 bg-zinc-800/50" : ""}
+            `}
         >
-            <CardHeader className="p-4 overflow-hidden">
+            <CardHeader className="p-3 overflow-hidden">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center">
                         <div
-                            className={`w-3 h-3 rounded-full ${priorityColors[task.priority]} ring-2 ring-offset-2 ring-opacity-50 ${
-                                task.priority === "high"
-                                    ? "ring-red-200"
-                                    : task.priority === "medium"
-                                        ? "ring-yellow-200"
-                                        : "ring-green-200"
-                            }`}
+                            className={`w-2.5 h-2.5 rounded-full ${priorityColors[task.priority].bg} ring-2 ring-offset-2 ring-offset-zinc-800 ${priorityColors[task.priority].ring}`}
                         />
-                        <span className="text-xs font-medium text-gray-500 uppercase ml-2">{task.priority} Priority</span>
+                        <span className="text-xs font-medium text-zinc-400 uppercase ml-2">{task.priority} Priority</span>
                     </div>
                     <button
                         onClick={handleStarClick}
-                        className={`group -mr-1 p-1 rounded-full transition-colors duration-200 hover:bg-gray-100`}
+                        className={`group -mr-1 p-1 rounded-full transition-colors duration-200 hover:bg-white/10`}
                         aria-label={task.pinned === 1 ? "Unstar task" : "Star task"}
                     >
                         {task.pinned === 1 ? (
                             <Pin
-                                className="w-4 h-4 stroke-zinc-700 fill-zinc-700 transition-colors duration-200"
+                                className="w-4 h-4 stroke-blue-400 fill-blue-400 transition-colors duration-200"
                             />
                         ) : (
-                            <PinOff className="w-4 h-4 stroke-gray-400 group-hover:stroke-gray-600 transition-colors duration-200" />
+                            <PinOff className="w-4 h-4 stroke-zinc-500 group-hover:stroke-zinc-300 transition-colors duration-200" />
                         )}
                     </button>
                 </div>
-                <CardTitle className="text-lg font-semibold mt-3 text-gray-800 truncate">
+                <CardTitle className="text-base font-medium mt-2 text-zinc-100 truncate">
                     {task.id}. {task.title}
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-0">
+            <CardContent className="p-3 pt-0">
                 <div className="flex justify-between items-center text-sm">
-                    <div className="flex items-center text-gray-600">
-                        <UserIcon className="w-4 h-4 mr-2 text-gray-400" />
+                    <div className="flex items-center text-zinc-300">
+                        <UserIcon className="w-4 h-4 mr-2 text-zinc-400" />
                         <span>{task.assignee.name}</span>
                     </div>
-                    <Avatar className="w-8 h-8 bg-zinc-800 text-stone-100 font-bold">
-                        <AvatarFallback className="bg-zinc-700">{getInitials(task.assignee.name)}</AvatarFallback>
+                    <Avatar className="w-6 h-6 text-xs">
+                        <AvatarFallback className="bg-zinc-700 text-zinc-300 font-medium">{getInitials(task.assignee.name)}</AvatarFallback>
                     </Avatar>
                 </div>
             </CardContent>

@@ -39,7 +39,7 @@ const DescriptionChangePopup: React.FC<DescriptionChangePopupProps> = ({
   const displayNewContent = isNotStandard ? newContent : dummyNewContent
 
   return (
-      <div className="p-4 bg-gradient-to-b from-zinc-900 to-zinc-950 border border-white/10 rounded-lg w-full shadow-md">
+      <div className="p-4 bg-gradient-to-b from-zinc-800 to-zinc-900 border border-white/10 rounded-lg w-full shadow-md">
         <h3 className="text-sm font-medium text-zinc-100 mb-3">Description Change</h3>
 
         <Tabs defaultValue="changes" className="w-full">

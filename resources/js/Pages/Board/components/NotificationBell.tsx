@@ -22,11 +22,11 @@ interface Notification {
 }
 
 const typeColors = {
-    comment: "bg-blue-500",
-    post: "bg-green-500",
-    board: "bg-purple-500",
-    linked_issue: "bg-purple-500",
-    branch: "bg-violet-500",
+    comment: { text: "text-blue-300", iconBg: "bg-blue-500/80", border: "border-l-blue-400" },
+    post: { text: "text-green-300", iconBg: "bg-green-500/80", border: "border-l-green-400" },
+    board: { text: "text-purple-300", iconBg: "bg-purple-500/80", border: "border-l-purple-400" },
+    linked_issue: { text: "text-orange-300", iconBg: "bg-orange-500/80", border: "border-l-orange-400" },
+    branch: { text: "text-violet-300", iconBg: "bg-violet-500/80", border: "border-l-violet-400" },
 }
 
 const typeIcons = {
@@ -168,36 +168,37 @@ export default function InlineNotificationCenter() {
             return (
                 <div
                     key={notification.id}
-                    onClick={() => onNotificationClick(notification)}
+                    onClick={() => { onNotificationClick(notification); setIsOpen(false); }}
                     data-notification-post-id={notification.fid_post}
                     data-notification-board-id={notification.fid_board}
-                    className={`p-4 border-b border-gray-100 cursor-pointer last:border-b-0 hover:bg-gray-50 transition-colors duration-150 ${
-                        notification.seen ? "bg-white" : "bg-blue-50"
-                    }`}
+                    className={`
+                        p-3 border-b border-zinc-700/50 cursor-pointer last:border-b-0
+                        hover:bg-zinc-700/50 transition-colors duration-150
+                        ${!notification.seen ? `${typeColors[notification.type].border} border-l-2` : ""}
+                    `}
                 >
-                    <div className="flex items-start space-x-4">
-                        <div className={`${typeColors[notification.type]} p-2 rounded-full flex-shrink-0`}>
-                            <IconComponent className="h-5 w-5 text-white" />
+                    <div className="flex items-start space-x-3">
+                        <div className={`${typeColors[notification.type].iconBg} p-2 rounded-lg flex-shrink-0`}>
+                            <IconComponent className="h-4 w-4 text-zinc-100" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <p
-                                className={`text-sm font-medium mb-1 line-clamp-2 ${
-                                    notification.seen ? "text-gray-800" : "text-blue-700"
-                                }`}
+                                className={`text-sm font-medium mb-1 line-clamp-2 text-zinc-200`}
                             >
                                 {notification.content}
                             </p>
                             {notification.additionalCount > 0 && (
-                                <p className="text-xs font-semibold text-blue-600 mb-1">
+                                <p className={`text-xs font-semibold ${typeColors[notification.type].text} mb-1`}>
                                     +{notification.additionalCount} more action(s)
                                 </p>
                             )}
-                            <div className="flex items-center space-x-2">
-                                <span className={`inline-block w-2 h-2 rounded-full ${typeColors[notification.type]}`} />
-                                <p className="text-xs text-gray-500">{notification.time}</p>
+                            <div className="flex items-center">
+                                {!notification.seen && (
+                                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${typeColors[notification.type].iconBg} mr-2`} />
+                                )}
+                                <p className="text-xs text-zinc-400">{notification.time}</p>
                             </div>
                         </div>
-                        {!notification.seen && <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>}
                     </div>
                 </div>
             )
@@ -207,14 +208,16 @@ export default function InlineNotificationCenter() {
     return (
         <div className="fixed bottom-4 right-4 z-50">
             <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full shadow-lg bg-white border-gray-300 hover:bg-gray-50 transition-colors duration-200"
+                // Add solid bg, border, and make it circular
+                className="relative h-8 w-8 p-0 text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-white/20 rounded-full shadow-sm"
                 onClick={handleBellClick}
+                aria-label="Notifications"
             >
-                <Bell className="h-5 w-5 text-gray-700" />
+                <Bell className="h-4 w-4" />
                 {unseenCount > 0 && (
-                    <Badge variant="destructive" className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold">
+                    <Badge
+                        className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center text-xs rounded-full bg-red-600 text-white border border-zinc-900"
+                    >
                         {unseenCount}
                     </Badge>
                 )}
@@ -222,52 +225,58 @@ export default function InlineNotificationCenter() {
             {isOpen && (
                 <div
                     ref={resizeRef}
-                    className="absolute bottom-16 right-0 bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col"
+                    className="absolute bottom-full right-0 mb-2 z-50 bg-gradient-to-b from-zinc-800 to-zinc-900 border border-white/20 rounded-lg shadow-xl overflow-hidden flex flex-col"
                     style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
                 >
-                    <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-                        <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
-                        <Button variant="ghost" size="icon" onClick={handleClose} className="text-gray-500 hover:text-gray-700 hover:bg-gray-100">
+                    <div className="flex items-center justify-between p-3 border-b border-zinc-700 flex-shrink-0">
+                        <h3 className="text-base font-semibold text-zinc-100">Notifications</h3>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClose}
+                            className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-100 hover:bg-white/10"
+                        >
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
                     <Tabs defaultValue="all" className="w-full flex flex-col h-full">
-                        <TabsList className="grid w-full grid-cols-4 bg-gray-100 p-1 rounded-none flex-shrink-0">
-                            <TabsTrigger value="all" className="text-gray-600 data-[state=active]:bg-white data-[state=active]:text-gray-800">
+                        <TabsList className="grid w-full grid-cols-4 bg-zinc-800 p-1 border-b border-zinc-700 rounded-none flex-shrink-0">
+                            <TabsTrigger value="all" className="text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100 rounded-sm text-sm py-1">
                                 All
                             </TabsTrigger>
                             <TabsTrigger
                                 value="comment"
-                                className="text-gray-600 data-[state=active]:bg-white data-[state=active]:text-gray-800"
+                                className="text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100 rounded-sm text-sm py-1"
                             >
                                 Comments
                             </TabsTrigger>
-                            <TabsTrigger value="post" className="text-gray-600 data-[state=active]:bg-white data-[state=active]:text-gray-800">
+                            <TabsTrigger value="post" className="text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100 rounded-sm text-sm py-1">
                                 Posts
                             </TabsTrigger>
-                            <TabsTrigger value="branch" className="text-gray-600 data-[state=active]:bg-white data-[state=active]:text-gray-800">
+                            <TabsTrigger value="branch" className="text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100 rounded-sm text-sm py-1">
                                 Branches
                             </TabsTrigger>
                         </TabsList>
-                        <ScrollArea className="flex-1 overflow-y-auto hide-scrollbar">
-                            <TabsContent value="all">{renderNotificationsInner(notifications)}</TabsContent>
-                            <TabsContent value="comment">
+                        <ScrollArea className="flex-1 overflow-y-auto">
+                            <TabsContent value="all" className="mt-0">{renderNotificationsInner(notifications)}</TabsContent>
+                            <TabsContent value="comment" className="mt-0">
                                 {renderNotificationsInner(notifications.filter((n) => n.type === "comment"))}
                             </TabsContent>
-                            <TabsContent value="post">
+                            <TabsContent value="post" className="mt-0">
                                 {renderNotificationsInner(notifications.filter((n) => n.type === "post"))}
                             </TabsContent>
-                            <TabsContent value="branch">
+                            <TabsContent value="branch" className="mt-0">
                                 {renderNotificationsInner(notifications.filter((n) => n.type === "branch"))}
                             </TabsContent>
                         </ScrollArea>
                     </Tabs>
-                    {/* Resize Handle (Invisible) */}
+
+                    {/* Resize Handle (Invisible Top-Left) */}
                     <div
+                        className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize"
                         onMouseDown={handleResizeMouseDown}
-                        className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize rounded-br-md"
-                        style={{ zIndex: 10 }} // Ensure handle is clickable over ScrollArea
-                    ></div>
+                        title="Resize"
+                    />
                 </div>
             )}
         </div>
