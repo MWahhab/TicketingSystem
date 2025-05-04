@@ -502,7 +502,7 @@ function InnerBoardLayout() {
                 </div>
 
                 <DragDropContext onDragEnd={onDragEnd}>
-                    <div className="flex flex-1 p-4 space-x-4">
+                    <div className="flex flex-1 p-4 space-x-4 h-full">
                         {Object.values(columns).map((column: any) => {
                             const columnTasks = column.taskIds
                                 .map((taskId: string) => tasks[taskId] as FilterableTask)
