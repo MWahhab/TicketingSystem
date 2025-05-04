@@ -31,7 +31,7 @@ const ImageEditDialog = ({ editor, size, variant }: ImageEditDialogProps) => {
           size={size}
           variant={variant}
         >
-          <ImageIcon className="size-5" />
+          <ImageIcon className="h-6 w-6" />
         </ToolbarButton>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">

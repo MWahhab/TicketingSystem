@@ -51,6 +51,21 @@ interface LinkedIssuesSectionProps {
     currentUserId: string
 }
 
+// Define an interface for the raw issue data from the API
+interface RawIssueData {
+    id: number | string;
+    fid_related_post?: number | string;
+    related_post?: { title: string; fid_board?: number | string };
+    link_type?: string;
+    fid_user?: number | string;
+    creator?: { name: string };
+    created_at?: string | Date;
+    type?: string; // Added type for getIssueTypeColor
+    // Add other potential properties from the API response
+    issues?: RawIssueData[]; // If the response can be nested
+    link_types?: LinkType[]; // If link types are included
+}
+
 const linkedIssueSchema = z.object({
     linkType: z.string().min(1, "Link type is required"),
     relatedPostId: z.coerce.string().min(1, "Related issue is required"),
@@ -94,7 +109,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
     const loadLinkedIssues = async () => {
         try {
             const response = await axios.get(`/linkedIssues?fid_origin_post=${taskId}`)
-            const data = response.data
+            const data: RawIssueData = response.data
 
             if (data.link_types) {
                 setLinkTypes(Array.isArray(data.link_types) ? data.link_types : [])
@@ -110,7 +125,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
             const issues = Array.isArray(data) ? data : data.issues || []
 
             setLinkedIssues(
-                issues.map((issue) => ({
+                issues.map((issue: RawIssueData) => ({
                     id: issue.id.toString(),
                     relatedPostId: issue.fid_related_post?.toString() || "Unknown",
                     relatedPostTitle: issue.related_post?.title || "Unknown Issue",
@@ -299,33 +314,33 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
             })
     }
 
-    const getLinkTypeColor = (linkType) => {
-        const colors = {
-            blocks: "bg-red-900 text-red-200",
-            "blocked by": "bg-orange-900 text-orange-200",
-            duplicates: "bg-blue-900 text-blue-200",
-            "duplicated by": "bg-blue-900 text-blue-200",
-            "relates to": "bg-purple-900 text-purple-200",
+    const getLinkTypeColor = (linkType: string): string => {
+        const colors: { [key: string]: string } = {
+            blocks: "bg-red-900/80 text-red-200",
+            "blocked by": "bg-orange-900/80 text-orange-200",
+            duplicates: "bg-blue-900/80 text-blue-200",
+            "duplicated by": "bg-blue-900/80 text-blue-200",
+            "relates to": "bg-purple-900/80 text-purple-200",
         }
-        return colors[linkType] || "bg-zinc-700 text-zinc-300"
+        return colors[linkType] || "bg-zinc-700/80 text-zinc-300"
     }
 
-    const getIssueTypeColor = (issue: any) => {
-        const type = issue.type || "default"
-        const colors = {
-            Bug: "bg-red-500",
-            Feature: "bg-blue-500",
-            Task: "bg-green-500",
-            default: "bg-zinc-500",
+    const getIssueTypeColor = (issue: RawIssueData): string => {
+        const type: string = issue.type || "default"
+        const colors: { [key: string]: string } = {
+            Bug: "bg-red-500/70",
+            Feature: "bg-blue-500/70",
+            Task: "bg-green-500/70",
+            default: "bg-zinc-500/70",
         }
         return colors[type] || colors.default
     }
 
     return (
         <>
-            <Card className="mt-8 bg-zinc-700 border-zinc-600">
+            <Card className="mt-8 bg-zinc-800 border border-zinc-700">
                 <CardHeader
-                    className="pb-3 cursor-pointer select-none"
+                    className="py-3 px-4 cursor-pointer select-none"
                     onClick={() => setIsLinkedIssuesExpanded(!isLinkedIssuesExpanded)}
                 >
                     <div className="flex items-center justify-between text-zinc-100">
@@ -353,14 +368,14 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                     <FormItem>
                                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-800 text-zinc-300 border-zinc-700 focus:border-zinc-600 focus:ring-zinc-600">
+                                                                <SelectTrigger className="bg-zinc-800 text-zinc-200 border-zinc-700 focus:border-zinc-500 focus:ring-zinc-500">
                                                                     <SelectValue placeholder="Link type" />
                                                                 </SelectTrigger>
                                                             </FormControl>
-                                                            <SelectContent className="bg-zinc-800 text-zinc-300 border-zinc-700">
+                                                            <SelectContent className="bg-zinc-800 text-zinc-200 border-zinc-700">
                                                                 {linkTypes.map((type, index) => (
                                                                     <SelectItem
-                                                                        className="hover:bg-zinc-700 hover:text-white"
+                                                                        className="bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white"
                                                                         key={`${type.value}-${index}`}
                                                                         value={type.value}
                                                                     >
@@ -387,7 +402,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                                         value={searchQuery}
                                                                         onChange={handleSearchChange}
                                                                         onKeyDown={handleKeyDown}
-                                                                        className="bg-zinc-800 text-zinc-300 border-zinc-700 focus:border-zinc-600 focus:ring-zinc-600 pl-9 pr-8"
+                                                                        className="bg-zinc-800 text-zinc-200 border-zinc-700 focus:border-zinc-500 focus:ring-zinc-500 pl-9 pr-8"
                                                                     />
                                                                     {searchQuery && (
                                                                         <Button
@@ -411,23 +426,21 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                         <FormMessage className="text-red-400" />
 
                                                         {searchQuery && !isIssueSelected && (
-                                                            <div className="absolute z-10 mt-2 w-full bg-zinc-800 border border-zinc-600 rounded-md shadow-lg overflow-hidden">
+                                                            <div className="absolute z-10 mt-2 w-full bg-zinc-800 border border-zinc-700/80 rounded-md shadow-lg overflow-hidden max-h-60 overflow-y-auto hide-scrollbar">
                                                                 <div className="grid gap-1 p-1">
                                                                     {searchResults.length > 0 ? (
-                                                                        searchResults.map((issue, index) => (
+                                                                        searchResults.map((issue: any, index: number) => (
                                                                             <div
                                                                                 key={`${issue.id}-${index}`}
-                                                                                className={`group rounded-md overflow-hidden hover:bg-zinc-700 transition-all duration-200 ${
-                                                                                    index === selectedResultIndex ? "bg-zinc-700" : ""
-                                                                                }`}
+                                                                                className={`group rounded-md overflow-hidden hover:bg-zinc-700 transition-colors duration-150 ${index === selectedResultIndex ? "bg-zinc-700" : ""}`}
                                                                                 onClick={() => selectIssue(issue)}
                                                                             >
                                                                                 <div className="p-3 flex items-center gap-3">
                                                                                     <div className={`w-1.5 h-12 rounded-sm ${getIssueTypeColor(issue)}`} />
                                                                                     <div className="flex-grow">
                                                                                         <div className="flex items-center gap-2">
-                                                                                            <span className="text-zinc-400 text-sm">#{issue.id}</span>
-                                                                                            <span className="text-zinc-200 font-medium">{issue.title}</span>
+                                                                                            <span className="text-zinc-500 text-sm">#{issue.id}</span>
+                                                                                            <span className="text-zinc-100 font-medium text-sm">{issue.title}</span>
                                                                                         </div>
                                                                                         <div className="text-xs text-zinc-400 mt-1">
                                                                                             {issue.type || "Issue"} • Created{" "}
@@ -439,7 +452,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                                                     <Button
                                                                                         size="sm"
                                                                                         variant="ghost"
-                                                                                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0"
+                                                                                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0 text-zinc-400"
                                                                                         onClick={(e) => {
                                                                                             e.stopPropagation()
                                                                                             selectIssue(issue)
@@ -451,12 +464,9 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                                             </div>
                                                                         ))
                                                                     ) : (
-                                                                        <div className="p-4 text-center text-zinc-400">No search results found</div>
+                                                                        <div className="p-4 text-center text-zinc-400 text-sm">No issues found</div>
                                                                     )}
                                                                 </div>
-                                                                {searchResults.length > 5 && (
-                                                                    <div className="p-4 text-center text-zinc-400">5+ search results found</div>
-                                                                )}
                                                             </div>
                                                         )}
                                                     </FormItem>
@@ -477,14 +487,14 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                         setSearchResults([])
                                                         setIsIssueSelected(false)
                                                     }}
-                                                    className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                                                    className="bg-zinc-700 text-zinc-200 hover:bg-zinc-600"
                                                 >
                                                     Cancel
                                                 </Button>
                                                 <Button
                                                     type="submit"
                                                     size="sm"
-                                                    className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                                                    className="bg-white text-zinc-900 hover:bg-zinc-100"
                                                     disabled={linkedIssueForm.formState.isSubmitting}
                                                 >
                                                     <SendIcon className="h-4 w-4 mr-2" />
@@ -495,11 +505,11 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                     </div>
                                 ) : (
                                     <div
-                                        className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md p-2 cursor-text hover:bg-zinc-800/80 hover:border-zinc-600 transition-colors"
+                                        className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md p-2 cursor-text hover:bg-zinc-700 hover:border-zinc-600 transition-colors"
                                         onClick={() => setIsExpanded(true)}
                                     >
-                                        <PlusIcon className="h-5 w-5 text-zinc-500 mr-2" />
-                                        <span className="text-zinc-500">Link an issue...</span>
+                                        <PlusIcon className="h-5 w-5 text-zinc-400 mr-2" />
+                                        <span className="text-zinc-400">Link an issue...</span>
                                     </div>
                                 )}
                             </form>
@@ -516,7 +526,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                         return (
                                             <li
                                                 key={issue.id}
-                                                className="bg-zinc-800 rounded-md px-3 py-2 hover:bg-zinc-750 transition-colors group flex items-center cursor-pointer"
+                                                className="bg-zinc-800 rounded-md px-3 py-2 hover:bg-zinc-700 transition-colors group flex items-center cursor-pointer"
                                                 onClick={() => {
                                                     window.open(
                                                         `/boards?board_id=${issue.fid_board || ""}&post_id=${issue.relatedPostId}`,
@@ -532,7 +542,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                     #{issue.relatedPostId} - {issue.relatedPostTitle}
                                                 </div>
 
-                                                <div className="flex items-center gap-2 ml-2 text-xs text-zinc-500">
+                                                <div className="flex items-center gap-2 ml-2 text-xs text-zinc-300">
                                                     <span>{issue.userName}</span>
 
                                                     {
@@ -540,7 +550,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-6 w-6 text-zinc-500 hover:text-blue-400"
+                                                                className="h-6 w-6 text-zinc-300 hover:text-amber-500"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation()
                                                                     openEditDialog(issue)
@@ -551,13 +561,13 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-6 w-6 text-zinc-500 hover:text-red-400"
+                                                                className="h-6 w-6 text-zinc-300 hover:text-red-400"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation()
                                                                     deleteLinkedIssue(issue.id)
                                                                 }}
                                                             >
-                                                                <Trash2Icon className="h-3.5 w-3.5" />
+                                                                <XIcon className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </div>
                                                     }
@@ -572,7 +582,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                         </ScrollArea>
                     </CardContent>
                 )}
-                <style jsx>{`
+                <style>{`
                     .hide-scrollbar {
                         scrollbar-width: none;
                         -ms-overflow-style: none;
@@ -584,7 +594,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
             </Card>
 
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="bg-zinc-800 text-zinc-200 border-zinc-700">
+                <DialogContent className="bg-gradient-to-b from-zinc-900 to-zinc-950 text-white border border-white/10">
                     <DialogHeader>
                         <DialogTitle>Edit Link Type</DialogTitle>
                     </DialogHeader>
@@ -598,13 +608,17 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                     <FormItem>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl>
-                                                <SelectTrigger className="bg-zinc-800 text-zinc-300 border-zinc-700 focus:border-zinc-600 focus:ring-zinc-600">
+                                                <SelectTrigger className="bg-zinc-800 text-zinc-200 border-zinc-700 focus:border-zinc-500 focus:ring-zinc-500">
                                                     <SelectValue placeholder="Link type" />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent className="bg-zinc-800 text-zinc-300 border-zinc-700">
+                                            <SelectContent className="bg-zinc-800 text-zinc-200 border-zinc-700">
                                                 {linkTypes.map((type, index) => (
-                                                    <SelectItem key={`edit-${type.value}-${index}`} value={type.value}>
+                                                    <SelectItem
+                                                        className="bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white"
+                                                        key={`edit-${type.value}-${index}`}
+                                                        value={type.value}
+                                                    >
                                                         {type.name}
                                                     </SelectItem>
                                                 ))}

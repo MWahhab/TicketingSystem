@@ -120,8 +120,8 @@ export const SectionOne: React.FC<SectionOneProps> = React.memo(
             size={size}
             variant={variant}
           >
-            <LetterCaseCapitalizeIcon className="size-5" />
-            <CaretDownIcon className="size-5" />
+            <LetterCaseCapitalizeIcon className="h-6 w-6" />
+            <CaretDownIcon className="h-6 w-6" />
           </ToolbarButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-full">

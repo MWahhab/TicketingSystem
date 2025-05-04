@@ -10,10 +10,11 @@ export interface LinkEditorProps extends React.HTMLAttributes<HTMLDivElement> {
   defaultText?: string
   defaultIsNewTab?: boolean
   onSave: (url: string, text?: string, isNewTab?: boolean) => void
+  inputRef?: React.RefObject<HTMLInputElement>
 }
 
 export const LinkEditBlock = React.forwardRef<HTMLDivElement, LinkEditorProps>(
-  ({ onSave, defaultIsNewTab, defaultUrl, defaultText, className }, ref) => {
+  ({ onSave, defaultIsNewTab, defaultUrl, defaultText, className, inputRef }, ref) => {
     const formRef = React.useRef<HTMLDivElement>(null)
     const [url, setUrl] = React.useState(defaultUrl || '')
     const [text, setText] = React.useState(defaultText || '')
@@ -42,11 +43,21 @@ export const LinkEditBlock = React.forwardRef<HTMLDivElement, LinkEditorProps>(
     React.useImperativeHandle(ref, () => formRef.current as HTMLDivElement)
 
     return (
-      <div ref={formRef}>
+      <div 
+        ref={formRef}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className={cn('space-y-4', className)}>
           <div className="space-y-1">
             <Label>URL</Label>
-            <Input type="url" required placeholder="Enter URL" value={url} onChange={e => setUrl(e.target.value)} />
+            <Input 
+              ref={inputRef}
+              type="url" 
+              required 
+              placeholder="Enter URL" 
+              value={url} 
+              onChange={e => setUrl(e.target.value)} 
+            />
           </div>
 
           <div className="space-y-1">
@@ -71,5 +82,3 @@ export const LinkEditBlock = React.forwardRef<HTMLDivElement, LinkEditorProps>(
 )
 
 LinkEditBlock.displayName = 'LinkEditBlock'
-
-export default LinkEditBlock

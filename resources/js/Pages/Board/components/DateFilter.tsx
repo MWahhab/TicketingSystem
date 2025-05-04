@@ -186,7 +186,7 @@ export function DateFilter({
                                         id="created_at"
                                         className="border-zinc-500 text-white"
                                     />
-                                    <Label htmlFor="created_at" className="text-zinc-200">Creation Date</Label>
+                                    <Label htmlFor="created_at" className="text-zinc-200 self-center">Creation Date</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem
@@ -194,7 +194,7 @@ export function DateFilter({
                                         id="updated_at"
                                         className="border-zinc-500 text-white"
                                     />
-                                    <Label htmlFor="updated_at" className="text-zinc-200">Update Date</Label>
+                                    <Label htmlFor="updated_at" className="text-zinc-200 self-center">Update Date</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem
@@ -202,7 +202,7 @@ export function DateFilter({
                                         id="deadline"
                                         className="border-zinc-500 text-white"
                                     />
-                                    <Label htmlFor="deadline" className="text-zinc-200">Deadline</Label>
+                                    <Label htmlFor="deadline" className="text-zinc-200 self-center">Deadline</Label>
                                 </div>
                             </RadioGroup>
                         </div>

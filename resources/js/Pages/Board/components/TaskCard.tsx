@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { UserIcon, Star, Bookmark, BookmarkCheck } from "lucide-react"
+import { UserIcon, Pin, PinOff } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useBoardContext } from "../BoardContext"
@@ -45,7 +45,7 @@ export function TaskCard({ task }: { task: Task }) {
                     : "bg-gradient-to-br from-gray-50 to-white"
             } border border-gray-200 cursor-pointer`}
         >
-            <CardHeader className="p-4">
+            <CardHeader className="p-4 overflow-hidden">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center">
                         <div
@@ -65,13 +65,15 @@ export function TaskCard({ task }: { task: Task }) {
                         aria-label={task.pinned === 1 ? "Unstar task" : "Star task"}
                     >
                         {task.pinned === 1 ? (
-                            <BookmarkCheck className="w-4 h-4 stroke-zinc-700 transition-all" />
+                            <Pin
+                                className="w-4 h-4 stroke-zinc-700 fill-zinc-700 transition-all"
+                            />
                         ) : (
-                            <Bookmark className="w-4 h-4 stroke-zinc-700 group-hover:stroke-zinc-800 transition-all" />
+                            <PinOff className="w-4 h-4 stroke-gray-400 group-hover:stroke-gray-600 transition-all" />
                         )}
                     </button>
                 </div>
-                <CardTitle className="text-lg font-semibold mt-3 text-gray-800">
+                <CardTitle className="text-lg font-semibold mt-3 text-gray-800 truncate">
                     {task.id}. {task.title}
                 </CardTitle>
             </CardHeader>

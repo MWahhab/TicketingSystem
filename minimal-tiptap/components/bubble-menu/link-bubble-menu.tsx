@@ -1,9 +1,12 @@
 import React, { useState, useCallback } from 'react'
 import { Editor } from '@tiptap/react'
-import { BubbleMenu } from '@tiptap/react'
+import { BubbleMenu, type BubbleMenuProps } from '@tiptap/react'
 import { LinkEditBlock } from '../link/link-edit-block'
 import { LinkPopoverBlock } from '../link/link-popover-block'
 import { ShouldShowProps } from '../../types'
+import { EditIcon, ExternalLinkIcon, TrashIcon } from 'lucide-react'
+import * as Popover from '@radix-ui/react-popover'
+import { ToolbarButton } from '../toolbar-button'
 
 interface LinkBubbleMenuProps {
   editor: Editor

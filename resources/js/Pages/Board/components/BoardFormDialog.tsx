@@ -26,36 +26,45 @@ const formSchema = z.object({
     columns: z
         .string()
         .min(5, { message: "Columns must be at least 5 characters." })
-        .transform((val) =>
-            val
-                .split(",")
-                .map((col) => col.trim())
-                .filter((col) => col.length > 0),
-        )
-        .refine((columns) => new Set(columns).size === columns.length, {
-            message: "Column names must be unique.",
-        }),
 })
 
-type FormData = z.infer<typeof formSchema>
+// Single type inferred from the simplified schema
+type FormData = z.infer<typeof formSchema>;
 
 export function BoardFormDialog() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
     const { toast } = useToast()
 
+    // Use FormData for useForm
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             title: "",
-            columns: "",
+            columns: "", // Correct default for string type
         },
     })
 
-    async function onSubmit(values: FormData) {
+    // The 'values' here will be of type FormData {title: string, columns: string}
+    async function onSubmit(values: FormData) { 
+        // Manually transform columns after validation
+        const transformedColumns = values.columns
+            .split(",")
+            .map((col) => col.trim())
+            .filter((col) => col.length > 0);
+
+        // Simple validation for uniqueness after splitting
+        if (new Set(transformedColumns).size !== transformedColumns.length) {
+            form.setError("columns", {
+                type: "manual",
+                message: "Column names must be unique.",
+            });
+            return; // Stop submission if columns are not unique
+        }
+
         const payload = {
             title: values.title,
-            columns: values.columns,
+            columns: transformedColumns, // Use the transformed array
         };
 
         Inertia.post("/boards", payload, {
@@ -82,7 +91,7 @@ export function BoardFormDialog() {
                 <Button className="w-full bg-white text-zinc-900 hover:bg-zinc-100">Add new board</Button>
             </DialogTrigger>
             <DialogContent
-                className="sm:max-w-[550px] bg-zinc-800 text-white border border-zinc-700"
+                className="sm:max-w-[550px] bg-gradient-to-b from-zinc-900 to-zinc-950 text-white border border-white/10"
                 aria-describedby="dialog-description"
             >
                 <DialogHeader>
@@ -101,7 +110,7 @@ export function BoardFormDialog() {
                                         <Input
                                             placeholder="Project Name"
                                             {...field}
-                                            className="w-full bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white"
+                                            className="w-full bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500"
                                         />
                                     </FormControl>
                                     <FormMessage className="text-red-400" />
@@ -120,8 +129,8 @@ export function BoardFormDialog() {
                                     <FormControl>
                                         <Input
                                             placeholder="Backlog, Estimated, In Progress, Review"
-                                            {...field}
-                                            className="w-full bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white"
+                                            {...field} // Field value is now correctly a string
+                                            className="w-full bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500"
                                         />
                                     </FormControl>
                                     <FormMessage className="text-red-400" />

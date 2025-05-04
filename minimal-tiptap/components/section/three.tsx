@@ -247,14 +247,14 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="size-5"
+                    className="h-6 w-6"
                     style={{ color: selectedColor }}
                 >
-                  <path d="M4 20h16" />
-                  <path d="m6 16 6-12 6 12" />
+                  <path d="M12 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   <path d="M8 12h8" />
                 </svg>
-                <CaretDownIcon className="size-5" />
+                <CaretDownIcon className="h-6 w-6" />
               </ToolbarButton>
             </PopoverTrigger>
             <PopoverContent

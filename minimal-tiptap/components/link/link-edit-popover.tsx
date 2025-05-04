@@ -13,9 +13,55 @@ interface LinkEditPopoverProps extends VariantProps<typeof toggleVariants> {
 
 const LinkEditPopover = ({ editor, size, variant }: LinkEditPopoverProps) => {
   const [open, setOpen] = React.useState(false)
+  const urlInputRef = React.useRef<HTMLInputElement>(null);
 
   const { from, to } = editor.state.selection
   const text = editor.state.doc.textBetween(from, to, ' ')
+
+  React.useEffect(() => {
+    if (open) {
+      // Prevent editor from handling blur events while popover is open
+      editor.setOptions({ 
+        editorProps: {
+          handleDOMEvents: {
+            blur: (view, event) => {
+              // Check if the blur target is inside the popover 
+              // (This check might need refinement based on exact DOM structure/event target)
+              const popoverContent = (event.relatedTarget as HTMLElement)?.closest('[data-radix-popper-content-wrapper]');
+              if (popoverContent) {
+                return true; // Prevent editor blur if focus moves within popover
+              }
+              return false; // Allow editor blur otherwise
+            }
+          }
+        }
+      });
+      // Focus the input
+      const timer = setTimeout(() => {
+        urlInputRef.current?.focus();
+      }, 100); 
+      return () => {
+        clearTimeout(timer);
+        // Restore default blur handling when popover closes
+        editor.setOptions({ 
+          editorProps: {
+            handleDOMEvents: {
+              blur: undefined 
+            }
+          }
+        });
+      };
+    } else {
+      // Ensure blur handler is removed if popover is closed externally
+      editor.setOptions({ 
+        editorProps: {
+          handleDOMEvents: {
+            blur: undefined 
+          }
+        }
+      });
+    }
+  }, [open, editor]);
 
   const onSetLink = React.useCallback(
     (url: string, text?: string, openInNewTab?: boolean) => {
@@ -55,11 +101,19 @@ const LinkEditPopover = ({ editor, size, variant }: LinkEditPopoverProps) => {
           size={size}
           variant={variant}
         >
-          <Link2Icon className="size-5" />
+          <Link2Icon className="h-6 w-6" />
         </ToolbarButton>
       </PopoverTrigger>
-      <PopoverContent className="w-full min-w-80" align="start" side="bottom">
-        <LinkEditBlock onSave={onSetLink} defaultText={text} />
+      <PopoverContent 
+        className="w-full min-w-80" 
+        align="start" 
+        side="bottom"
+      >
+        <LinkEditBlock 
+          onSave={onSetLink} 
+          defaultText={text} 
+          inputRef={urlInputRef}
+        />
       </PopoverContent>
     </Popover>
   )

@@ -349,7 +349,7 @@ export function PostFormDialog({
                 )}
                 {isDialogOpen && (
                     <DialogContent
-                        className={`bg-zinc-800 text-white border border-zinc-700 transition-all duration-300 ${
+                        className={`bg-gradient-to-b from-zinc-900 to-zinc-950 text-white border border-white/10 transition-all duration-300 ${
                             isExpanded ? "sm:max-w-[90vw] w-[90vw] h-[98vh]" : "sm:max-w-[1000px]"
                         }`}
                     >
@@ -422,7 +422,7 @@ export function PostFormDialog({
                                                             <Input
                                                                 placeholder="Enter title"
                                                                 {...field}
-                                                                className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white"
+                                                                className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500"
                                                             />
                                                         </FormControl>
                                                         <FormMessage className="text-red-400" />
@@ -762,13 +762,13 @@ export function PostFormDialog({
                                                             value={field.value || ""}
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
                                                                     <SelectValue placeholder="Select board" />
                                                                 </SelectTrigger>
                                                             </FormControl>
-                                                            <SelectContent className="bg-zinc-700 text-white border-zinc-600">
+                                                            <SelectContent className="bg-zinc-800 text-white border-zinc-700">
                                                                 {boards.map((board) => (
-                                                                    <SelectItem key={board.id} value={board.id.toString()} className="hover:bg-zinc-600">
+                                                                    <SelectItem key={board.id} value={board.id.toString()} className="hover:bg-zinc-700">
                                                                         {board.title}
                                                                     </SelectItem>
                                                                 ))}
@@ -795,15 +795,15 @@ export function PostFormDialog({
                                                             disabled={!availableColumns.length}
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
                                                                     <SelectValue
                                                                         placeholder={availableColumns.length ? "Select column" : "Select a board first"}
                                                                     />
                                                                 </SelectTrigger>
                                                             </FormControl>
-                                                            <SelectContent className="bg-zinc-700 text-white border-zinc-600">
+                                                            <SelectContent className="bg-zinc-800 text-white border-zinc-700">
                                                                 {availableColumns.map((col, idx) => (
-                                                                    <SelectItem key={idx} value={col} className="hover:bg-zinc-600">
+                                                                    <SelectItem key={idx} value={col} className="hover:bg-zinc-700">
                                                                         {col}
                                                                     </SelectItem>
                                                                 ))}
@@ -829,13 +829,13 @@ export function PostFormDialog({
                                                             value={field.value}
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
                                                                     <SelectValue placeholder="Select priority" />
                                                                 </SelectTrigger>
                                                             </FormControl>
-                                                            <SelectContent className="bg-zinc-700 text-white border-zinc-600">
+                                                            <SelectContent className="bg-zinc-800 text-white border-zinc-700">
                                                                 {priorities.map((priority) => (
-                                                                    <SelectItem key={priority} value={priority} className="hover:bg-zinc-600">
+                                                                    <SelectItem key={priority} value={priority} className="hover:bg-zinc-700">
                                                                         {priority}
                                                                     </SelectItem>
                                                                 ))}
@@ -848,7 +848,7 @@ export function PostFormDialog({
                                             {task && (
                                                 <FormItem>
                                                     <FormLabel className="text-white">Author</FormLabel>
-                                                    <div className="flex items-center gap-2 p-2 bg-zinc-700 rounded-md border border-zinc-600">
+                                                    <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded-md border border-zinc-700">
                                                         <div className="flex flex-col">
                               <span className="text-sm font-medium text-white">
                                 {assignees.find((a) => a.id.toString() === form.getValues("post_author"))?.name ||
@@ -874,16 +874,16 @@ export function PostFormDialog({
                                                             value={field.value || ""}
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white">
+                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
                                                                     <SelectValue placeholder="Select assignee" />
                                                                 </SelectTrigger>
                                                             </FormControl>
-                                                            <SelectContent className="bg-zinc-700 text-white border-zinc-600">
+                                                            <SelectContent className="bg-zinc-800 text-white border-zinc-700">
                                                                 {assignees.map((assignee) => (
                                                                     <SelectItem
                                                                         key={assignee.id}
                                                                         value={assignee.id.toString()}
-                                                                        className="hover:bg-zinc-600"
+                                                                        className="hover:bg-zinc-700"
                                                                     >
                                                                         {assignee.name}
                                                                     </SelectItem>
@@ -906,7 +906,7 @@ export function PostFormDialog({
                                                                     <Button
                                                                         variant="outline"
                                                                         className={cn(
-                                                                            "w-full pl-3 text-left font-normal bg-zinc-700 text-white border-zinc-600 focus:border-white focus:ring-1 focus:ring-white",
+                                                                            "w-full pl-3 text-left font-normal bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500",
                                                                             !field.value && "text-muted-foreground",
                                                                         )}
                                                                     >
@@ -933,7 +933,7 @@ export function PostFormDialog({
                                                                             }}
                                                                             disabled={(date) => date < new Date() || date < new Date("1900-01-01")}
                                                                             initialFocus
-                                                                            className="bg-zinc-700 text-white"
+                                                                            className="bg-zinc-800 border-zinc-700 text-white"
                                                                         />
                                                                     </div>
                                                                 </PopoverContent>
@@ -947,7 +947,7 @@ export function PostFormDialog({
                                                 <div className="mt-4">
                                                     <h3 className="text-white font-medium mb-2">Branches</h3>
                                                     <div
-                                                        className="bg-zinc-700 rounded-md border border-zinc-600 p-2 max-h-[150px] overflow-y-auto"
+                                                        className="bg-zinc-800 rounded-md border border-zinc-700 p-2 max-h-[150px] overflow-y-auto"
                                                         title={!hasPremiumAccess(isPremium) ? "This is a paid feature" : ""}
                                                     >
                                                         {!hasPremiumAccess(isPremium) ? (

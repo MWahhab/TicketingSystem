@@ -17,7 +17,7 @@ export function ExpandableTipTapTextArea({ value, onChange, className, isPreview
         <div className={`${className} min-h-[200px]`}>
             {isPreview ? (
                 <div
-                    className="bg-zinc-700 text-white border border-zinc-600 rounded-md p-4 min-h-[200px] prose prose-invert max-w-none overflow-y-auto"
+                    className="bg-zinc-800 text-white border border-zinc-700 rounded-md p-4 min-h-[200px] prose prose-invert max-w-none overflow-y-auto"
                     dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                     style={{
                         whiteSpace: 'normal',

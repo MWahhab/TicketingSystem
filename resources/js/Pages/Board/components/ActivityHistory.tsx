@@ -129,16 +129,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                         className="p-3 bg-zinc-700 rounded border border-zinc-600 text-zinc-200"
                         dangerouslySetInnerHTML={{ __html: displayContent }}
                     />
-
-                    {/* Premium overlay for standard users */}
-                    {!isNotStandard && (
-                        <div className="absolute inset-0 backdrop-blur-md bg-zinc-900/50 flex flex-col items-center justify-center z-10 rounded">
-                            <LockIcon className="h-10 w-10 text-zinc-400 mb-3" />
-                            <p className="text-zinc-200 font-medium text-center px-6">
-                                This feature is available only for premium users
-                            </p>
-                        </div>
-                    )}
                 </div>
             )
         }
@@ -160,15 +150,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                         </div>
                     </div>
                 </div>
-
-                {!isNotStandard && (
-                    <div className="absolute inset-0 backdrop-blur-md bg-zinc-900/50 flex flex-col items-center justify-center z-10 rounded">
-                        <LockIcon className="h-10 w-10 text-zinc-400 mb-3" />
-                        <p className="text-zinc-200 font-medium text-center px-6">
-                            This feature is available only for premium users
-                        </p>
-                    </div>
-                )}
             </div>
         )
     }
@@ -238,8 +219,8 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
     }
 
     return (
-        <Card className="mt-8 bg-zinc-700 border-zinc-600">
-            <CardHeader className="pb-3 cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
+        <Card className="mt-8 bg-zinc-800 border border-zinc-700">
+            <CardHeader className="py-3 px-4 cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
                 <div className="flex items-center justify-between text-zinc-100">
                     <div className="flex items-center gap-2 font-semibold">
                         <ClipboardListIcon className="h-5 w-5" />
@@ -255,82 +236,80 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                 <CardContent className="space-y-3">
                     <Separator className="bg-zinc-700" />
                     <ScrollArea className="pr-4 -mr-4 max-h-[440px] overflow-y-auto hide-scrollbar">
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {visibleActivities.map((activity) => (
-                                <div key={activity.id} className="flex items-start space-x-3">
-                                    <Avatar className="h-8 w-8 bg-zinc-800 text-zinc-800">
-                                        <AvatarFallback>{activity.createdBy.charAt(0).toUpperCase()}</AvatarFallback>
+                                <div key={activity.id} className="flex items-start space-x-3 border-b border-zinc-700 last:border-b-0 pb-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarFallback className="bg-zinc-700 text-zinc-300">{activity.createdBy.charAt(0).toUpperCase()}</AvatarFallback>
                                     </Avatar>
-                                    <div className="flex flex-col space-y-1 flex-1">
+                                    <div className="flex flex-col space-y-1 flex-1 pt-1">
                                         <div className="flex items-center space-x-2">
-                                            <span className="text-sm font-bold text-zinc-100">{activity.createdBy}</span>
+                                            <span className="text-sm font-medium text-zinc-100">{activity.createdBy}</span>
                                             <span className="text-xs text-zinc-500">{new Date(activity.createdAt).toLocaleString()}</span>
                                         </div>
-                                        <div className="rounded-lg bg-zinc-800 p-3 text-sm text-zinc-300">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-2">
-                                                    {getActivityIcon(activity.type)}
-                                                    <span>{activity.content}</span>
-                                                </div>
-
-                                                {containsHTML(activity.content) && (
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Popover>
-                                                                    <PopoverTrigger asChild>
-                                                                        <button
-                                                                            className="ml-2 text-zinc-400 hover:text-zinc-100 transition-colors"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                        >
-                                                                            <EyeIcon className="h-4 w-4" />
-                                                                        </button>
-                                                                    </PopoverTrigger>
-                                                                    <PopoverContent className="w-[700px] p-0" align="start" sideOffset={5}>
-                                                                        {parseDescriptionChange(activity.content) ? (
-                                                                            <DescriptionChangePopup
-                                                                                oldContent={parseDescriptionChange(activity.content)?.from || ""}
-                                                                                newContent={parseDescriptionChange(activity.content)?.to || ""}
-                                                                                subscriptionTier={subscriptionTier}
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="p-4 bg-zinc-800 rounded-md relative">
-                                                                                <h3 className="text-sm font-medium text-zinc-100 mb-2">HTML Preview</h3>
-                                                                                <div className="p-4 bg-zinc-700 rounded border border-zinc-600 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
-                                                                                    <HTMLRenderer
-                                                                                        html={
-                                                                                            subscriptionTier !== "standard"
-                                                                                                ? activity.content
-                                                                                                : `<h2>Sample Content</h2><p>This is a placeholder for premium content. Upgrade to access the full feature.</p>`
-                                                                                        }
-                                                                                    />
-                                                                                </div>
-
-                                                                                {/* Premium overlay for standard users */}
-                                                                                {subscriptionTier !== "standard" && (
-                                                                                    <div className="absolute inset-0 backdrop-blur-md bg-zinc-900/50 flex flex-col items-center justify-center z-10 rounded">
-                                                                                        <LockIcon className="h-10 w-10 text-zinc-400 mb-3" />
-                                                                                        <p className="text-zinc-200 font-medium text-center px-6">
-                                                                                            This feature is available only for premium users
-                                                                                        </p>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        )}
-                                                                    </PopoverContent>
-                                                                </Popover>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                {subscriptionTier !== "standard" ? (
-                                                                    <p>View rendered HTML</p>
-                                                                ) : (
-                                                                    <p>HTML preview is a premium feature</p>
-                                                                )}
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                )}
+                                        <div className="flex items-center justify-between text-sm text-zinc-300 pt-1">
+                                            <div className="flex items-center space-x-2">
+                                                {getActivityIcon(activity.type)}
+                                                <span>{activity.content}</span>
                                             </div>
+
+                                            {containsHTML(activity.content) && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <button
+                                                                        className="ml-2 text-zinc-400 hover:text-zinc-100 transition-colors"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        <EyeIcon className="h-4 w-4" />
+                                                                    </button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-[700px] p-0" align="start" sideOffset={5}>
+                                                                    {parseDescriptionChange(activity.content) ? (
+                                                                        <DescriptionChangePopup
+                                                                            oldContent={parseDescriptionChange(activity.content)?.from || ""}
+                                                                            newContent={parseDescriptionChange(activity.content)?.to || ""}
+                                                                            subscriptionTier={subscriptionTier}
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-4 bg-zinc-900 border border-zinc-700 rounded-md relative">
+                                                                            <h3 className="text-sm font-medium text-zinc-100 mb-2">HTML Preview</h3>
+                                                                            <div className="p-4 bg-zinc-800 rounded border border-zinc-700 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
+                                                                                <HTMLRenderer
+                                                                                    html={
+                                                                                        subscriptionTier !== "standard"
+                                                                                            ? activity.content
+                                                                                            : `<h2>Sample Content</h2><p>This is a placeholder for premium content. Upgrade to access the full feature.</p>`
+                                                                                    }
+                                                                                />
+                                                                            </div>
+
+                                                                            {/* Premium overlay for standard users */}
+                                                                            {subscriptionTier !== "standard" && (
+                                                                                <div className="absolute inset-0 backdrop-blur-md bg-zinc-900/50 flex flex-col items-center justify-center z-10 rounded">
+                                                                                    <LockIcon className="h-10 w-10 text-zinc-400 mb-3" />
+                                                                                    <p className="text-zinc-200 font-medium text-center px-6">
+                                                                                        This feature is available only for premium users
+                                                                                    </p>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            {subscriptionTier !== "standard" ? (
+                                                                <p>View rendered HTML</p>
+                                                            ) : (
+                                                                <p>HTML preview is a premium feature</p>
+                                                            )}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -341,7 +320,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                                         onClick={handleShowAllActivities}
                                         variant="secondary"
                                         size="sm"
-                                        className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
+                                        className="bg-white text-zinc-900 hover:bg-zinc-100"
                                     >
                                         Show All Activities
                                     </Button>

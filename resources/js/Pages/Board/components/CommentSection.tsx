@@ -196,9 +196,9 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
     };
 
     return (
-        <Card className="mt-8 bg-zinc-700 border-zinc-600">
+        <Card className="mt-8 bg-zinc-800 border-zinc-700">
             <CardHeader
-                className="pb-3 cursor-pointer select-none"
+                className="py-3 px-4 cursor-pointer select-none"
                 onClick={() => setIsCommentsExpanded(!isCommentsExpanded)}
             >
                 <div className="flex items-center justify-between text-zinc-100">
@@ -232,22 +232,22 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                         value={field.value}
                                                         onChange={field.onChange}
                                                         assignees={assignees}
-                                                        className="min-h-[100px] bg-zinc-800 text-zinc-300 border-zinc-700 resize-none focus:border-zinc-600 focus:ring-zinc-600"
+                                                        className="min-h-[100px] bg-zinc-900 text-zinc-200 border-zinc-700 resize-none focus:border-zinc-500 focus:ring-zinc-500"
                                                         placeholder="Write your comment..."
                                                     />
                                                 ) : (
                                                     <div
-                                                        className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md p-2 cursor-text hover:bg-zinc-800/80 hover:border-zinc-600 transition-colors"
+                                                        className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md p-2 cursor-text hover:bg-zinc-700 transition-colors"
                                                         onClick={() => setIsExpanded(true)}
                                                     >
-                                                        <PlusIcon className="h-5 w-5 text-zinc-500 mr-2" />
-                                                        <span className="text-zinc-500">Add a comment...</span>
+                                                        <PlusIcon className="h-5 w-5 text-zinc-400 mr-2" />
+                                                        <span className="text-zinc-400">Add a comment...</span>
                                                     </div>
                                                 )}
                                             </FormControl>
                                             {isExpanded && (
-                                                <div className="flex justify-between items-center">
-                                                    <FormMessage className="text-red-400" />
+                                                <div className="flex justify-end items-center">
+                                                    <FormMessage className="text-red-400 mr-auto" />
                                                     <div className="flex gap-2">
                                                         <Button
                                                             type="button"
@@ -257,14 +257,14 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                                 setIsExpanded(false);
                                                                 commentForm.reset();
                                                             }}
-                                                            className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                                                            className="bg-zinc-700 text-zinc-200 hover:bg-zinc-600"
                                                         >
                                                             Cancel
                                                         </Button>
                                                         <Button
                                                             type="submit"
                                                             size="sm"
-                                                            className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                                                            className="bg-white text-zinc-900 hover:bg-zinc-100"
                                                             disabled={commentForm.formState.isSubmitting}
                                                         >
                                                             <SendIcon className="h-4 w-4 mr-2" />
@@ -286,15 +286,15 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                         <div className="space-y-4">
                             {visibleComments.map((comment) => (
                                 <div key={comment.id} className="flex items-start space-x-3">
-                                    <Avatar className="h-8 w-8 bg-zinc-800 text-zinc-800">
-                                        <AvatarFallback>
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarFallback className="bg-zinc-700 text-zinc-300">
                                             {comment.author.charAt(0).toUpperCase()}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col space-y-1 flex-1">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-2">
-                                                <span className="text-sm font-bold text-zinc-100">{comment.author}</span>
+                                                <span className="text-sm font-medium text-zinc-100">{comment.author}</span>
                                                 <span className="text-xs text-zinc-500">
                                                     {new Date(comment.createdAt).toLocaleString()}
                                                 </span>
@@ -302,18 +302,18 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                             {comment.authorId == currentUserId && (
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                            <MoreVerticalIcon className="h-4 w-4 text-zinc-300" />
+                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-300 hover:bg-zinc-700">
+                                                            <MoreVerticalIcon className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent
                                                         align="end"
-                                                        className="bg-zinc-800 text-zinc-300 border-zinc-700"
+                                                        className="bg-zinc-800 text-zinc-200 border-zinc-700"
                                                     >
-                                                        <DropdownMenuItem onClick={() => editComment(comment.id)}>
+                                                        <DropdownMenuItem className="hover:bg-zinc-700" onClick={() => editComment(comment.id)}>
                                                             Edit
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => deleteComment(comment.id)}>
+                                                        <DropdownMenuItem className="hover:bg-zinc-700" onClick={() => deleteComment(comment.id)}>
                                                             Delete
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -336,8 +336,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                                         className="min-h-[100px] bg-zinc-800 text-zinc-300 border-zinc-700 resize-none focus:border-zinc-600 focus:ring-zinc-600"
                                                                     />
                                                                 </FormControl>
-                                                                <div className="flex justify-between items-center mt-2">
-                                                                    <FormMessage className="text-red-400" />
+                                                                <div className="flex justify-end items-center mt-2">
+                                                                    <FormMessage className="text-red-400 mr-auto" />
                                                                     <div className="flex gap-2">
                                                                         <Button
                                                                             type="button"
@@ -347,14 +347,14 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                                                 setEditingCommentId(null);
                                                                                 commentForm.reset();
                                                                             }}
-                                                                            className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                                                                            className="bg-zinc-700 text-zinc-200 hover:bg-zinc-600"
                                                                         >
                                                                             Cancel
                                                                         </Button>
                                                                         <Button
                                                                             type="submit"
                                                                             size="sm"
-                                                                            className="bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                                                                            className="bg-white text-zinc-900 hover:bg-zinc-100"
                                                                             disabled={commentForm.formState.isSubmitting}
                                                                         >
                                                                             {commentForm.formState.isSubmitting ? 'Updating...' : 'Update'}
@@ -367,7 +367,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                 </form>
                                             </Form>
                                         ) : (
-                                            <div className="rounded-lg bg-zinc-800 p-3 text-sm text-zinc-300">
+                                            <div className="rounded-lg bg-zinc-900 p-3 text-sm text-zinc-300">
                                                 <div
                                                     className="prose prose-sm prose-invert max-w-none"
                                                     dangerouslySetInnerHTML={{ __html: comment.content }}
@@ -383,7 +383,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                         onClick={handleShowAllComments}
                                         variant="secondary"
                                         size="sm"
-                                        className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
+                                        className="bg-white text-zinc-900 hover:bg-zinc-100"
                                     >
                                         Show All Comments
                                     </Button>

@@ -40,15 +40,44 @@ const formSchema = z
         path: ["aiToken"],
     })
 
+type FormValues = z.infer<typeof formSchema>;
 
-export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards, isPremium }) {
+interface Board {
+    id: string;
+    title: string;
+}
+
+interface Agent {
+    name: string;
+    value: string;
+}
+
+interface AISettingsDialogProps {
+    isOpen: boolean;
+    onClose: () => void;
+    boardId: string;
+    boardTitle: string;
+    boards: Board[];
+    isPremium: string; // Consider using 'standard' | 'premium' if those are the only options
+}
+
+interface ApiResponseItem {
+    json: {
+        integration: string;
+        statusCode: number;
+        // Add other potential properties if known
+    };
+    // Add other potential properties if known
+}
+
+export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards, isPremium }: AISettingsDialogProps) {
     const [showGithubToken, setShowGithubToken] = useState(false)
     const [showAiToken, setShowAiToken] = useState(false)
     const [revealGithub, setRevealGithub] = useState(false)
     const [revealAI, setRevealAI] = useState(false)
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
-    const [agents, setAgents] = useState([])
+    const [agents, setAgents] = useState<Agent[]>([])
     const [repositoryError, setRepositoryError] = useState(false)
     const [aiIntegrationError, setAiIntegrationError] = useState(false)
     const [repositorySuccess, setRepositorySuccess] = useState(false)
@@ -132,7 +161,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
     }, [copyFrom])
 
 
-    function onSubmit(values) {
+    function onSubmit(values: FormValues) {
         if (isPremium === 'standard') {
             toast({ variant: "destructive", title: "Premium subscription required" })
             return
@@ -174,7 +203,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                         let repoValid = false
                         let aiValid = false
 
-                        dataArray.forEach((item) => {
+                        dataArray.forEach((item: ApiResponseItem) => {
                             if (item.json.integration === "repository") {
                                 const success = item.json.statusCode === 200
                                 repoValid = success
@@ -228,9 +257,9 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[550px] bg-zinc-800 text-white border border-zinc-700">
+            <DialogContent className="sm:max-w-[550px] bg-gradient-to-b from-zinc-900 to-zinc-950 text-zinc-200 border border-white/10">
                 <DialogHeader>
-                    <DialogTitle className="text-white text-2xl">AI Settings for {boardTitle}</DialogTitle>
+                    <DialogTitle className="text-zinc-100 text-2xl">AI Settings for {boardTitle}</DialogTitle>
                 </DialogHeader>
 
                 {!loading && (
@@ -241,7 +270,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                 name="copyFrom"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-white">Copy Setting From:</FormLabel>
+                                        <FormLabel className="text-zinc-300">Copy Setting From:</FormLabel>
                                         <FormControl>
                                             <Select
                                                 onValueChange={(value) => {
@@ -249,25 +278,25 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                                     field.onBlur()
                                                 }}
                                                 value={field.value || ""}
-                                                disabled={boards.filter((b) => b.id !== boardId).length === 0}
+                                                disabled={boards.filter((b: Board) => b.id !== boardId).length === 0}
                                             >
                                                 <SelectTrigger
-                                                    className="relative flex h-10 w-full items-center justify-between rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-600"
+                                                    className="relative flex h-10 w-full items-center justify-between rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-white/40"
                                                 >
                                                     <SelectValue
                                                         placeholder={
-                                                            boards.filter((b) => b.id !== boardId).length === 0
+                                                            boards.filter((b: Board) => b.id !== boardId).length === 0
                                                                 ? "No other boards available"
                                                                 : "Select board"
                                                         }
                                                     />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-zinc-700 border border-zinc-600 text-white rounded-md">
+                                                <SelectContent className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-md">
                                                     {boards
-                                                        .filter((b) => b.id !== boardId)
-                                                        .map((b) => (
+                                                        .filter((b: Board) => b.id !== boardId)
+                                                        .map((b: Board) => (
                                                             <SelectItem
-                                                                className="hover:bg-zinc-500 text-sm"
+                                                                className="hover:bg-zinc-700 data-[highlighted]:bg-zinc-700 data-[state=checked]:bg-zinc-600 cursor-pointer text-sm"
                                                                 key={b.id}
                                                                 value={b.id.toString()}
                                                             >
@@ -287,13 +316,13 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                 name="githubRepo"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-white">Project Repository:</FormLabel>
+                                        <FormLabel className="text-zinc-300">Project Repository:</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Input
                                                     placeholder="Example: https://api.github.com/repos/user/repository"
                                                     {...field}
-                                                    className={`h-10 px-3 py-2 text-sm bg-zinc-700 text-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600 ${
+                                                    className={`h-10 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-white/40 ${
                                                         repositoryError
                                                             ? "border-red-500 focus:ring-red-500"
                                                             : repositorySuccess
@@ -322,13 +351,13 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                     name="githubToken"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Access Token:</FormLabel>
+                                            <FormLabel className="text-zinc-300">Access Token:</FormLabel>
                                             <div className="relative">
                                                 <FormControl>
                                                     <Input
                                                         type={revealGithub ? "text" : "password"}
                                                         {...field}
-                                                        className={`h-10 px-3 py-2 text-sm bg-zinc-700 text-white border border-zinc-600 rounded-md pr-10 focus:outline-none focus:ring-2 focus:ring-zinc-600 ${
+                                                        className={`h-10 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md pr-10 focus:outline-none focus:ring-2 focus:ring-white/40 ${
                                                             repositoryError
                                                                 ? "border-red-500 focus:ring-red-500"
                                                                 : repositorySuccess
@@ -343,7 +372,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                                 <button
                                                     type="button"
                                                     onClick={() => setRevealGithub(!revealGithub)}
-                                                    className="absolute inset-y-0 right-2 flex items-center"
+                                                    className="absolute inset-y-0 right-2 flex items-center text-zinc-400 hover:text-zinc-200"
                                                 >
                                                     {revealGithub ? (
                                                         <EyeOff className="w-4 h-4" />
@@ -352,7 +381,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                                     )}
                                                 </button>
                                             </div>
-                                            <p className="text-sm text-gray-400 mt-1">
+                                            <p className="text-sm text-zinc-400 mt-1">
                                                 This token is encrypted upon saving.
                                             </p>
                                             <FormMessage className="text-red-400" />
@@ -371,7 +400,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                 name="aiProvider"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-white">AI Provider:</FormLabel>
+                                        <FormLabel className="text-zinc-300">AI Provider:</FormLabel>
                                         <FormControl>
                                             <Select
                                                 onValueChange={(value) => {
@@ -381,7 +410,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                                 value={field.value}
                                             >
                                                 <SelectTrigger
-                                                    className={`relative flex h-10 w-full items-center justify-between rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-600 ${
+                                                    className={`relative flex h-10 w-full items-center justify-between rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-white/40 ${
                                                         aiIntegrationError
                                                             ? "border-red-500 focus:ring-red-500"
                                                             : aiIntegrationSuccess
@@ -394,12 +423,12 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                                         <Check className="absolute right-8 top-1/2 -translate-y-1/2 text-green-500 animate-pulse" />
                                                     )}
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-zinc-700 border border-zinc-600 text-white rounded-md">
-                                                    {agents.map((agent) => (
+                                                <SelectContent className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-md">
+                                                    {agents.map((agent: Agent) => (
                                                         <SelectItem
                                                             key={agent.name}
                                                             value={agent.name}
-                                                            className="hover:bg-zinc-500 text-sm"
+                                                            className="hover:bg-zinc-700 data-[highlighted]:bg-zinc-700 data-[state=checked]:bg-zinc-600 cursor-pointer text-sm"
                                                         >
                                                             {agent.value}
                                                         </SelectItem>
@@ -423,13 +452,13 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                     name="aiToken"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">AI Access Token:</FormLabel>
+                                            <FormLabel className="text-zinc-300">AI Access Token:</FormLabel>
                                             <div className="relative">
                                                 <FormControl>
                                                     <Input
                                                         type={revealAI ? "text" : "password"}
                                                         {...field}
-                                                        className={`h-10 px-3 py-2 text-sm bg-zinc-700 text-white border border-zinc-600 rounded-md pr-10 focus:outline-none focus:ring-2 focus:ring-zinc-600 ${
+                                                        className={`h-10 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md pr-10 focus:outline-none focus:ring-2 focus:ring-white/40 ${
                                                             aiIntegrationError
                                                                 ? "border-red-500 focus:ring-red-500"
                                                                 : aiIntegrationSuccess
@@ -444,12 +473,12 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                                 <button
                                                     type="button"
                                                     onClick={() => setRevealAI(!revealAI)}
-                                                    className="absolute inset-y-0 right-2 flex items-center"
+                                                    className="absolute inset-y-0 right-2 flex items-center text-zinc-400 hover:text-zinc-200"
                                                 >
                                                     {revealAI ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                 </button>
                                             </div>
-                                            <p className="text-sm text-gray-400 mt-1">
+                                            <p className="text-sm text-zinc-400 mt-1">
                                                 This token is encrypted upon saving.
                                             </p>
                                             <FormMessage className="text-red-400" />
@@ -466,7 +495,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                             <Button
                                 type="submit"
                                 disabled={isPremium === 'standard' || submitting}
-                                className="w-full bg-white text-zinc-900 hover:bg-zinc-100"
+                                className="w-full bg-white text-zinc-900 hover:bg-zinc-200 focus-visible:ring-white/50 disabled:bg-zinc-700 disabled:text-zinc-400"
                             >
                                 {submitting ? (
                                     <>

@@ -22,14 +22,16 @@ export interface MinimalTiptapProps extends Omit<UseMinimalTiptapEditorProps, 'o
   onChange?: (value: Content) => void
   className?: string
   editorContentClassName?: string
+  id?: string
+  assignees?: any[]
 }
 
 const Toolbar = ({ editor }: { editor: Editor }) => (
   <div className="shrink-0 overflow-x-auto border-b border-border p-2">
-    <div className="flex w-max items-center gap-px">
+    <div className="flex w-max items-center gap-2">
       <SectionOne editor={editor} activeLevels={[1, 2, 3, 4, 5, 6]} />
 
-      <Separator orientation="vertical" className="mx-2 h-7" />
+      <Separator orientation="vertical" className="mx-3 h-7" />
 
       <SectionTwo
         editor={editor}
@@ -37,15 +39,15 @@ const Toolbar = ({ editor }: { editor: Editor }) => (
         mainActionCount={2}
       />
 
-      <Separator orientation="vertical" className="mx-2 h-7" />
+      <Separator orientation="vertical" className="mx-3 h-7" />
 
       <SectionThree editor={editor} />
 
-      <Separator orientation="vertical" className="mx-2 h-7" />
+      <Separator orientation="vertical" className="mx-3 h-7" />
 
       <SectionFour editor={editor} activeActions={['orderedList', 'bulletList']} mainActionCount={0} />
 
-      <Separator orientation="vertical" className="mx-2 h-7" />
+      <Separator orientation="vertical" className="mx-3 h-7" />
 
       <SectionFive editor={editor} activeActions={['codeBlock', 'blockquote', 'horizontalRule']} mainActionCount={0} />
     </div>
