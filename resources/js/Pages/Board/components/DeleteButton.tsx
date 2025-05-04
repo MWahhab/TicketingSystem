@@ -1,9 +1,16 @@
 import { Button } from "@/components/ui/button"
-import {Trash, Trash2} from "lucide-react"
+import { Trash } from "lucide-react"
 import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmation";
 import React, {useState} from "react";
+import { cn } from "@/lib/utils"
 
-export default function DeleteButton({resourceId, type}: { resourceId: string, type: string }) {
+interface DeleteButtonProps {
+    resourceId: string;
+    type: string;
+    className?: string;
+}
+
+export default function DeleteButton({resourceId, type, className}: DeleteButtonProps) {
     const [showDialog, setShowDialog] = useState(false);
 
     const onDelete = () => {
@@ -20,9 +27,9 @@ export default function DeleteButton({resourceId, type}: { resourceId: string, t
                 variant="ghost"
                 size="icon"
                 onClick={onDelete}
-                className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                className={cn(className)}
             >
-                <Trash className="h-5 w-5" />
+                <Trash />
                 <span className="sr-only">Delete {type}</span>
             </Button>
 

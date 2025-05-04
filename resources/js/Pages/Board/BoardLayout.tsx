@@ -20,6 +20,7 @@ import { DateFilter } from "./components/DateFilter"
 import { AISettingsDialog } from "@/Pages/Board/components/AiIntegrationFormDialog"
 
 import { BoardProvider, useBoardContext } from "./BoardContext"
+import {clsx} from "clsx";
 
 const PreventCloseMenuItem = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<typeof DropdownMenuItem>>(
     ({ children, ...props }, forwardedRef) => (
@@ -232,14 +233,25 @@ function InnerBoardLayout() {
                         variant="ghost"
                         size="icon"
                         onClick={handlePinToggle}
-                        className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-100 hover:bg-white/10"
                         aria-label={isSidebarPinned ? "Unpin sidebar" : "Pin sidebar"}
-                    >
-                        {isSidebarPinned ? (
-                            <Pin className="h-4 w-4 fill-zinc-300 stroke-zinc-300" />
-                        ) : (
-                            <PinOff className="h-4 w-4 stroke-gray-400 group-hover:stroke-gray-600" />
+                        className={clsx(
+                            "border border-white/10 transition-colors",
+
+                            "hover:bg-transparent hover:ring-0",
+
+                            "hover:text-zinc-100",
+
+                            isSidebarPinned ? "text-zinc-100" : "text-zinc-400"
                         )}
+                    >
+                        <Pin
+                            className={clsx(
+                                "h-4 w-4 transition-colors",
+                                isSidebarPinned
+                                    ? "fill-current stroke-current"
+                                    : "fill-none stroke-current"
+                            )}
+                        />
                     </Button>
                 </div>
 
@@ -292,7 +304,7 @@ function InnerBoardLayout() {
                     <div className="flex items-center gap-2 mt-3">
                         <Link
                             href={route("profile.edit")}
-                            className="flex items-center justify-center h-8 w-8 rounded-md bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-300 hover:text-zinc-100"
+                            className="flex items-center justify-center h-8 w-8 rounded-md border border-white/10 bg-transparent hover:bg-zinc-800 hover:ring-1 hover:ring-white/20 transition-all text-zinc-400 hover:text-zinc-100"
                             aria-label="User Profile"
                         >
                             <User className="h-4 w-4" />
@@ -301,7 +313,7 @@ function InnerBoardLayout() {
                             href={route("logout")}
                             method="post"
                             as="button"
-                            className="flex items-center justify-center h-8 w-8 rounded-md bg-zinc-800 text-zinc-300 hover:bg-red-900/50 hover:text-red-100 transition-colors"
+                            className="flex items-center justify-center h-8 w-8 rounded-md border border-white/10 bg-transparent text-zinc-400 hover:bg-red-800/50 hover:text-red-100 hover:ring-1 hover:ring-red-500/30 transition-all"
                             aria-label="Logout"
                         >
                             <LogOut className="h-4 w-4" />
@@ -318,11 +330,17 @@ function InnerBoardLayout() {
                 `}
             >
                 {/* Header/Toolbar */}
-                <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-b from-zinc-900 to-zinc-950 h-16 px-6 flex-shrink-0">
+                <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-br from-zinc-850 to-zinc-950 h-16 px-6 flex-shrink-0">
                     {/* Left Side: Title & Delete */}
                     <div className="flex items-center space-x-3">
                         <h1 className="text-xl font-semibold text-zinc-100 truncate">{boardTitle}</h1>
-                        {boardId && <DeleteButton resourceId={boardId} type="Board" buttonClassName="text-zinc-400 hover:text-zinc-100 hover:bg-white/10" iconSize={16} />}
+                        {boardId &&
+                            <DeleteButton
+                                resourceId={boardId}
+                                type="Board"
+                                className="h-8 w-8 border border-white/10 bg-transparent transition-all text-zinc-400 hover:bg-red-800/50 hover:text-red-100 hover:ring-1 hover:ring-red-500/30"
+                            />
+                        }
                     </div>
 
                     {/* Middle: Notifications (Optional - Keep or remove for minimalism) */}
