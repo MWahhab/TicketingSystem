@@ -1,7 +1,6 @@
 import type React from "react"
-import { diffChars, diffLines } from "diff"
+import { diffChars, diffLines, type Change } from "diff"
 
-// Helper function to strip HTML tags while preserving word boundaries
 const stripHtml = (html: string): string => {
   if (!html) return ""
   return html
@@ -19,7 +18,6 @@ interface DiffViewerProps {
 }
 
 const DiffViewer: React.FC<DiffViewerProps> = ({ oldText, newText, mode = "inline", stripTags = true }) => {
-  // Process text based on stripTags option
   const processText = (text: string): string => {
     let processed = text || ""
     if (stripTags) {
@@ -31,51 +29,42 @@ const DiffViewer: React.FC<DiffViewerProps> = ({ oldText, newText, mode = "inlin
   const processedOldText = processText(oldText)
   const processedNewText = processText(newText)
 
-  // Pre-tokenize the text to ensure word boundaries are preserved
   const tokenizeText = (text: string): string => {
-    // Add a special non-printing character after each word boundary
-    // This ensures spaces are properly preserved in the diff
     return text.replace(/(\S)(\s+)(\S)/g, '$1$2\u200B$3');
   }
 
-  // Simple text-only diff that focuses on showing only what changed
   const renderSimpleDiff = () => {
-    // Use pre-tokenized character-level diff
     const charDiff = diffChars(
         tokenizeText(processedOldText),
         tokenizeText(processedNewText)
     )
 
-    // Post-process to remove the special character
-    const processedDiff = charDiff.map(part => ({
+    const processedDiff = charDiff.map((part: Change) => ({
       ...part,
       value: part.value.replace(/\u200B/g, '')
     }));
 
-    // If the diff is small enough, show character-level changes
     if (processedDiff.length < 200) {
       return (
           <div className="flex flex-wrap">
-            {processedDiff.map((part, index) => {
-              // Skip rendering large unchanged parts to focus on changes
+            {processedDiff.map((part: Change, index: number) => {
               if (!part.added && !part.removed && part.value.length > 100) {
                 const start = part.value.substring(0, 40)
                 const end = part.value.substring(part.value.length - 40)
                 return (
-                    <span key={index} className="text-gray-400">
+                    <span key={index} className="text-zinc-500">
                       {start}
-                      <span className="text-gray-500"> [...] </span>
+                      <span className="text-zinc-600"> [...] </span>
                       {end}
                     </span>
                 )
               }
 
-              // Only apply styling to added or removed parts
               const className = part.added
-                  ? "bg-green-900/30 border-green-500 border-b"
+                  ? "bg-green-800/20 text-green-300 rounded px-1"
                   : part.removed
-                      ? "bg-red-900/30 border-red-500 border-b"
-                      : ""
+                      ? "bg-red-800/20 text-red-300 rounded px-1 line-through"
+                      : "text-zinc-400"
 
               return (
                   <span key={index} className={className}>
@@ -87,34 +76,31 @@ const DiffViewer: React.FC<DiffViewerProps> = ({ oldText, newText, mode = "inlin
       )
     }
 
-    // For larger diffs, use line-by-line comparison
     const lineDiff = diffLines(processedOldText, processedNewText)
 
     return (
         <div className="flex flex-col gap-1">
-          {lineDiff.map((part, index) => {
+          {lineDiff.map((part: Change, index: number) => {
             if (!part.added && !part.removed) {
-              // For unchanged parts, only show context around changes
               const lines = part.value.split("\n")
               let displayText = part.value
 
               if (lines.length > 4) {
-                // Show only first and last two lines for context
                 const firstLines = lines.slice(0, 2).join("\n")
                 const lastLines = lines.slice(-2).join("\n")
                 displayText = `${firstLines}\n[...]\n${lastLines}`
               }
 
               return (
-                  <span key={index} className="text-gray-400">
+                  <span key={index} className="text-zinc-500">
                     {displayText}
                   </span>
               )
             }
 
             const className = part.added
-                ? "bg-green-900/30 border-l-2 border-green-500 pl-2"
-                : "bg-red-900/30 border-l-2 border-red-500 pl-2"
+                ? "bg-green-800/20 text-green-300 border-l-2 border-green-600 pl-2 rounded-r"
+                : "bg-red-800/20 text-red-300 border-l-2 border-red-600 pl-2 rounded-r"
 
             return (
                 <div key={index} className={className}>
@@ -126,50 +112,45 @@ const DiffViewer: React.FC<DiffViewerProps> = ({ oldText, newText, mode = "inlin
     )
   }
 
-  // Side by side diff view with improved highlighting
   const renderSideBySideDiff = () => {
-    // Use pre-tokenized character-level diff
     const charDiff = diffChars(
         tokenizeText(processedOldText),
         tokenizeText(processedNewText)
     )
 
-    // Post-process to remove the special character
-    const processedDiff = charDiff.map(part => ({
+    const processedDiff = charDiff.map((part: Change) => ({
       ...part,
       value: part.value.replace(/\u200B/g, '')
     }));
 
-    // Extract the left side (old text) with highlighting
     const oldTextHighlighted = (
         <div className="whitespace-pre-wrap">
-          {processedDiff.map((part, index) => {
+          {processedDiff.map((part: Change, index: number) => {
             if (part.removed) {
               return (
-                  <span key={index} className="bg-red-900/30 border-red-500 border-b">
+                  <span key={index} className="bg-red-800/20 text-red-300 rounded px-1 line-through">
                     {part.value}
                   </span>
               )
             } else if (!part.added) {
-              return <span key={index}>{part.value}</span>
+              return <span key={index} className="text-zinc-400">{part.value}</span>
             }
             return null
           })}
         </div>
     )
 
-    // Extract the right side (new text) with highlighting
     const newTextHighlighted = (
         <div className="whitespace-pre-wrap">
-          {processedDiff.map((part, index) => {
+          {processedDiff.map((part: Change, index: number) => {
             if (part.added) {
               return (
-                  <span key={index} className="bg-green-900/30 border-green-500 border-b">
+                  <span key={index} className="bg-green-800/20 text-green-300 rounded px-1">
                     {part.value}
                   </span>
               )
             } else if (!part.removed) {
-              return <span key={index}>{part.value}</span>
+              return <span key={index} className="text-zinc-400">{part.value}</span>
             }
             return null
           })}
@@ -191,7 +172,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({ oldText, newText, mode = "inlin
   }
 
   return (
-      <div className="text-sm">
+      <div className="text-sm text-zinc-400">
         {mode === "side-by-side" ? renderSideBySideDiff() : renderSimpleDiff()}
       </div>
   )

@@ -4,7 +4,7 @@ import type React from "react"
 import HTMLRenderer from "./html-renderer"
 import DiffViewer from "./diff-viewer"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LockIcon } from "lucide-react"
+import PremiumOverlay from "./premium-overlay"
 
 interface DescriptionChangePopupProps {
   oldContent: string
@@ -39,18 +39,18 @@ const DescriptionChangePopup: React.FC<DescriptionChangePopupProps> = ({
   const displayNewContent = isNotStandard ? newContent : dummyNewContent
 
   return (
-      <div className="p-4 bg-zinc-800 rounded-md w-full">
+      <div className="p-4 bg-gradient-to-b from-zinc-900 to-zinc-950 border border-white/10 rounded-lg w-full shadow-md">
         <h3 className="text-sm font-medium text-zinc-100 mb-3">Description Change</h3>
 
         <Tabs defaultValue="changes" className="w-full">
-          <TabsList className="mb-3">
-            <TabsTrigger value="changes">Changes</TabsTrigger>
-            <TabsTrigger value="side-by-side">Side by Side</TabsTrigger>
+          <TabsList className="mb-3 bg-zinc-800 border border-zinc-700 p-1 h-auto rounded-md">
+            <TabsTrigger value="changes" className="text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100 rounded-sm px-3 py-1 text-sm">Changes</TabsTrigger>
+            <TabsTrigger value="side-by-side" className="text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100 rounded-sm px-3 py-1 text-sm">Side by Side</TabsTrigger>
           </TabsList>
 
           <div className="min-h-[300px] relative">
             <TabsContent value="changes" className="mt-0">
-              <div className="p-4 bg-zinc-700 rounded border border-zinc-600 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
+              <div className="p-4 bg-zinc-800 rounded border border-zinc-700 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
                 <DiffViewer oldText={displayOldContent} newText={displayNewContent} />
               </div>
             </TabsContent>
@@ -59,27 +59,20 @@ const DescriptionChangePopup: React.FC<DescriptionChangePopupProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-xs font-medium text-zinc-400 mb-2">Previous</h4>
-                  <div className="p-4 bg-zinc-700 rounded border border-zinc-600 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
+                  <div className="p-4 bg-zinc-800 rounded border border-zinc-700 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
                     <HTMLRenderer html={displayOldContent} />
                   </div>
                 </div>
                 <div>
                   <h4 className="text-xs font-medium text-zinc-400 mb-2">Current</h4>
-                  <div className="p-4 bg-zinc-700 rounded border border-zinc-600 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
+                  <div className="p-4 bg-zinc-800 rounded border border-zinc-700 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
                     <HTMLRenderer html={displayNewContent} />
                   </div>
                 </div>
               </div>
             </TabsContent>
 
-            {!isNotStandard && (
-                <div className="absolute inset-0 backdrop-blur-md bg-zinc-900/50 flex flex-col items-center justify-center z-10 rounded">
-                  <LockIcon className="h-10 w-10 text-zinc-400 mb-3" />
-                  <p className="text-zinc-200 font-medium text-center px-6">
-                    This feature is available only for premium users
-                  </p>
-                </div>
-            )}
+            <PremiumOverlay show={!isNotStandard} />
           </div>
         </Tabs>
       </div>

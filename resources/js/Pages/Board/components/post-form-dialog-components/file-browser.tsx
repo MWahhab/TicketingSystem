@@ -55,7 +55,7 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
             tokenCounter.total += item.estimatedTokens ?? 0
         }
         if (item.children?.length) {
-            item.children.forEach((child) => selectItem(child, selected, tokenCounter))
+            item.children.forEach((child: FileItem) => selectItem(child, selected, tokenCounter))
         }
     }
 
@@ -64,7 +64,7 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
             tokenCounter.total -= item.estimatedTokens ?? 0
         }
         if (item.children?.length) {
-            item.children.forEach((child) => deselectItem(child, selected, tokenCounter))
+            item.children.forEach((child: FileItem) => deselectItem(child, selected, tokenCounter))
         }
     }
 
@@ -139,22 +139,28 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
             if (item.type === "folder") {
                 const isSelected = selectedItems.has(item.path)
                 const isEmpty = !item.children || item.children.length === 0
-                const someSelected = !isSelected && item.children?.length > 0 ? checkSomeSelected(item, selectedItems) : false
+                let someSelected = false
+                let allSelected = false
+                if (!isEmpty) {
+                    const childPaths = (item.children ?? []).map((child: FileItem) => child.path);
+                    const selectedChildren = childPaths.filter((path: string) => selectedItems.has(path));
+                    someSelected = !isSelected && selectedChildren.length > 0 && selectedChildren.length < childPaths.length;
+                    allSelected = selectedChildren.length === childPaths.length && childPaths.length > 0;
+                }
 
                 return (
                     <div key={item.id} className="select-none">
                         <div className="flex items-center py-1.5 hover:bg-zinc-700/50 px-2 rounded">
                             <Checkbox
                                 id={`checkbox-${item.id}`}
-                                checked={isSelected}
-                                indeterminate={someSelected}
+                                checked={isSelected ? true : (someSelected ? 'indeterminate' : false)}
                                 disabled={isEmpty}
                                 onCheckedChange={() => toggleFolderSelection(item)}
-                                className="mr-2 data-[state=indeterminate]:bg-zinc-600 data-[state=checked]:bg-zinc-500"
+                                className="mr-2 border-zinc-700 data-[state=indeterminate]:bg-zinc-600 data-[state=checked]:bg-zinc-500 data-[state=checked]:border-zinc-500"
                             />
                             <div className="flex items-center flex-1 cursor-pointer" onClick={() => toggleFolderExpansion(item.id)}>
                                 <FolderIcon className="h-4 w-4 mr-2 text-blue-400" />
-                                <span className="text-sm text-white">{item.name}</span>
+                                <span className="text-sm text-zinc-200">{item.name}</span>
                                 {isEmpty && <span className="ml-2 text-xs text-zinc-400">(empty)</span>}
                                 {item.estimatedTokens && <span className="ml-auto text-xs text-zinc-400">{item.estimatedTokens} tokens</span>}
                             </div>
@@ -171,11 +177,11 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
                             id={`checkbox-${item.id}`}
                             checked={selectedItems.has(item.path)}
                             onCheckedChange={() => toggleFileSelection(item)}
-                            className="mr-2 data-[state=checked]:bg-zinc-500"
+                            className="mr-2 border-zinc-700 data-[state=checked]:bg-zinc-500 data-[state=checked]:border-zinc-500"
                         />
                         <div className="flex items-center flex-1">
                             <FileIcon className="h-4 w-4 mr-2 text-zinc-400" />
-                            <span className="text-sm text-white">{item.name}</span>
+                            <span className="text-sm text-zinc-200">{item.name}</span>
                             {item.estimatedTokens && <span className="ml-auto text-xs text-zinc-400">{item.estimatedTokens} tokens</span>}
                         </div>
                     </div>
@@ -187,13 +193,13 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
     return (
         <Portal>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="bg-zinc-800 text-white border border-zinc-700 sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogContent className="bg-gradient-to-b from-zinc-900 to-zinc-950 text-zinc-200 border border-white/10 sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col shadow-xl">
                     <DialogHeader className="flex flex-row items-center justify-between">
-                        <DialogTitle className="text-white text-xl">Select context files</DialogTitle>
+                        <DialogTitle className="text-zinc-100 text-lg font-semibold">Select Context Files</DialogTitle>
                     </DialogHeader>
 
-                    <div className="overflow-y-auto flex-1 border border-zinc-700 rounded-md mb-4">
-                        {renderFileTree(localFileStructure)}
+                    <div className="overflow-y-auto flex-1 border border-white/10 rounded-md mb-4 bg-zinc-900 p-2">
+                        {localFileStructure ? renderFileTree(localFileStructure) : <p className="text-zinc-400 text-sm p-4 text-center">Loading files...</p>}
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -201,17 +207,21 @@ export function FileBrowser({ isOpen, onClose, onFilesSelected, postId, fileStru
                             {selectedItems.size} items — {totalTokens.toLocaleString()} tokens
                         </div>
                         <div className="flex items-center gap-2 flex-1 max-w-[200px]">
-                            <Progress value={capacityUsed} className="h-2 bg-zinc-700" />
+                            <Progress value={capacityUsed} className="h-2 bg-zinc-700 [&>div]:bg-blue-500" />
                             <span className="text-xs text-zinc-400">{capacityUsed}% / 100%</span>
                         </div>
                         <div className="flex gap-2">
-                            <Button onClick={handleSkip} className="bg-zinc-500 text-white hover:bg-zinc-400">
+                            <Button
+                                onClick={handleSkip}
+                                variant="outline"
+                                className="border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                            >
                                 Skip
                             </Button>
                             <Button
                                 onClick={handleSubmit}
                                 disabled={selectedItems.size === 0}
-                                className="bg-white text-zinc-900 hover:bg-zinc-100 disabled:bg-zinc-600 disabled:text-zinc-400"
+                                className="bg-white text-zinc-900 hover:bg-zinc-200 focus-visible:ring-white/50 disabled:bg-zinc-700 disabled:text-zinc-400"
                             >
                                 Add files
                             </Button>
