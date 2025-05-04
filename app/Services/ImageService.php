@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ImageService
 {
@@ -26,15 +26,12 @@ class ImageService
     /**
      * Base directory for storing images relative to the public folder.
      *
-     * @var string
      */
     protected string $publicImagePath = 'images';
 
     /**
      * Extracts image src paths from HTML description.
      *
-     * @param  string $desc
-     * @return array
      */
     public function extractImagePaths(string $desc): array
     {
@@ -45,8 +42,6 @@ class ImageService
     /**
      * Converts embedded base64 images in HTML to stored public files.
      *
-     * @param  string  $desc
-     * @return string
      */
     public function convertEmbeddedImages(string $desc): string
     {
@@ -73,7 +68,7 @@ class ImageService
                 $extension = $this->allowedMimeTypes[$mimeType];
                 $dir       = public_path($this->publicImagePath);
                 if (!File::exists($dir)) {
-                    File::makeDirectory($dir, 0755, true);
+                    File::makeDirectory($dir, 0o755, true);
                 }
 
                 $filename = Str::uuid() . '.' . $extension;
@@ -87,7 +82,7 @@ class ImageService
                 }
 
                 $publicPath = '/' . trim($this->publicImagePath, '/') . '/' . $filename;
-                return '<img src="' . e($publicPath) . '">';
+                return '<a href="' . e($publicPath) . '" target="_blank" rel="noopener noreferrer" data-inertia-external><img src="' . e($publicPath) . '" style="max-width: 100%; height: auto; display: block; margin: 0.5em 0;"></a>';
             },
             $desc
         );
@@ -96,9 +91,6 @@ class ImageService
     /**
      * Converts and cleans up images in a post's HTML description.
      *
-     * @param  string      $desc
-     * @param  string|null $oldDesc
-     * @return string
      */
     public function handlePostImages(string $desc, ?string $oldDesc = null): string
     {
@@ -114,9 +106,6 @@ class ImageService
     /**
      * Deletes images that were removed between old and new descriptions.
      *
-     * @param string $oldDesc
-     * @param string $newDesc
-     * @return void
      */
     public function deleteRemovedImages(string $oldDesc, string $newDesc): void
     {
@@ -133,8 +122,6 @@ class ImageService
     /**
      * Deletes all images found in the provided HTML description.
      *
-     * @param  string $desc
-     * @return void
      */
     public function deleteAllImagesInDesc(string $desc): void
     {
@@ -146,8 +133,6 @@ class ImageService
     /**
      * Deletes an image from disk, scoped only to public/images directory.
      *
-     * @param  string $path
-     * @return void
      */
     protected function deleteStorageImage(string $path): void
     {
