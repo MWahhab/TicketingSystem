@@ -178,7 +178,7 @@ export default function InlineNotificationCenter() {
                     `}
                 >
                     <div className="flex items-start space-x-3">
-                        <div className={`${typeColors[notification.type].iconBg} p-2 rounded-lg flex-shrink-0`}>
+                        <div className={`${typeColors[notification.type].iconBg} p-2 rounded-full flex-shrink-0`}>
                             <IconComponent className="h-4 w-4 text-zinc-100" />
                         </div>
                         <div className="flex-1 min-w-0">
