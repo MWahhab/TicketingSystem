@@ -13,7 +13,7 @@ const PremiumOverlay: React.FC<PremiumOverlayProps> = ({
     if (!show) return null
 
     return (
-        <div className="absolute inset-0 backdrop-blur-md bg-black/60 flex flex-col items-center justify-center z-10 rounded-md p-4">
+        <div className="absolute inset-0 backdrop-blur-md bg-gradient-to-b from-zinc-800/40 to-zinc-900/40 border border-white/10 shadow-md flex flex-col items-center justify-center z-10 rounded-md p-4">
             <LockIcon className="h-10 w-10 text-zinc-400 mb-4" />
             <p className="text-zinc-200 font-medium text-center text-sm max-w-xs">{message}</p>
         </div>
