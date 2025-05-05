@@ -17,10 +17,11 @@ use Illuminate\Support\Carbon;
  * @property string $title
  * @property string $desc
  * @property string $priority
- * @property int    $pinned
+ * @property int $pinned
  * @property string $column
  * @property int $assignee_id
  * @property Carbon|null $deadline
+ * @property int|null $had_branch
  * @property int $fid_board
  * @property int $fid_user
  * @property string $migrated_from
@@ -54,30 +55,25 @@ use Illuminate\Support\Carbon;
  */
 class Post extends Model implements NotificationServiceInterface
 {
-    use HasFactory, HasNotificationService;
+    use HasFactory;
+    use HasNotificationService;
 
     protected $fillable = [
         'title', 'desc', 'priority', 'pinned', 'column', 'assignee_id', 'deadline',
-        'fid_board', 'fid_user', 'migrated_from'
+        'had_branch', 'fid_board', 'fid_user', 'migrated_from',
     ];
 
     protected $casts = [
         'deadline' => 'date:Y-m-d', // Specify the format explicitly to avoid timezone issues
     ];
-    
+
     /**
      * Override the deadline attribute setter to ensure consistent date formatting
-     * 
-     * @param mixed $value
-     * @return void
+     *
      */
     public function setDeadlineAttribute($value): void
     {
-        if ($value) {
-            $this->attributes['deadline'] = $value;
-        } else {
-            $this->attributes['deadline'] = null;
-        }
+        $this->attributes['deadline'] = $value ?: null;
     }
 
     public function assignee(): BelongsTo
@@ -105,9 +101,6 @@ class Post extends Model implements NotificationServiceInterface
         return $this->hasMany(LinkedIssues::class, 'fid_origin_post');
     }
 
-    /**
-     * @return HasMany
-     */
     public function watchers(): HasMany
     {
         return $this->hasMany(PostWatcher::class, 'post_fid');

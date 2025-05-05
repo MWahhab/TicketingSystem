@@ -75,6 +75,7 @@ interface Task {
         id: number
         name: string
     }>
+    had_branch?: number
 }
 
 interface PostFormDialogProps {
@@ -482,9 +483,7 @@ export function PostFormDialog({
                                                                                 }
                                                                             }}
                                                                             className="border border-white/10 bg-transparent text-zinc-300 hover:bg-purple-800/30 hover:text-purple-200 hover:ring-1 hover:ring-purple-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 disabled:opacity-50"
-                                                                            title={
-                                                                                !hasPremiumAccess(isPremium) ? "This is a paid feature" : "Optimize Description"
-                                                                            }
+                                                                            title={!hasPremiumAccess(isPremium) ? "This is a paid feature" : "Optimize Description"}
                                                                         >
                                                                             {isOptimizing ? (
                                                                                 <>
@@ -587,12 +586,7 @@ export function PostFormDialog({
                                                                         )}
 
                                                                         <Button
-                                                                            disabled={
-                                                                                isGeneratingPR ||
-                                                                                isDescriptionModified ||
-                                                                                !hasPremiumAccess(isPremium) ||
-                                                                                (hasPremiumAccess(isPremium) && generationCount === 0)
-                                                                            }
+                                                                            disabled={isGeneratingPR || isDescriptionModified || !hasPremiumAccess(isPremium) || (hasPremiumAccess(isPremium) && generationCount === 0)}
                                                                             onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
@@ -627,15 +621,7 @@ export function PostFormDialog({
                                                                                 }
                                                                             }}
                                                                             className="border border-white/10 bg-transparent text-zinc-300 hover:bg-teal-800/30 hover:text-teal-200 hover:ring-1 hover:ring-teal-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50"
-                                                                            title={
-                                                                                !hasPremiumAccess(isPremium)
-                                                                                    ? "This is a paid feature"
-                                                                                    : isDescriptionModified
-                                                                                        ? "Save changes before generating PR"
-                                                                                        : generationCount === 0
-                                                                                            ? "No generations left"
-                                                                                            : "Generate PR"
-                                                                            }
+                                                                            title={!hasPremiumAccess(isPremium) ? "This is a paid feature" : isDescriptionModified ? "Save changes before generating PR" : generationCount === 0 ? "No generations left" : "Generate PR"}
                                                                         >
                                                                             {isGeneratingPR ? (
                                                                                 <>
@@ -663,8 +649,7 @@ export function PostFormDialog({
                                                                                 </>
                                                                             ) : (
                                                                                 <>
-                                                                                    {(!hasPremiumAccess(isPremium) ||
-                                                                                        (hasPremiumAccess(isPremium) && generationCount === 0)) && (
+                                                                                    {(!hasPremiumAccess(isPremium) || (hasPremiumAccess(isPremium) && generationCount === 0)) && (
                                                                                         <svg
                                                                                             xmlns="http://www.w3.org/2000/svg"
                                                                                             width="14"
@@ -698,11 +683,7 @@ export function PostFormDialog({
                                                                                         <path d="M13 6h3a2 2 0 0 1 2 2v7" />
                                                                                         <path d="M6 9v12" />
                                                                                     </svg>
-                                                                                    <span>
-                                            {isDescriptionModified
-                                                ? "Save Changes First"
-                                                : `Generate PR${hasPremiumAccess(isPremium) && generationCount !== null && generationCap !== null ? ` (${generationCount}/${generationCap})` : ""}`}
-                                          </span>
+                                                                                    <span>{isDescriptionModified ? "Save Changes First" : `Generate PR${hasPremiumAccess(isPremium) && generationCount !== null && generationCap !== null ? ` (${generationCount}/${generationCap})` : ""}`}</span>
                                                                                 </>
                                                                             )}
                                                                         </Button>
@@ -717,11 +698,7 @@ export function PostFormDialog({
                                                                     className="border border-white/10 bg-transparent text-zinc-300 hover:bg-amber-800/30 hover:text-amber-200 hover:ring-1 hover:ring-amber-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                                                                     title={isPreview ? "Edit" : "Preview"}
                                                                 >
-                                                                    {isPreview ? (
-                                                                        <Edit className="h-4 w-4 text-amber-400" />
-                                                                    ) : (
-                                                                        <Eye className="h-4 w-4 text-amber-400" />
-                                                                    )}
+                                                                    {isPreview ? <Edit className="h-4 w-4 text-amber-400" /> : <Eye className="h-4 w-4 text-amber-400" />}
                                                                     <span>{isPreview ? "Edit" : "Preview"}</span>
                                                                 </Button>
                                                             </div>
@@ -796,9 +773,7 @@ export function PostFormDialog({
                                                         >
                                                             <FormControl>
                                                                 <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
-                                                                    <SelectValue
-                                                                        placeholder={availableColumns.length ? "Select column" : "Select a board first"}
-                                                                    />
+                                                                    <SelectValue placeholder={availableColumns.length ? "Select column" : "Select a board first"} />
                                                                 </SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent className="bg-zinc-800 text-white border-zinc-700">
@@ -850,10 +825,7 @@ export function PostFormDialog({
                                                     <FormLabel className="text-white">Author</FormLabel>
                                                     <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded-md border border-zinc-700">
                                                         <div className="flex flex-col">
-                              <span className="text-sm font-medium text-white">
-                                {assignees.find((a) => a.id.toString() === form.getValues("post_author"))?.name ||
-                                    form.getValues("post_author")}
-                              </span>
+                                                            <span className="text-sm font-medium text-white">{assignees.find((a) => a.id.toString() === form.getValues("post_author"))?.name || form.getValues("post_author")}</span>
                                                         </div>
                                                     </div>
                                                 </FormItem>
@@ -880,11 +852,7 @@ export function PostFormDialog({
                                                             </FormControl>
                                                             <SelectContent className="bg-zinc-800 text-white border-zinc-700">
                                                                 {assignees.map((assignee) => (
-                                                                    <SelectItem
-                                                                        key={assignee.id}
-                                                                        value={assignee.id.toString()}
-                                                                        className="hover:bg-zinc-700"
-                                                                    >
+                                                                    <SelectItem key={assignee.id} value={assignee.id.toString()} className="hover:bg-zinc-700">
                                                                         {assignee.name}
                                                                     </SelectItem>
                                                                 ))}
@@ -1060,27 +1028,19 @@ export function PostFormDialog({
                                     </div>
                                 </form>
                             </Form>
-                            {task && task.comments && (
-                                <CommentSection taskId={task.id} currentUserId={authUserId} assignees={assignees} />
-                            )}
+                            {task && task.comments && <CommentSection taskId={task.id} currentUserId={authUserId} assignees={assignees} />}
                             {task && <ActivityHistory postId={task.id} />}
                             {task && <LinkedIssuesSection taskId={task.id} currentUserId={authUserId} />}
                         </div>
                         <div className="mt-6">
-                            <Button
-                                type="submit"
-                                onClick={form.handleSubmit(onSubmit)}
-                                className="w-full bg-white text-zinc-900 hover:bg-zinc-100"
-                            >
+                            <Button type="submit" onClick={form.handleSubmit(onSubmit)} className="w-full bg-white text-zinc-900 hover:bg-zinc-100">
                                 {task ? "Update" : "Submit"}
                             </Button>
                         </div>
                     </DialogContent>
                 )}
             </Dialog>
-            {showDeleteConfirmation && (
-                <DeleteConfirmationDialog id={task?.id ?? ""} type="Post" isOpen={true} onClose={handleDialogClose} />
-            )}
+            {showDeleteConfirmation && <DeleteConfirmationDialog id={task?.id ?? ""} type="Post" isOpen={true} onClose={handleDialogClose} />}
             {isFileBrowserOpen && (
                 <FileBrowser
                     isOpen={isFileBrowserOpen}

@@ -28,6 +28,7 @@ interface Task {
     post_author: string
     watchers: Watcher[]
     pinned?: number
+    had_branch?: number
 }
 
 interface Watcher {

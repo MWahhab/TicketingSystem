@@ -102,6 +102,7 @@ class BoardService
             'column'      => $post->column,
             'assignee_id' => $post->assignee_id,
             'deadline'    => $post->deadline,
+            'had_branch'  => $post->had_branch,
             'fid_board'   => $post->fid_board,
             'assignee'    => $post->assignee ? [
                 'id'   => $post->assignee->id,

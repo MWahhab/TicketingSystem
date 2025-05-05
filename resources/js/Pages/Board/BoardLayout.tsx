@@ -188,6 +188,7 @@ function InnerBoardLayout() {
         post_author: string;
         priority: string;
         pinned?: number;
+        had_branch?: number;
     }
 
     const handlePinToggle = () => {

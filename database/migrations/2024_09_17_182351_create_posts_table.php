@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     /**
      * Run the migrations.
      */
@@ -16,10 +15,11 @@ return new class extends Migration
             $table->string('title');
             $table->longText('desc');
             $table->string('priority');
-            $table->boolean('pinned')->nullable()->default(false);
+            $table->boolean('pinned')->nullable();
             $table->string('column');
             $table->foreignId('assignee_id')->constrained('users');
             $table->date('deadline')->nullable();
+            $table->integer('had_branch')->nullable();
             $table->foreignId('fid_board')->constrained('board_configs')->onDelete('cascade');
             $table->foreignId('fid_user')->constrained('users');
             $table->string('migrated_from')->nullable();
