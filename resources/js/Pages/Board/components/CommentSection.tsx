@@ -252,22 +252,21 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                         <Button
                                                             type="button"
                                                             size="sm"
-                                                            variant="secondary"
+                                                            className="border border-white/10 bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
                                                             onClick={() => {
                                                                 setIsExpanded(false);
                                                                 commentForm.reset();
                                                             }}
-                                                            className="bg-zinc-700 text-zinc-200 hover:bg-zinc-600"
                                                         >
                                                             Cancel
                                                         </Button>
                                                         <Button
                                                             type="submit"
                                                             size="sm"
-                                                            className="bg-white text-zinc-900 hover:bg-zinc-100"
+                                                            className="border border-white/10 bg-transparent text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
                                                             disabled={commentForm.formState.isSubmitting}
                                                         >
-                                                            <SendIcon className="h-4 w-4 mr-2" />
+                                                            <SendIcon className="h-4 w-4" />
                                                             {commentForm.formState.isSubmitting ? 'Sending...' : 'Send'}
                                                         </Button>
                                                     </div>
@@ -342,19 +341,18 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                                         <Button
                                                                             type="button"
                                                                             size="sm"
-                                                                            variant="secondary"
+                                                                            className="border border-white/10 bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
                                                                             onClick={() => {
                                                                                 setEditingCommentId(null);
                                                                                 commentForm.reset();
                                                                             }}
-                                                                            className="bg-zinc-700 text-zinc-200 hover:bg-zinc-600"
                                                                         >
                                                                             Cancel
                                                                         </Button>
                                                                         <Button
                                                                             type="submit"
                                                                             size="sm"
-                                                                            className="bg-white text-zinc-900 hover:bg-zinc-100"
+                                                                            className="border border-white/10 bg-transparent text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
                                                                             disabled={commentForm.formState.isSubmitting}
                                                                         >
                                                                             {commentForm.formState.isSubmitting ? 'Updating...' : 'Update'}

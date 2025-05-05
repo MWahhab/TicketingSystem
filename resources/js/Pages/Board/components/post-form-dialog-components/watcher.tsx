@@ -114,25 +114,25 @@ export function Watcher({ postId, userId, watchers = [], onWatcherUpdate }: Watc
                 <Button
                     variant="ghost"
                     size="sm"
-                    className={`text-zinc-400 hover:text-zinc-300 hover:bg-zinc-100/10 p-1`}
+                    className={`border border-white/10 bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 p-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2`}
                     title={isWatching ? "Stop watching" : "Watch this post"}
                 >
                     <EyeIcon className={`h-5 w-5 ${isWatching ? "text-zinc-100" : ""}`} />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64 p-0 bg-zinc-800 border border-zinc-700 text-white" align="end">
-                <div className="p-3 border-b border-zinc-700 bg-zinc-800/90">
+            <PopoverContent className="w-64 p-0 bg-gradient-to-b from-zinc-900 to-zinc-950 rounded-lg border border-white/10 text-zinc-100 shadow-xl" align="end">
+                <div className="p-3 border-b border-white/10">
                     <h3 className="text-sm font-medium">{isWatching ? "Watching this post" : "Watch this post"}</h3>
                 </div>
 
                 {localWatchers.length > 0 && (
-                    <div className="p-2 border-b border-zinc-700">
+                    <div className="p-2 border-b border-white/10 max-h-48 overflow-y-auto">
                         {localWatchers.map((watcher) => (
                             <div key={watcher.watcher_id} className="flex items-center gap-2 p-2">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-600 text-white">
-                                    {watcher.name.substring(0, 2).toUpperCase()}
+                                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-700 text-xs font-medium text-zinc-300">
+                                    {watcher.name.charAt(0).toUpperCase()}
                                 </div>
-                                <span className="text-sm">{watcher.name}</span>
+                                <span className="text-sm text-zinc-300">{watcher.name}</span>
                             </div>
                         ))}
                     </div>
@@ -141,7 +141,7 @@ export function Watcher({ postId, userId, watchers = [], onWatcherUpdate }: Watc
                 <div className="p-2">
                     <Button
                         variant="ghost"
-                        className={`w-full justify-start text-sm ${isWatching ? "text-red-400 hover:text-red-500" : "text-zinc-100 hover:text-zinc-800"}`}
+                        className={ `w-full justify-start text-sm p-2 h-auto rounded-md border border-transparent transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 ${isWatching ? "text-red-400 hover:bg-red-800/30 hover:text-red-200 hover:border-red-500/30 focus-visible:ring-red-500" : "text-green-400 hover:bg-green-800/30 hover:text-green-200 hover:border-green-500/30 focus-visible:ring-green-500"}` }
                         onClick={handleToggleWatch}
                         disabled={isLoadingWatcher}
                     >

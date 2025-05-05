@@ -277,15 +277,15 @@ function InnerBoardLayout() {
                                             <Settings className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="bg-zinc-800 border-zinc-700 text-zinc-200 shadow-xl">
+                                    <DropdownMenuContent align="end" className="bg-gradient-to-br from-zinc-850 to-zinc-900 rounded-lg border border-white/10 text-zinc-100 shadow-xl w-48">
                                         <DropdownMenuItem
-                                            className="hover:bg-zinc-700 cursor-pointer text-sm"
+                                            className="text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100 cursor-pointer rounded-sm"
                                             onClick={() => console.log(`Edit board ${board.id}`)}
                                         >
                                             Edit
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            className="hover:bg-zinc-700 cursor-pointer text-sm"
+                                            className="text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100 cursor-pointer rounded-sm"
                                             onClick={() => openAIIntegration(board)}
                                         >
                                             AI Integration

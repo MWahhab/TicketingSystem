@@ -365,7 +365,7 @@ export function PostFormDialog({
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={onDelete}
-                                                className="text-red-400 hover:text-red-300 hover:bg-red-100/10 p-1"
+                                                className="border border-white/10 bg-transparent text-red-400 hover:bg-red-800/50 hover:text-red-100 hover:ring-1 hover:ring-red-500/30 p-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                                             >
                                                 <Trash className="h-5 w-5" />
                                             </Button>
@@ -373,7 +373,7 @@ export function PostFormDialog({
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={toggleExpansion}
-                                                className="text-zinc-400 hover:text-zinc-300 hover:bg-zinc-100/10 p-1"
+                                                className="border border-white/10 bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 p-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2"
                                             >
                                                 {isExpanded ? <Minimize2Icon className="h-5 w-5" /> : <Maximize2Icon className="h-5 w-5" />}
                                             </Button>
@@ -395,7 +395,7 @@ export function PostFormDialog({
                                                     description: "Post link has been copied to clipboard",
                                                 })
                                             }}
-                                            className="text-purple-400 hover:text-purple-300 hover:bg-zinc-100/10 p-1 mr-8"
+                                            className="border border-white/10 bg-transparent text-purple-400 hover:bg-purple-800/30 hover:text-purple-200 hover:ring-1 hover:ring-purple-500/50 p-1 ml-2 mr-8 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2"
                                             title="Copy link to post"
                                         >
                                             <Link2 className="h-5 w-5" />
@@ -481,7 +481,7 @@ export function PostFormDialog({
                                                                                     setIsOptimizing(false)
                                                                                 }
                                                                             }}
-                                                                            className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
+                                                                            className="border border-white/10 bg-transparent text-zinc-300 hover:bg-purple-800/30 hover:text-purple-200 hover:ring-1 hover:ring-purple-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 disabled:opacity-50"
                                                                             title={
                                                                                 !hasPremiumAccess(isPremium) ? "This is a paid feature" : "Optimize Description"
                                                                             }
@@ -564,7 +564,7 @@ export function PostFormDialog({
                                                                                         description: "Original description has been restored.",
                                                                                     })
                                                                                 }}
-                                                                                className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
+                                                                                className="border border-white/10 bg-transparent text-zinc-300 hover:bg-amber-800/30 hover:text-amber-200 hover:ring-1 hover:ring-amber-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                                                                                 title="Undo Optimization"
                                                                             >
                                                                                 <svg
@@ -626,7 +626,7 @@ export function PostFormDialog({
                                                                                     setIsGeneratingPR(false)
                                                                                 }
                                                                             }}
-                                                                            className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
+                                                                            className="border border-white/10 bg-transparent text-zinc-300 hover:bg-teal-800/30 hover:text-teal-200 hover:ring-1 hover:ring-teal-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50"
                                                                             title={
                                                                                 !hasPremiumAccess(isPremium)
                                                                                     ? "This is a paid feature"
@@ -714,7 +714,7 @@ export function PostFormDialog({
                                                                         e.stopPropagation()
                                                                         setIsPreview(!isPreview)
                                                                     }}
-                                                                    className="bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-700/90 text-white rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 border border-zinc-700/50"
+                                                                    className="border border-white/10 bg-transparent text-zinc-300 hover:bg-amber-800/30 hover:text-amber-200 hover:ring-1 hover:ring-amber-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                                                                     title={isPreview ? "Edit" : "Preview"}
                                                                 >
                                                                     {isPreview ? (
