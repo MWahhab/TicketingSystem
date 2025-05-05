@@ -29,6 +29,7 @@ interface Task {
     watchers: Watcher[]
     pinned?: number
     had_branch?: number
+    deadline_color?: 'gray' | 'yellow' | 'red' | null
 }
 
 interface Watcher {

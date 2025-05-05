@@ -94,14 +94,21 @@ class BoardService
     private function formatPosts(?Collection $posts): array
     {
         return $posts instanceof \Illuminate\Support\Collection ? $posts->map(fn ($post) => [
-            'id'          => $post->id,
-            'title'       => $post->title,
-            'desc'        => $post->desc,
-            'priority'    => $post->priority,
-            'pinned'      => $post->pinned,
-            'column'      => $post->column,
-            'assignee_id' => $post->assignee_id,
-            'deadline'    => $post->deadline,
+            'id'                   => $post->id,
+            'title'                => $post->title,
+            'desc'                 => $post->desc,
+            'priority'             => $post->priority,
+            'pinned'               => $post->pinned,
+            'column'               => $post->column,
+            'assignee_id'          => $post->assignee_id,
+            'deadline'             => $post->deadline,
+            'deadline_color'       => match (true) {
+                !$post->deadline => null,
+                $post->deadline->isPast(),
+                now()->diffInDays($post->deadline, false) <= 3 => 'red',
+                now()->diffInDays($post->deadline, false) <= 7 => 'yellow',
+                default                                        => 'gray',
+            },
             'had_branch'  => $post->had_branch,
             'fid_board'   => $post->fid_board,
             'assignee'    => $post->assignee ? [
