@@ -344,7 +344,7 @@ function InnerBoardLayout() {
                     </div>
 
                     {/* Middle: Notifications (Optional - Keep or remove for minimalism) */}
-                    <InlineNotificationCenter buttonClassName="text-zinc-400 hover:text-zinc-100 hover:bg-white/10" />
+                    <InlineNotificationCenter />
 
                     {/* Right Side: Filters & Actions */}
                     <div className="flex items-center gap-2">
@@ -539,7 +539,7 @@ function InnerBoardLayout() {
                                     if (!task) return false;
                                     const matchesSearch =
                                         task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                        task.desc.toLowerCase().includes(searchQuery.toLowerCase())
+                                        task.id.toString().includes(searchQuery.toLowerCase())
                                     const matchesAssignee =
                                         selectedAssignees.length === 0 || selectedAssignees.includes(task.assignee_id)
                                     const matchesAuthor = selectedAuthors.length === 0 || selectedAuthors.includes(task.post_author)
