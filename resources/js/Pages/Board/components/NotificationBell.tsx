@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Bell, X, MessageSquare, FileText, Layout, Link, GitBranch } from "lucide-react"
+import { Bell, X, MessageSquare, FileText, Layout, Link, GitBranch, MoveDiagonal2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -209,14 +209,14 @@ export default function InlineNotificationCenter() {
         <div className="fixed bottom-4 right-4 z-50">
             <Button
                 // Add solid bg, border, and make it circular
-                className="relative h-8 w-8 p-0 text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-white/20 rounded-full shadow-sm"
+                className="relative h-9 w-9 p-0 text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-white/20 rounded-full shadow-sm"
                 onClick={handleBellClick}
                 aria-label="Notifications"
             >
-                <Bell className="h-4 w-4" />
+                <Bell className="h-5 w-5" />
                 {unseenCount > 0 && (
                     <Badge
-                        className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center text-xs rounded-full bg-red-600 text-white border border-zinc-900"
+                        className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] px-1 flex items-center justify-center text-xs rounded-full bg-red-600 text-white border border-zinc-900"
                     >
                         {unseenCount}
                     </Badge>
@@ -271,12 +271,19 @@ export default function InlineNotificationCenter() {
                         </ScrollArea>
                     </Tabs>
 
-                    {/* Resize Handle (Invisible Top-Left) */}
+                    {/* Resize Handle (Top-Left Grip - Inspired by classic UI) */}
                     <div
-                        className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize"
+                        className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize overflow-hidden border-t border-l border-zinc-600 border-b border-r border-zinc-800 bg-zinc-700/50 flex items-center justify-center"
                         onMouseDown={handleResizeMouseDown}
                         title="Resize"
-                    />
+                    >
+                        {/* Diagonal grip lines using SVG */}
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 10L10 0" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */} 
+                            <path d="M3 10L10 3" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */} 
+                            <path d="M6 10L10 6" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */} 
+                        </svg>
+                    </div>
                 </div>
             )}
         </div>

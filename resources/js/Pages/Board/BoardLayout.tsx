@@ -363,7 +363,7 @@ function InnerBoardLayout() {
                                 <Input
                                     type="search"
                                     placeholder="Search tasks..."
-                                    className="pl-8 w-[200px] bg-zinc-800 text-white border-zinc-700 focus:border-white focus:ring-1 focus:ring-white"
+                                    className="pl-8 w-[200px] bg-zinc-850 text-white border border-white/40 placeholder:text-zinc-400 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 hover:border-zinc-600 transition-colors"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -373,14 +373,14 @@ function InnerBoardLayout() {
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600"
+                                        className="border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
                                     >
                                         {selectedAssignees.length > 0 ? `${selectedAssignees.length} selected` : "All Assignees"}
                                         <ChevronDown className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
-                                    className="my-1 bg-zinc-800 border-zinc-700 text-white"
+                                    className="my-1 bg-gradient-to-br from-zinc-850 to-zinc-900 rounded-lg border border-white/10 text-zinc-100 shadow-xl p-1"
                                     onKeyDown={(e) => e.preventDefault()}
                                 >
                                     <div className="relative p-2">
@@ -391,12 +391,12 @@ function InnerBoardLayout() {
                                             value={assigneeSearchQuery}
                                             onChange={(e) => setAssigneeSearchQuery(e.target.value)}
                                             onKeyDown={(e) => e.stopPropagation()}
-                                            className="pl-8 w-full bg-zinc-800 text-white border-zinc-700 focus:border-white focus:ring-1 focus:ring-white"
+                                            className="pl-8 w-full bg-zinc-900 text-zinc-100 border-zinc-700 placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600"
                                         />
                                     </div>
                                     <PreventCloseMenuItem
                                         onClick={() => setSelectedAssignees([])}
-                                        className="hover:bg-zinc-700 hover:text-white"
+                                        className="text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50 focus:bg-zinc-800 focus:text-zinc-50 cursor-pointer rounded-sm p-2"
                                     >
                                         All Assignees
                                     </PreventCloseMenuItem>
@@ -404,9 +404,12 @@ function InnerBoardLayout() {
                                         (assignee: any) => (
                                             <PreventCloseMenuItem
                                                 key={assignee.id}
-                                                className={`my-1 hover:bg-zinc-700 ${
-                                                    selectedAssignees.includes(assignee.id) ? "bg-zinc-700 text-white" : ""
-                                                }`}
+                                                className={clsx(
+                                                    "text-sm cursor-pointer rounded-sm my-1 p-2",
+                                                    selectedAssignees.includes(assignee.id)
+                                                        ? "bg-zinc-700 text-zinc-100"
+                                                        : "text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50 focus:bg-zinc-800 focus:text-zinc-50"
+                                                )}
                                             >
                                                 <div
                                                     onClick={() =>
@@ -430,14 +433,14 @@ function InnerBoardLayout() {
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600"
+                                        className="border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
                                     >
                                         {selectedAuthors.length > 0 ? `${selectedAuthors.length} selected` : "All Authors"}
                                         <ChevronDown className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
-                                    className="my-1 bg-zinc-800 border-zinc-700 text-white"
+                                    className="my-1 bg-gradient-to-br from-zinc-850 to-zinc-900 rounded-lg border border-white/10 text-zinc-100 shadow-xl p-1"
                                     onKeyDown={(e) => e.preventDefault()}
                                 >
                                     <div className="relative p-2">
@@ -448,18 +451,21 @@ function InnerBoardLayout() {
                                             value={authorSearchQuery}
                                             onChange={(e) => setAuthorSearchQuery(e.target.value)}
                                             onKeyDown={(e) => e.stopPropagation()}
-                                            className="pl-8 w-full bg-zinc-800 text-white border-zinc-700 focus:border-white focus:ring-1 focus:ring-white"
+                                            className="pl-8 w-full bg-zinc-900 text-zinc-100 border-zinc-700 placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600"
                                         />
                                     </div>
-                                    <PreventCloseMenuItem onClick={() => setSelectedAuthors([])} className="hover:bg-zinc-700">
+                                    <PreventCloseMenuItem onClick={() => setSelectedAuthors([])} className="text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50 focus:bg-zinc-800 focus:text-zinc-50 cursor-pointer rounded-sm p-2">
                                         All Authors
                                     </PreventCloseMenuItem>
                                     {filterBySearch(uniqueAuthors, authorSearchQuery, (author) => author).map((author: string) => (
                                         <PreventCloseMenuItem
                                             key={author}
-                                            className={`my-1 hover:bg-zinc-700 ${
-                                                selectedAuthors.includes(author) ? "bg-zinc-700 text-white" : ""
-                                            }`}
+                                            className={clsx(
+                                                "text-sm cursor-pointer rounded-sm my-1 p-2",
+                                                selectedAuthors.includes(author)
+                                                    ? "bg-zinc-700 text-zinc-100"
+                                                    : "text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50 focus:bg-zinc-800 focus:text-zinc-50"
+                                            )}
                                         >
                                             <div
                                                 onClick={() =>
@@ -480,14 +486,14 @@ function InnerBoardLayout() {
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600"
+                                        className="border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
                                     >
                                         {selectedPriorities.length > 0 ? `${selectedPriorities.length} selected` : "All Priorities"}
                                         <ChevronDown className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="bg-zinc-800 border-zinc-700 text-white">
-                                    <PreventCloseMenuItem onClick={() => setSelectedPriorities([])} className="my-1 hover:bg-zinc-700">
+                                <DropdownMenuContent className="my-1 bg-gradient-to-br from-zinc-850 to-zinc-900 rounded-lg border border-white/10 text-zinc-100 shadow-xl p-1">
+                                    <PreventCloseMenuItem onClick={() => setSelectedPriorities([])} className="text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50 focus:bg-zinc-800 focus:text-zinc-50 cursor-pointer rounded-sm p-2">
                                         All Priorities
                                     </PreventCloseMenuItem>
                                     {["low", "medium", "high"].map((priority) => (
@@ -498,9 +504,14 @@ function InnerBoardLayout() {
                                                     prev.includes(priority) ? prev.filter((p) => p !== priority) : [...prev, priority],
                                                 )
                                             }
-                                            className={`my-1 hover:bg-zinc-700 ${selectedPriorities.includes(priority) ? "bg-zinc-700 text-white" : ""}`}
+                                            className={clsx(
+                                                "text-sm cursor-pointer rounded-sm my-1 p-2 capitalize",
+                                                selectedPriorities.includes(priority)
+                                                    ? "bg-zinc-700 text-zinc-100"
+                                                    : "text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50 focus:bg-zinc-800 focus:text-zinc-50"
+                                            )}
                                         >
-                                            <span className="capitalize">{priority}</span>
+                                            {priority}
                                         </PreventCloseMenuItem>
                                     ))}
                                 </DropdownMenuContent>

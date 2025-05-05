@@ -120,7 +120,7 @@ export function Watcher({ postId, userId, watchers = [], onWatcherUpdate }: Watc
                     <EyeIcon className={`h-5 w-5 ${isWatching ? "text-zinc-100" : ""}`} />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64 p-0 bg-gradient-to-b from-zinc-900 to-zinc-950 rounded-lg border border-white/10 text-zinc-100 shadow-xl" align="end">
+            <PopoverContent className="w-64 p-0 bg-gradient-to-br from-zinc-850 to-zinc-900 rounded-lg border border-white/10 text-zinc-100 shadow-xl" align="end">
                 <div className="p-3 border-b border-white/10">
                     <h3 className="text-sm font-medium">{isWatching ? "Watching this post" : "Watch this post"}</h3>
                 </div>

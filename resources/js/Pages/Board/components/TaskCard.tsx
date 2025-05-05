@@ -77,9 +77,6 @@ export function TaskCard({ task }: { task: Task }) {
                         <UserIcon className="w-4 h-4 mr-2 text-zinc-400" />
                         <span>{task.assignee.name}</span>
                     </div>
-                    <Avatar className="w-6 h-6 text-xs">
-                        <AvatarFallback className="bg-zinc-700 text-zinc-300 font-medium">{getInitials(task.assignee.name)}</AvatarFallback>
-                    </Avatar>
                 </div>
             </CardContent>
         </Card>
