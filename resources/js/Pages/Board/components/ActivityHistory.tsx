@@ -194,9 +194,9 @@ const ActivityItem: React.FC<{
                     <span className="text-xs text-zinc-500">{new Date(activity.createdAt).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-zinc-300 pt-1">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 min-w-0">
                         {IconComponent && <IconComponent className="h-4 w-4 text-zinc-400 flex-shrink-0" />}
-                        <span>{activity.content}</span>
+                        <span className="block whitespace-pre-wrap break-all">{activity.content}</span>
                     </div>
                     {containsHTML(activity.content) && (
                         <TooltipProvider>
@@ -221,7 +221,20 @@ const ActivityItem: React.FC<{
                                             ) : (
                                                 <div className="p-4 bg-zinc-900 border border-zinc-700 rounded-md relative">
                                                     <h3 className="text-sm font-medium text-zinc-100 mb-2">HTML Preview</h3>
-                                                    <div className="p-4 bg-zinc-800 rounded border border-zinc-700 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto">
+                                                    <div className={clsx(
+                                                        "p-4 bg-zinc-800 rounded border border-zinc-700 text-zinc-200 min-h-[200px] max-h-[400px] overflow-auto",
+                                                        // Styles for <pre> elements
+                                                        "[&_pre]:bg-zinc-900 [&_pre]:rounded-md [&_pre]:border [&_pre]:border-zinc-700 [&_pre]:p-4",
+                                                        "[&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:whitespace-pre-wrap [&_pre]:break-all",
+                                                        // Styles for <code> elements inside <pre>
+                                                        "[&_pre_code]:text-zinc-300 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:m-0",
+                                                        "[&_pre_code]:border-none [&_pre_code]:rounded-none [&_pre_code]:font-mono",
+                                                        "[&_pre_code]:whitespace-pre-wrap [&_pre_code]:break-all",
+                                                        // Styles for <blockquote> elements
+                                                        "[&_blockquote]:bg-zinc-900 [&_blockquote]:text-zinc-200 [&_blockquote]:border [&_blockquote]:border-zinc-700",
+                                                        "[&_blockquote]:rounded-md [&_blockquote]:italic [&_blockquote]:p-4 [&_blockquote]:my-4",
+                                                        "[&_blockquote]:max-w-full [&_blockquote]:overflow-x-auto [&_blockquote]:whitespace-pre-wrap [&_blockquote]:break-all"
+                                                    )}>
                                                         <HTMLRenderer
                                                             html={
                                                                 subscriptionTier !== "standard"
