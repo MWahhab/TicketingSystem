@@ -547,7 +547,6 @@ export function PostFormDialog({
                                                                                     e.preventDefault();
                                                                                     e.stopPropagation();
                                                                                     form.setValue("desc", originalDescription);
-                                                                                    setOriginalDescription("");
                                                                                     setIsDescriptionModified(false);
                                                                                     setIsPreview(true);
                                                                                     toast({
