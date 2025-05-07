@@ -8,8 +8,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useBoardContext, type Task } from "../BoardContext"
-import SimpleBar from 'simplebar-react';
-import 'simplebar-react/dist/simplebar.min.css';
 
 // Remove export - TaskCard will import the comprehensive type
 /*
@@ -359,54 +357,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
         );
     };
 
-    useEffect(() => {
-        const styleId = 'simplebar-custom-styles-taskcard';
-        if (!document.getElementById(styleId)) {
-            const styleElement = document.createElement('style');
-            styleElement.id = styleId;
-            styleElement.innerHTML = `
-                /* SimpleBar lighter thumb styles */
-                .simplebar-scrollbar::before {
-                    background-color: rgba(200, 200, 200, 0.5) !important;
-                }
-                .simplebar-scrollbar:hover::before {
-                    background-color: rgba(180, 180, 180, 0.7) !important;
-                }
-
-                /* Compact MARGINS/PADDINGS for task description HTML block elements */
-                /* ... existing rules for .compact-task-desc-html p, h3, ul, li etc. ... */
-                .compact-task-desc-html p, 
-                .compact-task-desc-html h1, 
-                /* ... (all the other selectors from previous version) ... */ 
-                .compact-task-desc-html figure {
-                    margin-top: 0.1em !important;
-                    margin-bottom: 0.25em !important; 
-                    padding-top: 0 !important;
-                    padding-bottom: 0 !important;
-                }
-                .compact-task-desc-html ul, .compact-task-desc-html ol {
-                    margin-top: 0.1em !important;
-                    margin-bottom: 0.25em !important;
-                    padding-left: 1.2em !important; 
-                }
-                 .compact-task-desc-html li {
-                    margin-top: 0em !important;
-                    margin-bottom: 0.3em !important; 
-                    padding-top: 0 !important;
-                    padding-bottom: 0 !important;
-                }
-
-                /* Custom focus outline for SimpleBar content wrapper */
-                .simplebar-content-wrapper:focus,
-                .simplebar-content-wrapper:focus-visible {
-                    outline: 2px solid rgba(156, 163, 175, 0.5) !important; /* Tailwind gray-400 at 50% opacity */
-                    outline-offset: 1px !important;
-                }
-            `;
-            document.head.appendChild(styleElement);
-        }
-    }, []);
-
     return (
         <Popover open={showPopup} onOpenChange={(open) => {
             if (!open && showPopup && !isMoreFiltersDropdownOpen) {
@@ -517,7 +467,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
 
                     {task.desc && (
                         <div className="pb-3 border-b border-zinc-700/60">
-                            <SimpleBar style={{ maxHeight: '9rem' }}>
+                            <div className="overflow-y-auto max-h-[9rem]">
                                 <div 
                                     className="text-sm text-zinc-300 break-words prose prose-sm prose-invert \
                                                prose-headings:mt-1 prose-headings:mb-1 prose-headings:py-0 \
@@ -530,7 +480,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                                                pr-2"
                                     dangerouslySetInnerHTML={{ __html: task.desc }}
                                 />
-                            </SimpleBar>
+                            </div>
                         </div>
                     )}
 
@@ -596,7 +546,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                             </div>
 
                             {filteredActivity.length > 0 ? (
-                                <SimpleBar style={{ maxHeight: '12rem' }}>
+                                <div className="overflow-y-auto max-h-[12rem]">
                                     <div className="space-y-1.5 pr-1">
                                         {filteredActivity.map(entry => {
                                             const activityType = entry.type === "Comments" ? "Comments" : entry.originalType;
@@ -659,7 +609,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                                             );
                                         })}
                                     </div>
-                                </SimpleBar>
+                                </div>
                             ) : (
                                 <p className="text-xs text-zinc-500 italic pl-1.5">No activity for this filter.</p>
                             )}

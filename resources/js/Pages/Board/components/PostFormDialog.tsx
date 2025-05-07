@@ -29,8 +29,6 @@ import axios from "axios"
 import { Textarea } from "@/components/ui/textarea"
 import { WatchersSelect } from "./post-form-dialog-components/WatchersSelect"
 import { useBoardContext, type Assignee, type Task, type Board } from "../BoardContext"
-import SimpleBar from 'simplebar-react'
-import 'simplebar-react/dist/simplebar.min.css'
 
 interface FileItem {
     path: string
@@ -312,23 +310,6 @@ export function PostFormDialog({
         checkQueueStatus()
     }, [checkQueueStatus])
 
-    useEffect(() => {
-        const styleId = 'simplebar-custom-styles-postformdialog';
-        if (!document.getElementById(styleId)) {
-            const styleElement = document.createElement('style');
-            styleElement.id = styleId;
-            styleElement.innerHTML = `
-                .simplebar-scrollbar::before {
-                    background-color: rgba(200, 200, 200, 0.5) !important;
-                }
-                .simplebar-scrollbar:hover::before {
-                    background-color: rgba(180, 180, 180, 0.7) !important;
-                }
-            `;
-            document.head.appendChild(styleElement);
-        }
-    }, []);
-
     return (
         <>
             <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
@@ -397,12 +378,13 @@ export function PostFormDialog({
                             </div>
                         </DialogHeader>
 
-                        <SimpleBar 
+                        <div 
                             style={{ 
                                 height: isExpanded ? 'calc(98vh - 180px)' : undefined, 
                                 maxHeight: !isExpanded ? 'calc(100vh - 240px)' : undefined,
                                 paddingRight: '1rem'
                             }}
+                            className="overflow-y-auto"
                         >
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -1021,7 +1003,7 @@ export function PostFormDialog({
                             {task && task.comments && <CommentSection taskId={task.id} currentUserId={authUserId} assignees={assignees} />}
                             {task && <ActivityHistory postId={task.id} />}
                             {task && <LinkedIssuesSection taskId={task.id} currentUserId={authUserId} />}
-                        </SimpleBar>
+                        </div>
 
                         <div className="mt-6">
                             <Button type="submit" onClick={form.handleSubmit(onSubmit)} className="w-full bg-white text-zinc-900 hover:bg-zinc-100">

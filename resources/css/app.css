@@ -27,7 +27,10 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem
+    --radius: 0.5rem;
+    --scrollbar-track-bg: transparent; /* For a barely noticeable track */
+    --scrollbar-thumb-bg: #555555;     /* Dark thumb */
+    --scrollbar-thumb-hover-bg: #777777; /* Lighter dark thumb on hover */
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -53,14 +56,48 @@
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%
+    --chart-5: 340 75% 55%;
   }
-}
-@layer base {
+
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    -ms-overflow-style: -ms-autohiding-scrollbar; /* For IE/Edge */
+    /* Firefox scrollbar styling on body as per example if html doesn't take */
+    /* scrollbar-width: thin; */ 
+    /* scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-track-bg); */
+  }
+  html {
+    scrollbar-width: thin; /* For Firefox - this is usually the thinnest option */
+    scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-track-bg);
+  }
+  
+  /* Global WebKit Scrollbar Styles - Targeting HTML, Ultra-Thin */
+  html::-webkit-scrollbar {
+    width: 5px !important; 
+    height: 5px !important;
+    background-color: var(--scrollbar-track-bg); /* Use variable, should be transparent */
+  }
+
+  html::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track-bg); /* Use variable, should be transparent */
+    border: none;
+  }
+
+  html::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg);
+    border-radius: 2.5px; /* Half of the scrollbar width for a rounded end */
+  }
+
+  html::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover-bg);
+  }
+
+  html::-webkit-scrollbar-button { /* Hide scrollbar buttons */
+    display: none;
+    width: 0;
+    height: 0;
   }
 }
