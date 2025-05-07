@@ -2,6 +2,7 @@
 @import './partials/placeholder.css';
 @import './partials/lists.css';
 @import './partials/typography.css';
+@import './partials/blockquote.css';
 
 :root {
   --mt-font-size-regular: 0.9375rem;
@@ -99,7 +100,7 @@
 }
 
 .minimal-tiptap-editor .ProseMirror > div.editor {
-  @apply block flex-1 whitespace-pre-wrap;
+  @apply block flex-1 whitespace-pre-wrap overflow-hidden min-w-0;
 }
 
 .minimal-tiptap-editor .ProseMirror .block-node:not(:last-child),
@@ -138,7 +139,7 @@
 }
 
 .minimal-tiptap-editor .ProseMirror blockquote {
-  @apply relative pl-3.5;
+  @apply relative pl-3.5 overflow-hidden max-w-full;
 }
 
 .minimal-tiptap-editor .ProseMirror blockquote::before,

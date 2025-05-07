@@ -80,12 +80,19 @@ export const MinimalTiptapEditor = React.forwardRef<HTMLDivElement, MinimalTipta
           id="TipTapTextArea"
           ref={ref}
         className={cn(
-          'flex h-auto min-h-72 w-full flex-col rounded-md border border-input shadow-sm focus-within:border-primary',
+          'flex h-auto min-h-72 w-full flex-col rounded-md border border-input shadow-sm focus-within:border-primary overflow-hidden',
           className
         )}
+        style={{
+          maxWidth: '100%',
+          wordWrap: 'break-word',
+          overflowWrap: 'break-word'
+        }}
       >
         <Toolbar editor={editor} />
-        <EditorContent editor={editor} className={cn('minimal-tiptap-editor', editorContentClassName)} />
+        <div className="overflow-hidden w-full">
+          <EditorContent editor={editor} className={cn('minimal-tiptap-editor overflow-hidden', editorContentClassName)} />
+        </div>
         <LinkBubbleMenu editor={editor} />
         <ImageBubbleMenu editor={editor} />
       </div>

@@ -1,19 +1,31 @@
 .minimal-tiptap-editor .ProseMirror code.inline {
-  @apply rounded border border-[var(--mt-code-color)] bg-[var(--mt-code-background)] px-1 py-0.5 text-sm;
+  @apply rounded border border-[var(--mt-code-color)] bg-[var(--mt-code-background)] px-1 py-0.5 text-sm break-all;
+  max-width: 100% !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
 }
 
 .minimal-tiptap-editor .ProseMirror pre {
-  @apply relative overflow-auto rounded border font-mono text-sm;
+  @apply relative min-w-0 max-w-full overflow-auto rounded border font-mono text-sm;
   @apply border-[var(--mt-pre-border)] bg-[var(--mt-pre-background)] text-[var(--mt-pre-color)];
   @apply hyphens-none whitespace-pre text-left;
+  overflow-x: auto !important;
+  word-wrap: break-word !important;
+  max-width: 100% !important; 
 }
 
 .minimal-tiptap-editor .ProseMirror code {
   @apply break-words leading-[1.7em];
+  max-width: 100% !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
 }
 
 .minimal-tiptap-editor .ProseMirror pre code {
-  @apply block overflow-x-auto p-3.5;
+  @apply block p-3.5 break-all;
+  max-width: 100% !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
 }
 
 .minimal-tiptap-editor .ProseMirror pre {
