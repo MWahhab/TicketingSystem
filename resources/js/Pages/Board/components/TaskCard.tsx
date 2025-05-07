@@ -457,9 +457,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                                                     </span>
                                                 </span>
                                             </TooltipTrigger>
-                                            <TooltipContent side="top" className="bg-zinc-900 border-zinc-700">
-                                                <p className="text-xs text-zinc-200">Deadline: {new Date(task.deadline).toLocaleDateString()}</p>
-                                            </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
                                 )}

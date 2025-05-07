@@ -549,6 +549,7 @@ export function PostFormDialog({
                                                                                     form.setValue("desc", originalDescription);
                                                                                     setOriginalDescription("");
                                                                                     setIsDescriptionModified(false);
+                                                                                    setIsPreview(true);
                                                                                     toast({
                                                                                         title: "Description restored",
                                                                                         description: "Original description has been restored.",
