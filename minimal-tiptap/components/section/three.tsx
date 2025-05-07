@@ -94,55 +94,53 @@ const MemoizedColorButton = React.memo<{
   }
 
   return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-                role="button"
-                tabIndex={0}
-                onClick={handleClick}
-                onMouseDown={(e) => {
-                  e.stopPropagation()
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+              role="button"
+              tabIndex={0}
+              onClick={handleClick}
+              onMouseDown={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault()
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    onClick(color.hexValue)
-                  }
-                }}
-                className="relative"
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "4px",
-                  backgroundColor: color.hexValue,
-                  border: "1px solid #e1e1e1",
-                  cursor: "pointer !important",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "2px",
-                  pointerEvents: "auto"
-                }}
-                aria-label={label}
-            >
-              {isSelected && (
-                  <CheckIcon
-                      style={{
-                        color: checkColor,
-                        width: "16px",
-                        height: "16px",
-                      }}
-                  />
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>{label}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+                  onClick(color.hexValue)
+                }
+              }}
+              className="relative"
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "4px",
+                backgroundColor: color.hexValue,
+                border: "1px solid #e1e1e1",
+                cursor: "pointer !important",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "2px",
+                pointerEvents: "auto"
+              }}
+              aria-label={label}
+          >
+            {isSelected && (
+                <CheckIcon
+                    style={{
+                      color: checkColor,
+                      width: "16px",
+                      height: "16px",
+                    }}
+                />
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>{label}</p>
+        </TooltipContent>
+      </Tooltip>
   )
 })
 
@@ -176,11 +174,12 @@ interface SectionThreeProps extends VariantProps<typeof toggleVariants> {
   editor: Editor
 }
 
+const INITIAL_CSS_COLOR = "#a1a1aa";
+
 export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, variant }) => {
-  const [selectedColor, setSelectedColor] = React.useState<string>("#333333")
-
+  const [selectedColor, setSelectedColor] = React.useState<string>(INITIAL_CSS_COLOR)
   const [popoverOpen, setPopoverOpen] = React.useState(false)
-
+  const [isToolbarButtonHovered, setIsToolbarButtonHovered] = React.useState(false);
   const allowCloseRef = React.useRef(true)
 
   const handleColorChange = React.useCallback(
@@ -205,6 +204,12 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
       return
     }
     setPopoverOpen(open)
+  }
+
+  const handleClearColor = () => {
+    setSelectedColor(INITIAL_CSS_COLOR)
+    editor.commands.focus()
+    editor.commands.setColor(INITIAL_CSS_COLOR)
   }
 
   const handleDone = () => {
@@ -236,6 +241,8 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
                     e.stopPropagation()
                     allowCloseRef.current = false
                   }}
+                  onMouseEnter={() => setIsToolbarButtonHovered(true)}
+                  onMouseLeave={() => setIsToolbarButtonHovered(false)}
               >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -244,22 +251,21 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="1.4"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="h-6 w-6"
-                    style={{ color: selectedColor }}
+                    className="h-7 w-7"
+                    style={{ color: isToolbarButtonHovered ? '#e4e4e7' : selectedColor }}
                 >
                   <path d="M12 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   <path d="M8 12h8" />
                 </svg>
-                <CaretDownIcon className="h-6 w-6" />
               </ToolbarButton>
             </PopoverTrigger>
             <PopoverContent
                 align="start"
-                className="w-72 p-3"
+                className="w-72 p-4 bg-gradient-to-br from-zinc-850 to-zinc-900 border-zinc-700 text-zinc-200 shadow-2xl rounded-lg"
                 onMouseEnter={() => {
                   allowCloseRef.current = false
                 }}
@@ -279,25 +285,35 @@ export const SectionThree: React.FC<SectionThreeProps> = ({ editor, size, varian
                   zIndex: 100
                 }}
             >
-              <div className="space-y-3">
-                {COLORS.map((palette, index) => (
-                    <MemoizedColorPicker
-                        key={index}
-                        palette={palette}
-                        inverse={palette.inverse}
-                        selectedColor={selectedColor}
-                        onColorChange={handleColorChange}
-                    />
-                ))}
-                <div className="flex justify-end pt-2">
-                  <button
-                      className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/80"
-                      onClick={handleDone}
-                  >
-                    Done
-                  </button>
+              <TooltipProvider>
+                <div className="space-y-3">
+                  {COLORS.map((palette, index) => (
+                      <MemoizedColorPicker
+                          key={index}
+                          palette={palette}
+                          inverse={palette.inverse}
+                          selectedColor={selectedColor}
+                          onColorChange={handleColorChange}
+                      />
+                  ))}
+                  <div className="flex justify-between items-center pt-3 mt-2 border-t border-zinc-700">
+                    <button
+                        type="button"
+                        className="px-3 py-1.5 text-sm font-medium bg-transparent text-zinc-400 border border-white/10 rounded-md hover:bg-white/5 hover:text-zinc-300 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900 transition-colors"
+                        onClick={handleClearColor}
+                    >
+                      Clear
+                    </button>
+                    <button
+                        type="button"
+                        className="px-3 py-1.5 text-sm font-medium bg-transparent text-zinc-200 border border-white/20 rounded-md hover:bg-white/10 hover:text-zinc-100 hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-zinc-900 transition-colors"
+                        onClick={handleDone}
+                    >
+                      Done
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </TooltipProvider>
             </PopoverContent>
           </Popover>
         </div>

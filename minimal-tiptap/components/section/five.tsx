@@ -1,6 +1,6 @@
 import * as React from 'react'
 import type { Editor } from '@tiptap/react'
-import { CaretDownIcon, CodeIcon, DividerHorizontalIcon, PlusIcon, QuoteIcon } from '@radix-ui/react-icons'
+import { CodeIcon, DividerHorizontalIcon, PlusIcon, QuoteIcon } from '@radix-ui/react-icons'
 import { LinkEditPopover } from '../link/link-edit-popover'
 import { ImageEditDialog } from '../image/image-edit-dialog'
 import type { FormatAction } from '../../types'
@@ -35,7 +35,7 @@ const formatActions: InsertElement[] = [
   {
     value: 'horizontalRule',
     label: 'Divider',
-    icon: <DividerHorizontalIcon className="h-6 w-6" />,
+    icon: <DividerHorizontalIcon className="h-6 w-6 " />,
     action: editor => editor.chain().focus().setHorizontalRule().run(),
     isActive: () => false,
     canExecute: editor => editor.can().chain().focus().setHorizontalRule().run(),
@@ -67,11 +67,9 @@ export const SectionFive: React.FC<SectionFiveProps> = ({
         mainActionCount={mainActionCount}
         dropdownIcon={
           <>
-            <PlusIcon className="h-6 w-6" />
-            <CaretDownIcon className="h-6 w-6" />
+            <PlusIcon className="h-6 w-6 hover:bg-transparent hover:text-zinc-50 text-zinc-400" />
           </>
         }
-        dropdownTooltip="Insert elements"
         size={size}
         variant={variant}
       />

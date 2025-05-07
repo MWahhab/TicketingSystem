@@ -26,7 +26,6 @@ export const ToolbarSection: React.FC<ToolbarSectionProps> = ({
   activeActions = actions.map(action => action.value),
   mainActionCount = 0,
   dropdownIcon,
-  dropdownTooltip = 'More options',
   dropdownClassName = 'w-12',
   size,
   variant
@@ -43,20 +42,23 @@ export const ToolbarSection: React.FC<ToolbarSectionProps> = ({
   }, [actions, activeActions, mainActionCount])
 
   const renderToolbarButton = React.useCallback(
-    (action: FormatAction) => (
-      <ToolbarButton
-        key={action.label}
-        onClick={() => action.action(editor)}
-        disabled={!action.canExecute(editor)}
-        isActive={action.isActive(editor)}
-        tooltip={`${action.label} ${action.shortcuts.map(s => getShortcutKey(s).symbol).join(' ')}`}
-        aria-label={action.label}
-        size={size}
-        variant={variant}
-      >
-        {action.icon}
-      </ToolbarButton>
-    ),
+    (action: FormatAction) => {
+      const active = action.isActive(editor);
+      return (
+        <ToolbarButton
+          key={action.label}
+          onClick={() => action.action(editor)}
+          disabled={!action.canExecute(editor)}
+          isActive={active}
+          tooltip={`${action.label} ${action.shortcuts.map(s => getShortcutKey(s).symbol).join(' ')}`}
+          aria-label={action.label}
+          size={size}
+          variant={variant}
+        >
+          {action.icon}
+        </ToolbarButton>
+      )
+    },
     [editor, size, variant]
   )
 
@@ -66,9 +68,13 @@ export const ToolbarSection: React.FC<ToolbarSectionProps> = ({
         key={action.label}
         onClick={() => action.action(editor)}
         disabled={!action.canExecute(editor)}
-        className={cn('flex flex-row items-center justify-between gap-4', {
-          'bg-accent': action.isActive(editor)
-        })}
+        className={cn(
+          'flex flex-row items-center justify-between gap-4 w-full rounded-md',
+          {
+            'bg-white/10 text-white focus:bg-white/15 focus:text-white': action.isActive(editor),
+            'hover:bg-white/5 hover:text-zinc-100 focus:bg-white/5 focus:text-zinc-100': !action.isActive(editor),
+          }
+        )}
         aria-label={action.label}
       >
         <span className="grow">{action.label}</span>
@@ -83,6 +89,17 @@ export const ToolbarSection: React.FC<ToolbarSectionProps> = ({
     [dropdownActions, editor]
   )
 
+  // Determine if the dropdown trigger itself should appear active.
+  // It should be active if its own dropdown items make it active, OR
+  // if there is exactly one main action and that main action is active (for a unified button look).
+  const triggerIsActive = React.useMemo(() => {
+    const singleMainActionIsActive = 
+      mainActionCount === 1 && 
+      mainActions.length === 1 && 
+      mainActions[0].isActive(editor);
+    return singleMainActionIsActive || isDropdownActive;
+  }, [mainActionCount, mainActions, isDropdownActive, editor]);
+
   return (
     <>
       {mainActions.map(renderToolbarButton)}
@@ -90,17 +107,18 @@ export const ToolbarSection: React.FC<ToolbarSectionProps> = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <ToolbarButton
-              isActive={isDropdownActive}
-              tooltip={dropdownTooltip}
-              aria-label={dropdownTooltip}
+              isActive={triggerIsActive}
               className={cn(dropdownClassName)}
               size={size}
               variant={variant}
             >
-              {dropdownIcon || <CaretDownIcon className="size-5" />}
+              {dropdownIcon}
             </ToolbarButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-full">
+          <DropdownMenuContent
+            align="start"
+            className="min-w-[240px] p-3 bg-gradient-to-br from-zinc-850 to-zinc-900 border border-zinc-700 text-zinc-200 shadow-xl rounded-lg"
+          >
             {dropdownActions.map(renderDropdownMenuItem)}
           </DropdownMenuContent>
         </DropdownMenu>

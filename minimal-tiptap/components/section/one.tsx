@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/react'
 import type { Level } from '@tiptap/extension-heading'
 import { cn } from '@/lib/utils'
-import { CaretDownIcon, LetterCaseCapitalizeIcon } from '@radix-ui/react-icons'
+import { LetterCaseCapitalizeIcon } from '@radix-ui/react-icons'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ToolbarButton } from '../toolbar-button'
 import { ShortcutKey } from '../shortcut-key'
@@ -95,9 +95,17 @@ export const SectionOne: React.FC<SectionOneProps> = React.memo(
         <DropdownMenuItem
           key={label}
           onClick={() => handleStyleChange(level)}
-          className={cn('flex flex-row items-center justify-between gap-4', {
-            'bg-accent': level ? editor.isActive('heading', { level }) : editor.isActive('paragraph')
-          })}
+          className={cn(
+            'flex flex-row items-center justify-between gap-4 w-full rounded-md',
+            {
+              'bg-white/10 text-white focus:bg-white/15 focus:text-white': level
+                ? editor.isActive('heading', { level })
+                : editor.isActive('paragraph'),
+              'hover:bg-white/5 hover:text-zinc-100 focus:bg-white/5 focus:text-zinc-100': !(level
+                ? editor.isActive('heading', { level })
+                : editor.isActive('paragraph')),
+            }
+          )}
           aria-label={label}
         >
           <Element className={className}>{label}</Element>
@@ -112,7 +120,6 @@ export const SectionOne: React.FC<SectionOneProps> = React.memo(
         <DropdownMenuTrigger asChild>
           <ToolbarButton
             isActive={editor.isActive('heading')}
-            tooltip="Text styles"
             aria-label="Text styles"
             pressed={editor.isActive('heading')}
             className="w-12"
@@ -121,10 +128,12 @@ export const SectionOne: React.FC<SectionOneProps> = React.memo(
             variant={variant}
           >
             <LetterCaseCapitalizeIcon className="h-6 w-6" />
-            <CaretDownIcon className="h-6 w-6" />
           </ToolbarButton>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-full">
+        <DropdownMenuContent
+          align="start"
+          className="min-w-[280px] p-3 bg-gradient-to-br from-zinc-850 to-zinc-900 border border-zinc-700 text-zinc-200 shadow-xl rounded-lg"
+        >
           {filteredActions.map(renderMenuItem)}
         </DropdownMenuContent>
       </DropdownMenu>

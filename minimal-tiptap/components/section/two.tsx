@@ -23,7 +23,7 @@ const formatActions: TextStyle[] = [
   {
     value: 'bold',
     label: 'Bold',
-    icon: <FontBoldIcon className="h-6 w-6" />,
+    icon: <FontBoldIcon className="h-6 w-6 group-aria-pressed:text-zinc-50" />,
     action: editor => editor.chain().focus().toggleBold().run(),
     isActive: editor => editor.isActive('bold'),
     canExecute: editor => editor.can().chain().focus().toggleBold().run() && !editor.isActive('codeBlock'),
@@ -32,7 +32,7 @@ const formatActions: TextStyle[] = [
   {
     value: 'italic',
     label: 'Italic',
-    icon: <FontItalicIcon className="h-6 w-6" />,
+    icon: <FontItalicIcon className="h-6 w-6 group-aria-pressed:text-zinc-50" />,
     action: editor => editor.chain().focus().toggleItalic().run(),
     isActive: editor => editor.isActive('italic'),
     canExecute: editor => editor.can().chain().focus().toggleItalic().run() && !editor.isActive('codeBlock'),
@@ -41,7 +41,7 @@ const formatActions: TextStyle[] = [
   {
     value: 'strikethrough',
     label: 'Strikethrough',
-    icon: <StrikethroughIcon className="h-6 w-6" />,
+    icon: <StrikethroughIcon className="h-6 w-6 hover:text-zinc-500 group-aria-pressed:text-zinc-50" />,
     action: editor => editor.chain().focus().toggleStrike().run(),
     isActive: editor => editor.isActive('strike'),
     canExecute: editor => editor.can().chain().focus().toggleStrike().run() && !editor.isActive('codeBlock'),
@@ -50,7 +50,7 @@ const formatActions: TextStyle[] = [
   {
     value: 'code',
     label: 'Code',
-    icon: <CodeIcon className="h-6 w-6" />,
+    icon: <CodeIcon className="h-6 w-6 hover:text-zinc-500 group-aria-pressed:text-zinc-50" />,
     action: editor => editor.chain().focus().toggleCode().run(),
     isActive: editor => editor.isActive('code'),
     canExecute: editor => editor.can().chain().focus().toggleCode().run() && !editor.isActive('codeBlock'),
@@ -59,7 +59,7 @@ const formatActions: TextStyle[] = [
   {
     value: 'clearFormatting',
     label: 'Clear formatting',
-    icon: <TextNoneIcon className="h-6 w-6" />,
+    icon: <TextNoneIcon className="h-6 w-6 hover:text-zinc-500 hover:bg-transparent" />,
     action: editor => editor.chain().focus().unsetAllMarks().run(),
     isActive: () => false,
     canExecute: editor => editor.can().chain().focus().unsetAllMarks().run() && !editor.isActive('codeBlock'),
@@ -86,9 +86,8 @@ export const SectionTwo: React.FC<SectionTwoProps> = ({
       actions={formatActions}
       activeActions={activeActions}
       mainActionCount={mainActionCount}
-      dropdownIcon={<DotsHorizontalIcon className="h-6 w-6" />}
-      dropdownTooltip="More formatting"
-      dropdownClassName="w-8"
+      dropdownIcon={<DotsHorizontalIcon className="h-6 w-6 hover:transparent hover:text-white text-zinc-400" />}
+      dropdownClassName="w-8  hover:bg-transparent hover:text-white text-zinc-400"
       size={size}
       variant={variant}
     />

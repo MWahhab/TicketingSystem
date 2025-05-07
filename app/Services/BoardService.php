@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\DataTransferObjects\BoardFilterDataTransferObject;
+use App\Enums\NotificationTypeEnums;
 use App\Models\BoardConfig;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class BoardService
 {
@@ -40,6 +42,9 @@ class BoardService
      * Fetch the board with posts and related data.
      *
      */
+    /**
+     * Fetch the board with posts and related data.
+     */
     private function getBoard(BoardFilterDataTransferObject $dto): ?BoardConfig
     {
         $boardId   = $dto->getBoardId();
@@ -51,7 +56,7 @@ class BoardService
             ->when($boardId, fn ($q) => $q->whereKey($boardId))
             ->first();
 
-        if (! $board) {
+        if (!$board) {
             return null;
         }
 
@@ -64,8 +69,8 @@ class BoardService
                     WHEN priority = 'medium' THEN 2
                     WHEN priority = 'low'    THEN 3
                     ELSE 4
-                  END
-              ")
+                END
+            ")
                     ->orderByDesc('created_at');
 
                 if ($dateFrom instanceof \Carbon\Carbon) {
@@ -78,12 +83,41 @@ class BoardService
                 $q->limit(100);
             },
             'posts.assignee:id,name',
-            'posts.comments' => function ($q) {
-                $q->orderBy('created_at', 'desc')
-                    ->with('creator:id,name');
-            },
+            'posts.comments' => fn ($q) => $q->orderByDesc('created_at')->with('creator:id,name'),
             'posts.watchers.user:id,name',
+            'posts.linkedIssues.relatedPost:id,title',
         ]);
+
+        $postIds = $board->posts->pluck('id');
+
+        $baseQuery = DB::table('notifications')
+            ->join('users', 'notifications.created_by', '=', 'users.id')
+            ->select([
+                'notifications.id',
+                'notifications.type',
+                'notifications.content',
+                'notifications.fid_post',
+                'notifications.created_at',
+                'users.name as created_by_name',
+                DB::raw('ROW_NUMBER() OVER (PARTITION BY notifications.fid_post, notifications.type ORDER BY notifications.created_at DESC) as row_num'),
+            ])
+            ->whereIn('notifications.fid_post', $postIds)
+            ->whereIn('notifications.type', [
+                NotificationTypeEnums::COMMENT->value,
+                NotificationTypeEnums::POST->value,
+                NotificationTypeEnums::LINKED_ISSUE->value,
+                NotificationTypeEnums::BRANCH->value,
+            ]);
+
+        $wrappedQuery = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
+            ->mergeBindings($baseQuery)
+            ->where('row_num', '<=', 5)
+            ->get()
+            ->groupBy('fid_post');
+
+        $board->posts->each(function ($post) use ($wrappedQuery) {
+            $post->setRelation('limitedHistory', $wrappedQuery->get($post->id, collect()));
+        });
 
         return $board;
     }
@@ -127,6 +161,26 @@ class BoardService
                 'id'         => $watcher->user->id,
                 'name'       => $watcher->user->name,
             ])->toArray() : [],
+            'history' => $post->limitedHistory
+                ? $post->limitedHistory
+                    ->groupBy('type')
+                    ->map(fn ($group) => $group->map(fn ($entry) => [
+                        'id'             => $entry->id,
+                        'type'           => $entry->type,
+                        'content'        => $entry->content         ?? null,
+                        'createdAt'      => $entry->created_at      ?? null,
+                        'createdByName'  => $entry->created_by_name ?? null,
+                    ])->toArray())
+                    ->toArray()
+                : [],
+            'linked_issues' => $post->linkedIssues->map(fn ($link) => [
+                'id'            => $link->id,
+                'type'          => $link->link_type,
+                'related_post'  => [
+                    'id'    => $link->relatedPost->id    ?? null,
+                    'title' => $link->relatedPost->title ?? 'Unknown',
+                ],
+            ])->toArray(),
         ])->toArray() : [];
     }
 }

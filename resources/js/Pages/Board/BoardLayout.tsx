@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { usePage, router, Link } from "@inertiajs/react"
 import { DragDropContext } from "react-beautiful-dnd"
-import { Search, ChevronDown, User, LogOut, Settings, Pin, PinOff } from "lucide-react"
+import { Search, ChevronDown, User, LogOut, Settings, Pin, PinOff, ChevronsRight } from "lucide-react"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell"
 import { DateFilter } from "./components/DateFilter"
 import { AISettingsDialog } from "@/Pages/Board/components/AiIntegrationFormDialog"
 
-import { BoardProvider, useBoardContext } from "./BoardContext"
+import { BoardProvider, useBoardContext, type Assignee } from "./BoardContext"
 import {clsx} from "clsx";
 
 const PreventCloseMenuItem = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<typeof DropdownMenuItem>>(
@@ -60,13 +60,16 @@ export function BoardLayout() {
         dateField,
     } = usePage().props as any
 
+    // Cast assignees here if necessary, or rely on BoardProvider type checking
+    const typedAssignees = assignees as Assignee[];
+
     return (
         <BoardProvider
             boardId={boardId}
             columnsArray={columnsArray}
             postsArray={postsArray}
             boards={boards}
-            assignees={assignees}
+            assignees={typedAssignees}
             boardsColumns={boardsColumns}
             priorities={priorities}
             boardTitle={boardTitle}
@@ -114,15 +117,16 @@ function InnerBoardLayout() {
 
     const [didAutoOpen, setDidAutoOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
-    const [selectedAssignees, setSelectedAssignees] = useState<string[]>([])
+    const [selectedAssignees, setSelectedAssignees] = useState<number[]>([])
     const [selectedAuthors, setSelectedAuthors] = useState<string[]>([])
     const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
     const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("")
     const [authorSearchQuery, setAuthorSearchQuery] = useState("")
 
-    // Sidebar State
+    // Sidebar State & Ref for leave delay
     const [isSidebarPinned, setIsSidebarPinned] = useState(true)
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+    const sidebarLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     useEffect(() => {
         const openTaskId = getOpenTaskParam()
@@ -192,33 +196,55 @@ function InnerBoardLayout() {
     }
 
     const handlePinToggle = () => {
+        // Clear any pending close timer if toggling pin
+        if (sidebarLeaveTimeoutRef.current) {
+            clearTimeout(sidebarLeaveTimeoutRef.current);
+            sidebarLeaveTimeoutRef.current = null;
+        }
+        
         const newPinState = !isSidebarPinned
         setIsSidebarPinned(newPinState)
         if (newPinState) {
             // If pinning, force it open
             setIsSidebarOpen(true)
+        } else {
+            // If unpinning, start closed if mouse isn't already over it (edge case)
+            // We might rely on handleMouseLeave instead for simplicity here.
         }
-        // If unpinning, hover will control opening/closing
     }
 
-    const handleMouseEnter = () => {
+    const handleMouseEnterSidebar = () => {
+        // Clear any pending close timer
+        if (sidebarLeaveTimeoutRef.current) {
+            clearTimeout(sidebarLeaveTimeoutRef.current);
+            sidebarLeaveTimeoutRef.current = null;
+        }
+        // Open if not pinned
         if (!isSidebarPinned) {
             setIsSidebarOpen(true)
         }
     }
 
-    const handleMouseLeave = () => {
+    const handleMouseLeaveSidebar = () => {
+        // Start timer to close only if not pinned
         if (!isSidebarPinned) {
-            setIsSidebarOpen(false)
+            // Clear any existing timer before starting new one
+            if (sidebarLeaveTimeoutRef.current) {
+                clearTimeout(sidebarLeaveTimeoutRef.current);
+            }
+            sidebarLeaveTimeoutRef.current = setTimeout(() => {
+                setIsSidebarOpen(false)
+                sidebarLeaveTimeoutRef.current = null; // Clear ref after execution
+            }, 200) // 200ms delay before closing
         }
     }
 
     return (
         <div className="flex h-screen overflow-hidden bg-gradient-to-br from-zinc-950 to-neutral-950 text-zinc-200">
-            {/* Sidebar - Added hover handlers */}
+            {/* Sidebar */}
             <div
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
+                onMouseEnter={handleMouseEnterSidebar}
+                onMouseLeave={handleMouseLeaveSidebar}
                 className={`
                     fixed top-0 left-0 h-full z-30 flex-shrink-0
                     bg-gradient-to-b from-zinc-900 to-zinc-950 border-r border-white/10
@@ -281,7 +307,6 @@ function InnerBoardLayout() {
                                     <DropdownMenuContent align="end" className="bg-gradient-to-br from-zinc-850 to-zinc-900 rounded-lg border border-white/10 text-zinc-100 shadow-xl w-48">
                                         <DropdownMenuItem
                                             className="text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100 cursor-pointer rounded-sm"
-                                            onClick={() => console.log(`Edit board ${board.id}`)}
                                         >
                                             Edit
                                         </DropdownMenuItem>
@@ -402,7 +427,7 @@ function InnerBoardLayout() {
                                         All Assignees
                                     </PreventCloseMenuItem>
                                     {filterBySearch(assignees, assigneeSearchQuery, (assignee) => assignee.name).map(
-                                        (assignee: any) => (
+                                        (assignee: Assignee) => (
                                             <PreventCloseMenuItem
                                                 key={assignee.id}
                                                 className={clsx(
@@ -542,7 +567,7 @@ function InnerBoardLayout() {
                                         task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                         task.id.toString().includes(searchQuery.toLowerCase())
                                     const matchesAssignee =
-                                        selectedAssignees.length === 0 || selectedAssignees.includes(task.assignee_id)
+                                        selectedAssignees.length === 0 || selectedAssignees.includes(parseInt(task.assignee_id, 10))
                                     const matchesAuthor = selectedAuthors.length === 0 || selectedAuthors.includes(task.post_author)
                                     const matchesPriority =
                                         selectedPriorities.length === 0 || selectedPriorities.includes(task.priority.toLowerCase())

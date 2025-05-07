@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarIcon, Trash, Eye, Edit, Maximize2Icon, Minimize2Icon, Link2 } from "lucide-react"
-import { format } from "date-fns"
+import { format, parseISO, isValid } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -26,6 +26,11 @@ import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmatio
 import ActivityHistory from "@/Pages/Board/components/ActivityHistory"
 import LinkedIssuesSection from "@/Pages/Board/components/LinkedIssues"
 import axios from "axios"
+import { Textarea } from "@/components/ui/textarea"
+import { WatchersSelect } from "./post-form-dialog-components/WatchersSelect"
+import { useBoardContext, type Assignee, type Task, type Board } from "../BoardContext"
+import SimpleBar from 'simplebar-react'
+import 'simplebar-react/dist/simplebar.min.css'
 
 interface FileItem {
     path: string
@@ -42,50 +47,21 @@ const formSchema = z.object({
     priority: z.string().min(1, "Priority is required"),
     column: z.string().min(1, "Column is required"),
     assignee_id: z.string().min(1, "Assignee is required"),
-    deadline: z.date().nullable(),
+    deadline: z.string().nullable(),
     fid_board: z.string().min(1, "Board is required"),
+    post_author: z.string().optional(),
 })
 
 type FormData = z.infer<typeof formSchema>
 
-interface Board {
-    id: string
-    title: string
-    columns: string[]
-}
-
-interface Assignee {
-    id: string
-    name: string
-}
-
-interface Task {
-    id: string
-    title: string
-    desc: string
-    priority: string
-    column: string
-    assignee_id: string
-    deadline: string | null
-    fid_board: string
-    post_author: string
-    comments?: Comment[]
-    watchers?: Array<{
-        watcher_id: number
-        id: number
-        name: string
-    }>
-    had_branch?: number
-}
-
 interface PostFormDialogProps {
-    priorities: string[]
-    boards: Board[]
-    assignees: Assignee[]
-    task?: Task
-    onClose?: () => void
-    authUserId: string
-    isPremium: string
+    boards: Board[];
+    assignees: Assignee[];
+    priorities: string[];
+    task?: Task | null;
+    onClose?: () => void;
+    authUserId: string;
+    isPremium: string;
 }
 
 interface Comment {
@@ -138,32 +114,33 @@ export function PostFormDialog({
     const [generationCount, setGenerationCount] = useState<number | null>(null)
     const [generationCap, setGenerationCap] = useState<number | null>(null)
 
-    const defaultValues = task
-        ? {
-            title: task.title || "",
-            desc: task.desc || "",
-            priority: task.priority || "",
-            column: task.column || "",
-            assignee_id: task.assignee_id?.toString() || "",
-            deadline: task.deadline ? new Date(task.deadline) : null,
-            fid_board: task.fid_board?.toString() || "",
-            post_author: task.post_author?.toString() || "",
-        }
-        : {
-            title: "",
-            desc: "",
-            priority: "",
-            column: "",
-            assignee_id: "",
-            deadline: null,
-            fid_board: "",
-            post_author: "",
-            watchers: [],
-        }
+    const getInitialFormValues = useCallback(() => {
+        return task
+            ? {
+                title: task.title || "",
+                desc: task.desc || "",
+                priority: task.priority || "",
+                column: task.column || "",
+                assignee_id: task.assignee_id?.toString() || "",
+                deadline: task.deadline || null,
+                fid_board: task.fid_board?.toString() || "",
+                post_author: task.post_author?.toString() || "",
+            }
+            : {
+                title: "",
+                desc: "",
+                priority: "",
+                column: "",
+                assignee_id: "",
+                deadline: null,
+                fid_board: "",
+                post_author: "",
+            }
+    }, [task]);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
-        defaultValues,
+        defaultValues: getInitialFormValues(),
     })
 
     const commentSchema = z.object({
@@ -199,24 +176,28 @@ export function PostFormDialog({
             setAvailableColumns([])
             form.setValue("column", "")
         }
-    }, [selectedBoardId, boards])
+    }, [selectedBoardId, boards, form])
+
+    useEffect(() => {
+        form.reset(getInitialFormValues());
+        if (task) {
+            setOriginalDescription(task.desc || "");
+            setIsDescriptionModified(false);
+            setIsPreview(true);
+        } else {
+            setOriginalDescription("");
+            setIsDescriptionModified(false);
+            setIsPreview(false);
+        }
+    }, [task, form, getInitialFormValues]);
 
     function onSubmit(values: FormData) {
-        const formattedValues = { ...values }
-
-        if (formattedValues.deadline) {
-            const date = new Date(formattedValues.deadline)
-            const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-            formattedValues.deadline = formattedDate
-        }
-
         if (task) {
-            Inertia.put(`/posts/${task.id}`, formattedValues, {
+            Inertia.put(`/posts/${task.id}`, values, {
                 onSuccess: () => {
                     setTimeout(() => {
-                        form.reset()
+                        form.reset(getInitialFormValues())
                     }, 100)
-
                     setIsDialogOpen(false)
                     onClose && onClose()
                 },
@@ -225,12 +206,11 @@ export function PostFormDialog({
                 },
             })
         } else {
-            Inertia.post("/posts", formattedValues, {
+            Inertia.post("/posts", values, {
                 onSuccess: () => {
                     setTimeout(() => {
-                        form.reset()
+                        form.reset(getInitialFormValues())
                     }, 100)
-
                     setIsDialogOpen(false)
                 },
                 onError: (errors) => {
@@ -253,17 +233,13 @@ export function PostFormDialog({
         setIsExpanded(!isExpanded)
     }
 
-    const fetchBranches = async () => {
+    const fetchBranches = useCallback(async () => {
         if (!task || !task.id || !hasPremiumAccess(isPremium)) return
-
-        console.log(task)
-
         setIsLoadingBranches(true)
         try {
             const response = await axios.post("/premium/branches/get", {
                 post_id: task.id,
             })
-
             if (response.data && response.data.data) {
                 setBranches(response.data.data)
                 if (isGeneratingPR && response.data.data.length > 0) {
@@ -279,13 +255,13 @@ export function PostFormDialog({
         } finally {
             setIsLoadingBranches(false)
         }
-    }
+    }, [task, isPremium, toast, isGeneratingPR]);
 
     useEffect(() => {
         if (isDialogOpen && task && task.id && hasPremiumAccess(isPremium)) {
             fetchBranches()
         }
-    }, [isDialogOpen, task, isPremium])
+    }, [isDialogOpen, task, isPremium, fetchBranches])
 
     useEffect(() => {
         const fetchGenerationCount = async () => {
@@ -299,7 +275,6 @@ export function PostFormDialog({
                 console.error("Failed to fetch generation count:", err)
             }
         }
-
         if (hasPremiumAccess(isPremium)) {
             fetchGenerationCount()
         }
@@ -319,31 +294,47 @@ export function PostFormDialog({
         }
     }
 
-    const checkQueueStatus = async () => {
+    const checkQueueStatus = useCallback(async () => {
         if (!task?.id || !hasPremiumAccess(isPremium)) return
         try {
             const { data } = await axios.post("/premium/queue/status", {
                 post_id: task.id,
             })
-
             if (data?.queued) {
                 setIsGeneratingPR(true)
             }
         } catch (err) {
             console.error("Failed to check queue status:", err)
         }
-    }
+    }, [task, isPremium]);
 
     useEffect(() => {
         checkQueueStatus()
-    }, [])
+    }, [checkQueueStatus])
+
+    useEffect(() => {
+        const styleId = 'simplebar-custom-styles-postformdialog';
+        if (!document.getElementById(styleId)) {
+            const styleElement = document.createElement('style');
+            styleElement.id = styleId;
+            styleElement.innerHTML = `
+                .simplebar-scrollbar::before {
+                    background-color: rgba(200, 200, 200, 0.5) !important;
+                }
+                .simplebar-scrollbar:hover::before {
+                    background-color: rgba(180, 180, 180, 0.7) !important;
+                }
+            `;
+            document.head.appendChild(styleElement);
+        }
+    }, []);
 
     return (
         <>
             <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
                 {!task && (
                     <DialogTrigger asChild>
-                        <Button variant="outline" className="bg-white text-zinc-900 hover:bg-zinc-100">
+                        <Button variant="outline" className="bg-white text-sm text-light text-zinc-900 hover:bg-zinc-100">
                             Create New Post
                         </Button>
                     </DialogTrigger>
@@ -406,8 +397,12 @@ export function PostFormDialog({
                             </div>
                         </DialogHeader>
 
-                        <div
-                            className={`overflow-y-auto pr-4 ${isExpanded ? "h-[calc(98vh-180px)]" : "max-h-[calc(100vh-240px)]"}`}
+                        <SimpleBar 
+                            style={{ 
+                                height: isExpanded ? 'calc(98vh - 180px)' : undefined, 
+                                maxHeight: !isExpanded ? 'calc(100vh - 240px)' : undefined,
+                                paddingRight: '1rem'
+                            }}
                         >
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -445,22 +440,18 @@ export function PostFormDialog({
                                                                             onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
-
                                                                                 if (isOptimizing) return
                                                                                 setIsOptimizing(true)
-
                                                                                 try {
                                                                                     const { data } = await axios.post("/premium/description/optimise", {
                                                                                         post_id: task.id,
                                                                                     })
-
                                                                                     if (data?.description) {
                                                                                         const currentDesc = form.getValues("desc")
                                                                                         setOriginalDescription(currentDesc)
                                                                                         form.setValue("desc", data.description)
                                                                                         setIsDescriptionModified(true)
                                                                                         setIsPreview(true)
-
                                                                                         toast({
                                                                                             title: "Description optimized",
                                                                                             description: "Updated description has been set, but not saved yet.",
@@ -550,18 +541,18 @@ export function PostFormDialog({
                                                                                 </>
                                                                             )}
                                                                         </Button>
-                                                                        {originalDescription && (
+                                                                        {isDescriptionModified && originalDescription && (
                                                                             <Button
                                                                                 onClick={(e) => {
-                                                                                    e.preventDefault()
-                                                                                    e.stopPropagation()
-                                                                                    form.setValue("desc", originalDescription)
-                                                                                    setOriginalDescription("")
-                                                                                    setIsDescriptionModified(false)
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
+                                                                                    form.setValue("desc", originalDescription);
+                                                                                    setOriginalDescription("");
+                                                                                    setIsDescriptionModified(false);
                                                                                     toast({
                                                                                         title: "Description restored",
                                                                                         description: "Original description has been restored.",
-                                                                                    })
+                                                                                    });
                                                                                 }}
                                                                                 className="border border-white/10 bg-transparent text-zinc-300 hover:bg-amber-800/30 hover:text-amber-200 hover:ring-1 hover:ring-amber-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                                                                                 title="Undo Optimization"
@@ -586,19 +577,16 @@ export function PostFormDialog({
                                                                         )}
 
                                                                         <Button
-                                                                            disabled={isGeneratingPR || isDescriptionModified || !hasPremiumAccess(isPremium) || (hasPremiumAccess(isPremium) && generationCount === 0)}
+                                                                            disabled={isGeneratingPR || isDescriptionModified || !hasPremiumAccess(isPremium) || (hasPremiumAccess(isPremium) && (generationCount ?? 0) === 0)}
                                                                             onClick={async (e) => {
                                                                                 e.preventDefault()
                                                                                 e.stopPropagation()
-
-                                                                                if (isGeneratingPR) return
+                                                                                if (isGeneratingPR || !task || !task.id) return
                                                                                 setIsGeneratingPR(true)
-
                                                                                 try {
                                                                                     const response = await axios.post("/premium/file-structure/get", {
                                                                                         post_id: task.id,
                                                                                     })
-
                                                                                     if (response.data && response.data.fileStructure) {
                                                                                         setFileStructure(response.data.fileStructure)
                                                                                         setIsFileBrowserOpen(true)
@@ -609,11 +597,11 @@ export function PostFormDialog({
                                                                                             variant: "destructive",
                                                                                         })
                                                                                     }
-                                                                                } catch (error) {
-                                                                                    console.error("Error generating PR:", error)
+                                                                                } catch (error: any) {
+                                                                                    console.error("Error generating PR files:", error)
                                                                                     toast({
                                                                                         title: "Error",
-                                                                                        description: error.response.data.error || "Failed to generate PR files",
+                                                                                        description: axios.isAxiosError(error) ? error.response?.data?.error : error.message || "Failed to generate PR files",
                                                                                         variant: "destructive",
                                                                                     })
                                                                                 } finally {
@@ -621,7 +609,7 @@ export function PostFormDialog({
                                                                                 }
                                                                             }}
                                                                             className="border border-white/10 bg-transparent text-zinc-300 hover:bg-teal-800/30 hover:text-teal-200 hover:ring-1 hover:ring-teal-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50"
-                                                                            title={!hasPremiumAccess(isPremium) ? "This is a paid feature" : isDescriptionModified ? "Save changes before generating PR" : generationCount === 0 ? "No generations left" : "Generate PR"}
+                                                                            title={!hasPremiumAccess(isPremium) ? "This is a paid feature" : isDescriptionModified ? "Save changes before generating PR" : (generationCount ?? 0) === 0 ? "No generations left" : "Generate PR"}
                                                                         >
                                                                             {isGeneratingPR ? (
                                                                                 <>
@@ -649,7 +637,7 @@ export function PostFormDialog({
                                                                                 </>
                                                                             ) : (
                                                                                 <>
-                                                                                    {(!hasPremiumAccess(isPremium) || (hasPremiumAccess(isPremium) && generationCount === 0)) && (
+                                                                                    {(!hasPremiumAccess(isPremium) || (hasPremiumAccess(isPremium) && (generationCount ?? 0) === 0)) && (
                                                                                         <svg
                                                                                             xmlns="http://www.w3.org/2000/svg"
                                                                                             width="14"
@@ -708,13 +696,12 @@ export function PostFormDialog({
                                                                 value={field.value}
                                                                 onChange={(value) => {
                                                                     field.onChange(value)
-                                                                    if (value !== defaultValues.desc) {
+                                                                    if (value !== getInitialFormValues().desc) {
                                                                         setIsDescriptionModified(true)
                                                                     }
                                                                 }}
                                                                 className="bg-zinc-700 text-white border border-zinc-600 rounded-md focus-within:border-white focus-within:ring-1 focus-within:ring-white"
                                                                 isPreview={isPreview}
-                                                                assignees={assignees}
                                                             />
                                                         </FormControl>
                                                         <FormMessage className="text-red-400" />
@@ -825,7 +812,7 @@ export function PostFormDialog({
                                                     <FormLabel className="text-white">Author</FormLabel>
                                                     <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded-md border border-zinc-700">
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-medium text-white">{assignees.find((a) => a.id.toString() === form.getValues("post_author"))?.name || form.getValues("post_author")}</span>
+                                                            <span className="text-sm font-medium text-white">{assignees.find((a) => a.id.toString() === task.post_author?.toString())?.name || task.post_author || 'Unknown Author'}</span>
                                                         </div>
                                                     </div>
                                                 </FormItem>
@@ -865,51 +852,54 @@ export function PostFormDialog({
                                             <FormField
                                                 control={form.control}
                                                 name="deadline"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-col mt-2">
-                                                        <FormLabel className="text-white">Deadline</FormLabel>
-                                                        <Popover open={deadlinePopoverOpen} onOpenChange={setDeadlinePopoverOpen}>
-                                                            <PopoverTrigger asChild>
-                                                                <FormControl>
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        className={cn(
-                                                                            "w-full pl-3 text-left font-normal bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500",
-                                                                            !field.value && "text-muted-foreground",
-                                                                        )}
+                                                render={({ field }) => {
+                                                    const dateValue = field.value && isValid(parseISO(field.value)) ? parseISO(field.value) : null;
+                                                    return (
+                                                        <FormItem className="flex flex-col mt-2">
+                                                            <FormLabel className="text-white">Deadline</FormLabel>
+                                                            <Popover open={deadlinePopoverOpen} onOpenChange={setDeadlinePopoverOpen}>
+                                                                <PopoverTrigger asChild>
+                                                                    <FormControl>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            className={cn(
+                                                                                "w-full pl-3 text-left font-normal bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500",
+                                                                                !field.value && "text-muted-foreground",
+                                                                            )}
+                                                                        >
+                                                                            {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
+                                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                                        </Button>
+                                                                    </FormControl>
+                                                                </PopoverTrigger>
+                                                                <Portal>
+                                                                    <PopoverContent
+                                                                        side="bottom"
+                                                                        align="start"
+                                                                        sideOffset={4}
+                                                                        className="z-[9999] w-auto p-0 bg-zinc-700 pointer-events-auto"
+                                                                        onClick={(e) => e.stopPropagation()}
                                                                     >
-                                                                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                    </Button>
-                                                                </FormControl>
-                                                            </PopoverTrigger>
-                                                            <Portal>
-                                                                <PopoverContent
-                                                                    side="bottom"
-                                                                    align="start"
-                                                                    sideOffset={4}
-                                                                    className="z-[9999] w-auto p-0 bg-zinc-700 pointer-events-auto"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    <div onClick={(e) => e.stopPropagation()}>
-                                                                        <Calendar
-                                                                            mode="single"
-                                                                            selected={field.value}
-                                                                            onSelect={(val) => {
-                                                                                field.onChange(val)
-                                                                                setDeadlinePopoverOpen(false)
-                                                                            }}
-                                                                            disabled={(date) => date < new Date() || date < new Date("1900-01-01")}
-                                                                            initialFocus
-                                                                            className="bg-zinc-800 border-zinc-700 text-white"
-                                                                        />
-                                                                    </div>
-                                                                </PopoverContent>
-                                                            </Portal>
-                                                        </Popover>
-                                                        <FormMessage className="text-red-400" />
-                                                    </FormItem>
-                                                )}
+                                                                        <div onClick={(e) => e.stopPropagation()}>
+                                                                            <Calendar
+                                                                                mode="single"
+                                                                                selected={dateValue || undefined}
+                                                                                onSelect={(date) => {
+                                                                                    field.onChange(date ? format(date, "yyyy-MM-dd") : null);
+                                                                                    setDeadlinePopoverOpen(false)
+                                                                                }}
+                                                                                disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) || date < new Date("1900-01-01")}
+                                                                                initialFocus
+                                                                                className="bg-zinc-800 border-zinc-700 text-white"
+                                                                            />
+                                                                        </div>
+                                                                    </PopoverContent>
+                                                                </Portal>
+                                                            </Popover>
+                                                            <FormMessage className="text-red-400" />
+                                                        </FormItem>
+                                                    );
+                                                }}
                                             />
                                             {task && (
                                                 <div className="mt-4">
@@ -1031,7 +1021,8 @@ export function PostFormDialog({
                             {task && task.comments && <CommentSection taskId={task.id} currentUserId={authUserId} assignees={assignees} />}
                             {task && <ActivityHistory postId={task.id} />}
                             {task && <LinkedIssuesSection taskId={task.id} currentUserId={authUserId} />}
-                        </div>
+                        </SimpleBar>
+
                         <div className="mt-6">
                             <Button type="submit" onClick={form.handleSubmit(onSubmit)} className="w-full bg-white text-zinc-900 hover:bg-zinc-100">
                                 {task ? "Update" : "Submit"}
@@ -1049,6 +1040,16 @@ export function PostFormDialog({
                     onFilesSelected={async (files) => {
                         setSelectedPRFiles(files)
                         setIsFileBrowserOpen(false)
+                        
+                        if (!task || !task.id) {
+                            toast({
+                                title: "Error",
+                                description: "Task not found for PR generation.",
+                                variant: "destructive",
+                            });
+                            setIsGeneratingPR(false);
+                            return;
+                        }
                         setIsGeneratingPR(true)
 
                         try {
@@ -1056,13 +1057,13 @@ export function PostFormDialog({
                                 post_id: task.id,
                                 context_files: files,
                             })
-                            if (generationCount < 1) {
+                            if ((generationCount ?? 0) < 1) {
                                 toast({
                                     title: "Generation count",
                                     description: "You have no generations left this week.",
                                     variant: "destructive",
                                 })
-
+                                setIsGeneratingPR(false);
                                 return
                             }
 
@@ -1071,9 +1072,7 @@ export function PostFormDialog({
                                     title: "Queued successfully!",
                                     description: data.message,
                                 })
-
-                                setGenerationCount(generationCount - 1)
-
+                                setGenerationCount((generationCount ?? 1) - 1) 
                                 await fetchBranches()
                             } else {
                                 toast({
@@ -1081,18 +1080,15 @@ export function PostFormDialog({
                                     description: data?.message || "Unknown error occurred.",
                                     variant: "destructive",
                                 })
-
                                 setIsGeneratingPR(false)
                             }
-                        } catch (err) {
-                            const message = err?.response?.data?.message
-
+                        } catch (err: any) {
+                            const message = axios.isAxiosError(err) ? err.response?.data?.message : err.message;
                             toast({
                                 title: "Branch failed",
                                 description: message || "An unexpected error occurred while generating the pull request.",
                                 variant: "destructive",
                             })
-
                             setIsGeneratingPR(false)
                         }
                     }}

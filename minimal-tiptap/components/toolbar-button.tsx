@@ -4,7 +4,7 @@ import { Toggle } from '@/components/ui/toggle'
 import { cn } from '@/lib/utils'
 import type { TooltipContentProps } from '@radix-ui/react-tooltip'
 
-interface ToolbarButtonProps extends React.ComponentPropsWithoutRef<typeof Toggle> {
+interface ToolbarButtonProps extends Omit<React.ComponentPropsWithoutRef<typeof Toggle>, 'pressed'> {
   isActive?: boolean
   tooltip?: string
   tooltipOptions?: TooltipContentProps
@@ -12,8 +12,28 @@ interface ToolbarButtonProps extends React.ComponentPropsWithoutRef<typeof Toggl
 
 export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(
   ({ isActive, children, tooltip, className, tooltipOptions, ...props }, ref) => {
+
     const toggleButton = (
-      <Toggle size="sm" ref={ref} className={cn('size-8 p-0', { 'bg-accent': isActive }, className)} {...props}>
+      <Toggle
+        size="sm"
+        ref={ref}
+        pressed={isActive}
+        className={cn(
+          'group',
+          'size-8 p-0',
+          'rounded-md',
+          'bg-transparent',
+          'text-zinc-400',
+          'hover:bg-transparent',
+          'hover:text-zinc-50',
+          'aria-pressed:bg-transparent',
+          'aria-pressed:text-zinc-50',
+          'aria-pressed:border',
+          'aria-pressed:border-zinc-50',
+          className
+        )}
+        {...props}
+      >
         {children}
       </Toggle>
     )

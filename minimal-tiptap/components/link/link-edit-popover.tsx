@@ -105,9 +105,11 @@ const LinkEditPopover = ({ editor, size, variant }: LinkEditPopoverProps) => {
         </ToolbarButton>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-full min-w-80" 
+        className="w-full min-w-[320px] p-4 bg-gradient-to-br from-zinc-850 to-zinc-900 border border-zinc-700 text-zinc-200 shadow-xl rounded-lg"
         align="start" 
         side="bottom"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <LinkEditBlock 
           onSave={onSetLink} 

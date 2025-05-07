@@ -5,37 +5,59 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { router } from "@inertiajs/react"
 import type { DropResult } from "react-beautiful-dnd"
 
-interface Board {
+export interface Board {
     id: string
     title: string
     columns: string[]
 }
 
-interface Assignee {
-    id: string
+export interface Assignee {
+    id: number
     name: string
-}
-
-interface Task {
-    id: string
-    title: string
-    desc: string
-    priority: string
-    column: string
-    assignee_id: string
-    deadline: string | null
-    fid_board: string
-    post_author: string
-    watchers: Watcher[]
-    pinned?: number
-    had_branch?: number
-    deadline_color?: 'gray' | 'yellow' | 'red' | null
 }
 
 interface Watcher {
     watcher_id: number
     id: number
     name: string
+}
+
+interface Comment { 
+    id: string;
+    content: string;
+    author: string;
+    createdAt: string;
+} 
+
+export interface Task {
+    id: string
+    title: string
+    desc: string
+    column: string
+    assignee_id: string | number
+    deadline: string | null
+    fid_board: string | number
+    post_author: string | number
+    watchers: Watcher[]
+    created_at?: string
+    updated_at?: string
+    priority: "high" | "medium" | "low"
+    assignee: {
+        name: string
+    }
+    pinned?: number
+    had_branch?: number
+    deadline_color?: 'gray' | 'yellow' | 'red' | null
+    comments?: Comment[]
+    history?: Record<string, Array<{ id: string; type: string; content: string | null; createdAt: string | null }>>
+    linked_issues?: Array<{
+        id: number;
+        type: string;
+        related_post: {
+            id: number;
+            title: string;
+        };
+    }>
 }
 
 interface ColumnState {
@@ -48,7 +70,7 @@ interface BoardProviderProps {
     children: React.ReactNode
     boardId?: string
     columnsArray: string[]
-    postsArray: Task[]
+    postsArray: any[]
     boards: Board[]
     assignees: Assignee[]
     boardsColumns: Board[]
@@ -88,6 +110,10 @@ interface BoardContextValue {
 
     updateTaskWatchers: (taskId: string, watchers: Watcher[]) => void
     pinTask: (taskId: string, isPinned: boolean) => void
+
+    // New context values for focus/dimming
+    focusedTaskId: string | null
+    setFocusedTaskId: (id: string | null) => void
 }
 
 const BoardContext = createContext<BoardContextValue>({
@@ -111,6 +137,10 @@ const BoardContext = createContext<BoardContextValue>({
     isPremium: "standard",
     updateTaskWatchers: () => {},
     pinTask: () => {},
+
+    // Default values for new context fields
+    focusedTaskId: null,
+    setFocusedTaskId: () => {},
 })
 
 /**
@@ -136,14 +166,21 @@ export function BoardProvider({
                                   dateTo,
                                   dateField = "created_at",
                               }: BoardProviderProps) {
+    // Log the assignees prop as soon as the provider receives it
+    // console.log("[BoardProvider] Received assignees prop:", assignees);
+
     const [columns, setColumns] = useState<Record<string, ColumnState>>({})
     const [tasks, setTasks] = useState<Record<string, Task>>({})
 
     const [selectedTask, setSelectedTask] = useState<Task | null>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [isPremium, setIsPremium] = useState("standard")
+    const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null) // State for focused task
 
     useEffect(() => {
+        // Log assignees again when the effect processing posts runs
+        // console.log("[BoardProvider useEffect] Assignees when processing posts:", assignees);
+
         const initialColumns: Record<string, ColumnState> = {}
         columnsArray.forEach((colTitle) => {
             const colId = colTitle.toString()
@@ -155,15 +192,35 @@ export function BoardProvider({
         })
 
         const initialTasks: Record<string, Task> = {}
-        postsArray.forEach((task) => {
-            const taskId = task.id.toString()
+        postsArray.forEach((post: any) => {
+            const taskId = post.id.toString()
+            const assigneeIdNum = parseInt(post.assignee_id, 10)
+            const assigneeName = assignees.find(a => a.id === assigneeIdNum)?.name || 'Unassigned'
+            const taskPriority = post.priority === 'med' ? 'medium' : post.priority
+
             initialTasks[taskId] = {
-                ...task,
                 id: taskId,
-                watchers: task.watchers || [],
+                title: post.title,
+                desc: post.desc,
+                priority: taskPriority,
+                column: post.column,
+                assignee_id: post.assignee_id,
+                deadline: post.deadline,
+                fid_board: post.fid_board,
+                post_author: post.post_author,
+                watchers: post.watchers || [],
+                created_at: post.created_at,
+                updated_at: post.updated_at,
+                assignee: { name: assigneeName },
+                pinned: post.pinned,
+                had_branch: post.had_branch,
+                deadline_color: post.deadline_color,
+                comments: post.comments,
+                history: post.history,
+                linked_issues: post.linked_issues,
             }
 
-            const colId = task.column.toString()
+            const colId = post.column.toString()
             if (initialColumns[colId]) {
                 initialColumns[colId].taskIds.push(taskId)
             }
@@ -171,7 +228,7 @@ export function BoardProvider({
 
         setColumns(initialColumns)
         setTasks(initialTasks)
-    }, [columnsArray, postsArray])
+    }, [columnsArray, postsArray, assignees])
 
     useEffect(() => {
         fetch("/premium/status", {
@@ -182,13 +239,13 @@ export function BoardProvider({
         })
             .then((res) => res.json())
             .then((data) => {
-                console.log("Received data:", data)
+                // console.log("Received data:", data)
                 if (typeof data?.data?.isPremium === "string") {
                     setIsPremium(data.data.isPremium)
                 }
             })
             .catch((err) => {
-                console.error("Error fetching premium status:", err)
+                // console.error("Error fetching premium status:", err)
             })
     }, [])
 
@@ -247,7 +304,7 @@ export function BoardProvider({
 
             const removalIndex = sourceStateTaskIds.findIndex((id) => id === draggableId);
             if (removalIndex === -1) {
-                console.error("Dragged item not found in source column state");
+                // console.error("Dragged item not found in source column state");
                 return prevColumns;
             }
 
@@ -271,7 +328,7 @@ export function BoardProvider({
             if (targetItemId) {
                 insertionIndex = destStateTaskIds.findIndex(id => id === targetItemId);
                 if (insertionIndex === -1) {
-                    console.warn("Target item for insertion not found in destination state, adding to end.");
+                    // console.warn("Target item for insertion not found in destination state, adding to end.");
                     insertionIndex = destStateTaskIds.length;
                 }
             } else {
@@ -323,7 +380,7 @@ export function BoardProvider({
                 }
             })
             .catch((error) => {
-                console.error("Error during fetch:", error)
+                // console.error("Error during fetch:", error)
             })
     }, [tasks])
 
@@ -364,7 +421,7 @@ export function BoardProvider({
             }
         })
 
-        setSelectedTask((prevSelectedTask) => {
+        setSelectedTask((prevSelectedTask: Task | null) => {
             if (prevSelectedTask && prevSelectedTask.id === taskId) {
                 return {
                     ...prevSelectedTask,
@@ -408,7 +465,7 @@ export function BoardProvider({
                 }
             })
             .catch((error) => {
-                console.error("Error during pin operation:", error)
+                // console.error("Error during pin operation:", error)
                 setTasks((prevTasks) => {
                     const task = prevTasks[taskId]
                     if (!task) return prevTasks
@@ -449,6 +506,8 @@ export function BoardProvider({
                 isPremium,
                 updateTaskWatchers,
                 pinTask,
+                focusedTaskId,
+                setFocusedTaskId,
             }}
         >
             {children}

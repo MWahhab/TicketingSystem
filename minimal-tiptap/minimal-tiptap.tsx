@@ -28,7 +28,7 @@ export interface MinimalTiptapProps extends Omit<UseMinimalTiptapEditorProps, 'o
 
 const Toolbar = ({ editor }: { editor: Editor }) => (
   <div className="shrink-0 overflow-x-auto border-b border-border p-2">
-    <div className="flex w-max items-center gap-2">
+    <div className="flex w-max items-center gap-6">
       <SectionOne editor={editor} activeLevels={[1, 2, 3, 4, 5, 6]} />
 
       <Separator orientation="vertical" className="mx-3 h-7" />

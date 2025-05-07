@@ -1,7 +1,6 @@
 import * as React from 'react'
 import type { Editor } from '@tiptap/react'
 import {
-  CaretDownIcon,
   DotsHorizontalIcon,
   HeadingIcon,
   ListBulletIcon
@@ -21,7 +20,7 @@ const formatActions: ListStyle[] = [
   {
     value: 'bulletList',
     label: 'Bullet list',
-    icon: <ListBulletIcon className="h-6 w-6" />,
+    icon: <ListBulletIcon className="h-6 w-6 text-zinc-200 group-hover:text-zinc-100 group-data-[state=on]:text-zinc-200" />,
     isActive: editor => editor.isActive('bulletList'),
     action: editor => editor.chain().focus().toggleBulletList().run(),
     canExecute: editor => editor.can().chain().focus().toggleBulletList().run() && !editor.isActive('codeBlock'),
@@ -30,7 +29,7 @@ const formatActions: ListStyle[] = [
   {
     value: 'orderedList',
     label: 'Ordered list',
-    icon: <HeadingIcon className="h-6 w-6" />,
+    icon: <HeadingIcon className="h-6 w-6 text-zinc-200 group-hover:text-zinc-100 group-data-[state=on]:text-zinc-200" />,
     isActive: editor => editor.isActive('orderedList'),
     action: editor => editor.chain().focus().toggleOrderedList().run(),
     canExecute: editor => editor.can().chain().focus().toggleOrderedList().run() && !editor.isActive('codeBlock'),
@@ -60,7 +59,6 @@ export const SectionFour: React.FC<SectionFourProps> = ({
       dropdownIcon={
         <>
           <ListBulletIcon className="h-6 w-6" />
-          <CaretDownIcon className="h-6 w-6" />
         </>
       }
       dropdownTooltip="Lists"
