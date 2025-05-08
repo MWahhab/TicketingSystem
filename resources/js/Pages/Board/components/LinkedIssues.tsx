@@ -51,7 +51,6 @@ interface LinkedIssuesSectionProps {
     currentUserId: string
 }
 
-// Define an interface for the raw issue data from the API
 interface RawIssueData {
     id: number | string;
     fid_related_post?: number | string;
@@ -61,7 +60,6 @@ interface RawIssueData {
     creator?: { name: string };
     created_at?: string | Date;
     type?: string; // Added type for getIssueTypeColor
-    // Add other potential properties from the API response
     issues?: RawIssueData[]; // If the response can be nested
     link_types?: LinkType[]; // If link types are included
 }
@@ -241,7 +239,6 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                             userId: newLinkedIssue.fid_user.toString(),
                             userName: newLinkedIssue.creator?.name || "Unknown User",
                             createdAt: newLinkedIssue.created_at.toString(),
-                            // Use the fid_board from the selected issue if available
                             fid_board:
                                 newLinkedIssue.related_post?.fid_board?.toString() ||
                                 (selectedIssue ? selectedIssue.fid_board?.toString() : ""),
@@ -368,14 +365,14 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                     <FormItem>
                                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-800 text-zinc-200 border-zinc-700 focus:border-zinc-500 focus:ring-zinc-500">
+                                                                <SelectTrigger className="bg-zinc-900 text-zinc-200 border-zinc-500 focus:border-zinc-500 focus:ring-zinc-500">
                                                                     <SelectValue placeholder="Link type" />
                                                                 </SelectTrigger>
                                                             </FormControl>
-                                                            <SelectContent className="bg-zinc-800 text-zinc-200 border-zinc-700">
+                                                            <SelectContent className="bg-zinc-900 text-zinc-200 border-zinc-700">
                                                                 {linkTypes.map((type, index) => (
                                                                     <SelectItem
-                                                                        className="bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white"
+                                                                        className="bg-zinc-900 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white"
                                                                         key={`${type.value}-${index}`}
                                                                         value={type.value}
                                                                     >
@@ -402,7 +399,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                                         value={searchQuery}
                                                                         onChange={handleSearchChange}
                                                                         onKeyDown={handleKeyDown}
-                                                                        className="bg-zinc-800 text-zinc-200 border-zinc-700 focus:border-zinc-500 focus:ring-zinc-500 pl-9 pr-8"
+                                                                        className="bg-zinc-900 text-zinc-200 border-zinc-500 focus:border-zinc-500 focus:ring-zinc-500 pl-9 pr-8"
                                                                     />
                                                                     {searchQuery && (
                                                                         <Button
@@ -487,14 +484,14 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                                         setSearchResults([])
                                                         setIsIssueSelected(false)
                                                     }}
-                                                    className="border border-white/10 bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
+                                                    className="border border-white/10 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
                                                 >
                                                     Cancel
                                                 </Button>
                                                 <Button
                                                     type="submit"
                                                     size="sm"
-                                                    className="border border-white/10 bg-transparent text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
+                                                    className="border border-white/10 bg-zinc-900 text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
                                                     disabled={linkedIssueForm.formState.isSubmitting}
                                                 >
                                                     <SendIcon className="h-4 w-4" />

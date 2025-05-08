@@ -252,7 +252,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                         <Button
                                                             type="button"
                                                             size="sm"
-                                                            className="border border-white/10 bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
+                                                            className="border border-white/10 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
                                                             onClick={() => {
                                                                 setIsExpanded(false);
                                                                 commentForm.reset();
@@ -263,7 +263,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                         <Button
                                                             type="submit"
                                                             size="sm"
-                                                            className="border border-white/10 bg-transparent text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
+                                                            className="border border-white/10 bg-zinc-900 text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
                                                             disabled={commentForm.formState.isSubmitting}
                                                         >
                                                             <SendIcon className="h-4 w-4" />

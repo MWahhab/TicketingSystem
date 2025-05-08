@@ -440,7 +440,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                                         key="All"
                                         value="All"
                                         className={clsx(
-                                            "border border-zinc-700 bg-zinc-800 rounded-md px-2.5 py-1 text-sm flex items-center gap-1.5 transition-all",
+                                            "border border-zinc-500 bg-zinc-800 rounded-md px-2.5 py-1 text-sm flex items-center gap-1.5 transition-all",
                                             styles.baseText,
                                             styles.hoverBg, styles.hoverText, "hover:ring-1", styles.hoverRing,
                                             styles.activeBg, styles.activeText, "data-[state=active]:ring-1", styles.activeRing
@@ -462,7 +462,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                                             key={type}
                                             value={type}
                                             className={clsx(
-                                                "border border-zinc-700 bg-zinc-800 rounded-md px-2.5 py-1 text-sm flex items-center gap-1.5 transition-all capitalize", // Explicitly set base bg
+                                                "border border-zinc-500 bg-zinc-800 rounded-md px-2.5 py-1 text-sm flex items-center gap-1.5 transition-all capitalize", // Explicitly set base bg
                                                 styles.baseText,
                                                 styles.hoverBg, styles.hoverText, "hover:ring-1", styles.hoverRing,
                                                 styles.activeBg, styles.activeText, "data-[state=active]:ring-1", styles.activeRing
@@ -493,11 +493,9 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ postId }) => {
                                 </div>
                             </TabsContent>
 
-                            {/* Iterate over all possible types for content rendering */}
                             {allPossibleTabTypes.map((type) => (
                                 <TabsContent key={type} value={type} className="mt-0 pt-2" tabIndex={-1}>
                                     <div className="space-y-3">
-                                        {/* Map over activities for this type, or empty array if none exist */}
                                         {(groupedActivities[type] || []).map((activity) => {
                                             const Icon = getActivityIcon(activity.type);
                                             return (
