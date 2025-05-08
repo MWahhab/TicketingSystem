@@ -266,6 +266,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
     const handleStarClick = (e: React.MouseEvent) => {
         e.stopPropagation()
         pinTask(task.id, task.pinned !== 1)
+        resetFocusState()
     }
     
     const renderActivityFilterButton = (type: string, isDropdownItem: boolean = false) => {
