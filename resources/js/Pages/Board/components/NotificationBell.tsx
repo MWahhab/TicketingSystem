@@ -167,7 +167,7 @@ export default function InlineNotificationCenter() {
             return (
                 <div
                     key={notification.id}
-                    onClick={() => { onNotificationClick(notification); setIsOpen(false); }}
+                    onClick={() => { onNotificationClick(notification); handleClose(); }}
                     data-notification-post-id={notification.fid_post}
                     data-notification-board-id={notification.fid_board}
                     className={`
