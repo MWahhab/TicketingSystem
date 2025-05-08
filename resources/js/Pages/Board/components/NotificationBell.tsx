@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react"
 import { Bell, X, MessageSquare, FileText, Layout, Link, GitBranch, MoveDiagonal2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import axios from "axios"
@@ -183,7 +182,7 @@ export default function InlineNotificationCenter() {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p
-                                className={`text-sm font-medium mb-1 line-clamp-2 text-zinc-200`}
+                                className={`text-sm font-medium mb-1 text-zinc-200 truncate`}
                             >
                                 {notification.content}
                             </p>
@@ -239,7 +238,7 @@ export default function InlineNotificationCenter() {
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
-                    <Tabs defaultValue="all" className="w-full flex flex-col h-full">
+                    <Tabs defaultValue="all" className="w-full flex flex-col h-full overflow-hidden">
                         <TabsList className="grid w-full grid-cols-4 bg-zinc-800 p-1 border-b border-zinc-700 rounded-none flex-shrink-0">
                             <TabsTrigger value="all" className="text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100 rounded-sm text-sm py-1">
                                 All
@@ -257,18 +256,20 @@ export default function InlineNotificationCenter() {
                                 Branches
                             </TabsTrigger>
                         </TabsList>
-                        <ScrollArea className="flex-1 overflow-y-auto">
-                            <TabsContent value="all" className="mt-0">{renderNotificationsInner(notifications)}</TabsContent>
-                            <TabsContent value="comment" className="mt-0">
-                                {renderNotificationsInner(notifications.filter((n) => n.type === "comment"))}
+                        <div className="overflow-y-auto flex-grow">
+                            <TabsContent value="all" className="h-full">
+                                {notifications.length > 0 ? renderNotificationsInner(notifications) : <p className="text-sm text-zinc-400 text-center p-4">No notifications yet.</p>}
                             </TabsContent>
-                            <TabsContent value="post" className="mt-0">
-                                {renderNotificationsInner(notifications.filter((n) => n.type === "post"))}
+                            <TabsContent value="comment" className="h-full">
+                                {renderNotificationsInner(notifications.filter(n => n.type === 'comment'))}
                             </TabsContent>
-                            <TabsContent value="branch" className="mt-0">
-                                {renderNotificationsInner(notifications.filter((n) => n.type === "branch"))}
+                            <TabsContent value="post" className="h-full">
+                                {renderNotificationsInner(notifications.filter(n => n.type === 'post'))}
                             </TabsContent>
-                        </ScrollArea>
+                            <TabsContent value="branch" className="h-full">
+                                {renderNotificationsInner(notifications.filter(n => n.type === 'branch'))}
+                            </TabsContent>
+                        </div>
                     </Tabs>
 
                     {/* Resize Handle (Top-Left Grip - Inspired by classic UI) */}

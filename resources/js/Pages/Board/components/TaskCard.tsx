@@ -9,32 +9,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useBoardContext, type Task } from "../BoardContext"
 
-// Remove export - TaskCard will import the comprehensive type
-/*
-interface Task {
-    id: string
-    title: string
-    priority: "high" | "medium" | "low"
-    assignee: {
-        name: string
-    }
-    pinned?: number
-    had_branch?: number
-    deadline?: string | null
-    deadline_color?: 'gray' | 'yellow' | 'red' | null
-}
-*/
-
 const priorityColors: { [key in Task["priority"]]: { bg: string; ring: string } } = {
     high: { bg: "bg-red-500", ring: "ring-red-500/30" },
     medium: { bg: "bg-yellow-500", ring: "ring-yellow-500/30" },
     low: { bg: "bg-green-500", ring: "ring-green-500/30" },
 }
 
-// Map deadline colors to Tailwind background classes for badge style
 const deadlineBgColors: { [key: string]: string } = {
     gray: "bg-zinc-700",
-    yellow: "bg-yellow-600/30", // Using semi-transparent versions for yellow/red
+    yellow: "bg-yellow-600/30",
     red: "bg-red-600/30",
 }
 
@@ -43,7 +26,6 @@ function getInitials(name: string) {
     return names.map((n) => n.charAt(0).toUpperCase()).join("")
 }
 
-// Simple Branch Icon Component
 const BranchIcon = () => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -64,7 +46,6 @@ const BranchIcon = () => (
     </svg>
 );
 
-// Use React.memo for performance optimization
 export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
     const { openDialog, pinTask, setFocusedTaskId, focusedTaskId } = useBoardContext()
     const [showPopup, setShowPopup] = useState(false)
@@ -78,11 +59,11 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
     const [selectedActivityFilter, setSelectedActivityFilter] = useState<string | null>(null);
     const [isMoreFiltersDropdownOpen, setIsMoreFiltersDropdownOpen] = useState(false);
 
-    const MAX_VISIBLE_TABS = 3; // Max tabs to show before collapsing into a dropdown
+    const MAX_VISIBLE_TABS = 3;
 
     const activityTypes = useMemo(() => {
         const typeSet = new Set<string>();
-        const internalCommentFilterKey = "ActualComments"; // Special key for task.comments
+        const internalCommentFilterKey = "ActualComments";
         let hasActualComments = task.comments && task.comments.length > 0;
 
         if (hasActualComments) {
@@ -93,11 +74,9 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
             Object.keys(task.history).forEach(type => {
                 const typeLower = type.toLowerCase();
                 if (type === 'linked_issue' && task.linked_issues && task.linked_issues.length > 0) {
-                    // Skip linked_issue if displayed separately
                 } else if (hasActualComments && typeLower === "comment") {
-                    // Skip history type "comment" if we already have ActualComments filter
                 } else {
-                    typeSet.add(type); // Add original history type case
+                    typeSet.add(type);
                 }
             });
         }
@@ -105,13 +84,12 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
         const sortedTypes = Array.from(typeSet).sort((a, b) => {
             if (a === internalCommentFilterKey && b !== internalCommentFilterKey) return -1;
             if (b === internalCommentFilterKey && a !== internalCommentFilterKey) return 1;
-            // Keep other specific sorts like BRANCH if needed, or simplify
             if (a === "BRANCH" && b !== "BRANCH") return -1;
             if (b === "BRANCH" && a !== "BRANCH") return 1;
             return a.localeCompare(b);
         });
 
-        if (sortedTypes.length > 0) { // "All" is present if any filter types are generated
+        if (sortedTypes.length > 0) {
             return ["All", ...sortedTypes]; 
         }
         return []; 
@@ -136,7 +114,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
         const internalCommentFilterKey = "ActualComments";
 
         if (selectedActivityFilter === internalCommentFilterKey) {
-            // ONLY show actual comments from task.comments
             if (task.comments && task.comments.length > 0) {
                 activities = task.comments.map(c => ({ 
                     ...c, 
@@ -147,7 +124,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                 }));
             }
         } else if (selectedActivityFilter === "All") {
-            // "All" filter shows both actual comments and all history items
             if (task.comments && task.comments.length > 0) {
                 activities = activities.concat(
                     task.comments.map(c => ({ 
@@ -165,16 +141,12 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                     if (type === 'linked_issue' && task.linked_issues && task.linked_issues.length > 0) {
                         return; 
                     } else if (task.comments && task.comments.length > 0 && typeLower === "comment") {
-                        // If ActualComments filter exists, don't add history "comment" types under "All"
-                        // as they are covered by the first block that adds task.comments to "All"
-                        // This assumes task.comments are the primary source for "Comment" type display
                         return;
                     }
                     activities = activities.concat(entries.map(e => ({...e, originalType: type })));
                 });
             }
         } else if (task.history && task.history[selectedActivityFilter]) {
-            // Specific history type filter (e.g., "post", "branch") - does NOT include actual comments
              Object.entries(task.history).forEach(([type, entries]) => {
                 if (type === selectedActivityFilter) {
                      if (type === 'linked_issue' && task.linked_issues && task.linked_issues.length > 0) {
@@ -308,7 +280,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
             displayType = "Comment";
         }
 
-        // Prepare and capitalize the display text
         let displayText = displayType.replace('_', ' ');
         displayText = displayText.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
@@ -344,7 +315,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
         );
     };
 
-    // Helper to render the actual button content for reuse
     const MoreButtonContent = () => {
         const isActiveFilterInOverflow = selectedActivityFilter && overflowTabs.includes(selectedActivityFilter);
         return (
@@ -599,7 +569,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                                                         {entry.author && entry.type === "Comments" && <p className="text-zinc-500 mt-0.5 text-[10px]">{entry.author} - {new Date(entry.createdAt).toLocaleDateString()}</p>}
                                                         {entry.type !== "Comments" && entry.createdAt && (
                                                             <p className="text-zinc-500 mt-0.5 text-[10px]">
-                                                                {/* @ts-ignore because createdByName is new from backend */} 
                                                                 {entry.createdByName ? `${entry.createdByName} - ` : ''}
                                                                 {new Date(entry.createdAt).toLocaleDateString()}
                                                             </p>
@@ -621,7 +590,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                     )}
                 </div>
                 <div className="bg-zinc-900/80 px-3.5 py-2 border-t border-zinc-700/60 mt-auto shrink-0 backdrop-blur-sm">
-                     {/* Button removed as per user request - clicking the card opens the dialog */}
                 </div>
             </PopoverContent>
         </Popover>
