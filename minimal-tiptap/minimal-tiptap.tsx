@@ -66,10 +66,12 @@ export const MinimalTiptapEditor = React.forwardRef<HTMLDivElement, MinimalTipta
     })
 
       React.useEffect(() => {
-          if (editor) {
-              initEventListeners(assignees);
+          if (editor && Array.isArray(assignees)) {
+              initEventListeners(assignees, editor); // Pass editor instance
+          } else if (editor) {
+            initEventListeners([], editor); // Pass editor instance with empty assignees
           }
-      }, [editor, initEventListeners]);
+      }, [editor, initEventListeners, assignees]);
 
     if (!editor) {
       return null

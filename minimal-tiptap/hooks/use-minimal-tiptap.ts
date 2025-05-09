@@ -16,6 +16,7 @@ import {
   UnsetAllMarks,
   ResetMarksOnEnter
 } from '../extensions'
+import { Mention } from '../extensions/mention/mention'
 import { cn } from '@/lib/utils'
 import { getOutput } from '../utils'
 import { useThrottle } from '../hooks/use-throttle'
@@ -52,6 +53,7 @@ const createExtensions = (placeholder: string) => [
   HorizontalRule,
   ResetMarksOnEnter,
   CodeBlockLowlight,
+  Mention,
   Placeholder.configure({ placeholder: () => placeholder })
 ]
 

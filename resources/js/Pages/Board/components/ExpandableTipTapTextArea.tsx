@@ -8,7 +8,7 @@ interface ExpandableTipTapTextAreaProps {
     onChange: (value: Content) => void;
     className?: string;
     isPreview: boolean;
-    assignees?: [];
+    assignees?: any[];
 }
 
 export function ExpandableTipTapTextArea({ value, onChange, className, isPreview, assignees }: ExpandableTipTapTextAreaProps) {
@@ -96,8 +96,19 @@ export function ExpandableTipTapTextArea({ value, onChange, className, isPreview
                     color: #71717a !important; /* zinc-500 */
                 }
                 
-                .minimal-tiptap-editor .ProseMirror span[style*="color:"] {
-                    color: inherit !important;
+                /* Styles for mentions in editor */
+                .ProseMirror .mention-span,
+                .tiptap-preview-content .mention-span {
+                    color: #f4f4f5 !important; /* zinc-100 (light text) */
+                    background-color: #3f3f46 !important; /* zinc-700 (darker grey background) */
+                    /* border: 1px solid rgba(255, 255, 255, 0.25) !important; */ /* REMOVED white border */
+                    border-radius: 4px !important;
+                    padding: 2px 6px !important;
+                    margin: 0 1px !important;
+                    font-size: 0.9em !important;
+                    font-weight: 700 !important; /* bold */
+                    display: inline-block !important;
+                    white-space: nowrap !important;
                 }
             `;
             document.head.appendChild(style);
@@ -107,6 +118,21 @@ export function ExpandableTipTapTextArea({ value, onChange, className, isPreview
             // Clean up is optional as the style might be used across multiple instances
         };
     }, []);
+
+    // DEV: Log to check for mention spans after a delay
+    React.useEffect(() => {
+        if (!isPreview) { // Only run this check when the editor is active
+            const timer = setTimeout(() => {
+                const editorView = document.querySelector('.ProseMirror');
+                if (editorView) {
+                    const mentionSpans = editorView.querySelectorAll('span.mention-span');
+                    console.log('[ExpandableTextArea] Found mention spans in .ProseMirror after delay:', mentionSpans);
+                    mentionSpans.forEach(span => console.log('[ExpandableTextArea] Mention span HTML:', span.outerHTML));
+                }
+            }, 2000); // 2 second delay, adjust if needed
+            return () => clearTimeout(timer);
+        }
+    }, [value, isPreview]); // Rerun if value changes or preview mode toggles
 
     return (
         <div className={`${className} min-h-[200px] overflow-hidden`}>
@@ -127,6 +153,7 @@ export function ExpandableTipTapTextArea({ value, onChange, className, isPreview
                         value={value}
                         onChange={onChange}
                         assignees={assignees}
+                        className="bg-zinc-900 border border-zinc-700 text-zinc-100 rounded-md focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 shadow-sm min-h-72"
                     />
                 </div>
             )}

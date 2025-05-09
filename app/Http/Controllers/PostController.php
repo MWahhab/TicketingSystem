@@ -7,7 +7,6 @@ use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class PostController extends Controller
@@ -31,9 +30,6 @@ class PostController extends Controller
     /**
      * Store a newly created post in storage.
      *
-     * @param Request $request
-     * @param ImageService $imageService
-     * @return Response
      */
     public function store(Request $request, ImageService $imageService): Response
     {
@@ -44,10 +40,12 @@ class PostController extends Controller
         $post                   = Post::create($validated);
 
         $post->notify();
+        $post->load('assignee');
 
-        request()->session()->flash('success', 'New post has been created!');
-
-        return Inertia::location('/boards/?board_id=' . $validated['fid_board']);
+        return response()->json([
+            'message' => 'New post has been created!',
+            'post'    => $post,
+        ], 201);
     }
 
 
@@ -66,12 +64,6 @@ class PostController extends Controller
     {
     }
 
-    /**
-     * @param Post    $post
-     * @param Request $request
-     *
-     * @return Response
-     */
     public function move(Post $post, Request $request): Response
     {
         $request->validate([
@@ -89,12 +81,6 @@ class PostController extends Controller
         return response()->noContent();
     }
 
-    /**
-     * @param Request      $request
-     * @param Post         $post
-     * @param ImageService $imageService
-     * @return Response
-     */
     public function update(Request $request, Post $post, ImageService $imageService): Response
     {
         $validated = $this->validatePost($request);
@@ -106,8 +92,14 @@ class PostController extends Controller
 
         $post->setRawAttributes($original->getAttributes(), true);
         $post->notify();
+        $post->refresh();
 
-        return Inertia::location('/boards/?board_id=' . $validated['fid_board']);
+        $post->load('assignee');
+
+        return response()->json([
+            'message' => 'Post has been updated!',
+            'post'    => $post,
+        ]);
     }
 
     /**
@@ -115,9 +107,9 @@ class PostController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
-        $query = trim($request->input('query', ''));
+        $query = trim((string) $request->input('query', ''));
 
-        if (!$query) {
+        if ($query === '' || $query === '0') {
             return response()->json();
         }
 
@@ -127,7 +119,7 @@ class PostController extends Controller
 
         $posts = Post::query()
             ->where('title', 'like', "%{$query}%")
-            ->when(is_numeric($query), fn($q) => $q->orWhere('id', $query))
+            ->when(is_numeric($query), fn ($q) => $q->orWhere('id', $query))
             ->limit(6)
             ->get(['id', 'title', 'fid_board']);
 
@@ -142,15 +134,16 @@ class PostController extends Controller
     {
         $imageService->deleteAllImagesInDesc($post->desc);
         $boardFid = $post->fid_board;
+        $postId   = $post->id;
         $post->delete();
 
-        return Inertia::location('/boards/?board_id=' . $boardFid);
+        return response()->json([
+            'message'         => 'Post has been deleted successfully!',
+            'deleted_post_id' => $postId,
+            'board_id'        => $boardFid,
+        ]);
     }
 
-    /**
-     * @param Request $request
-     * @return array
-     */
     private function validatePost(Request $request): array
     {
         return $request->validate([
@@ -161,7 +154,7 @@ class PostController extends Controller
             'assignee_id'   => 'required|exists:users,id',
             'deadline'      => 'nullable|date',
             'fid_board'     => 'required|exists:board_configs,id',
-            'migrated_from' => 'nullable|string'
+            'migrated_from' => 'nullable|string',
         ]);
     }
 

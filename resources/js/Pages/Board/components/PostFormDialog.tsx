@@ -5,13 +5,12 @@ import { createPortal } from "react-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useForm, useWatch } from "react-hook-form"
-import { Inertia } from "@inertiajs/inertia"
 import { Button } from "@/components/ui/button"
 import { ExpandableTipTapTextArea } from "./ExpandableTipTapTextArea"
 import { FileBrowser } from "./post-form-dialog-components/file-browser"
 import { WatcherButton } from "./post-form-dialog-components/watcher-button"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -26,8 +25,6 @@ import DeleteConfirmationDialog from "@/Pages/Board/components/DeleteConfirmatio
 import ActivityHistory from "@/Pages/Board/components/ActivityHistory"
 import LinkedIssuesSection from "@/Pages/Board/components/LinkedIssues"
 import axios from "axios"
-import { Textarea } from "@/components/ui/textarea"
-import { WatchersSelect } from "./post-form-dialog-components/WatchersSelect"
 import { useBoardContext, type Assignee, type Task, type Board } from "../BoardContext"
 
 interface FileItem {
@@ -42,12 +39,11 @@ const Portal = ({ children }: { children: React.ReactNode }) => {
 const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
     desc: z.string().min(1, "Description is required"),
-    priority: z.string().min(1, "Priority is required"),
+    priority: z.enum(["low", "medium", "high"], { errorMap: () => ({ message: "Priority is required" }) }),
     column: z.string().min(1, "Column is required"),
     assignee_id: z.string().min(1, "Assignee is required"),
     deadline: z.string().nullable(),
     fid_board: z.string().min(1, "Board is required"),
-    post_author: z.string().optional(),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -82,6 +78,7 @@ export function PostFormDialog({
                                    authUserId,
                                    isPremium,
                                }: PostFormDialogProps) {
+    console.log("[PostFormDialog] Received assignees prop:", assignees, "for task:", task?.id || 'new_post');
     const [isDialogOpen, setIsDialogOpen] = useState(!!task)
 
     const [boardSelectOpen, setBoardSelectOpen] = useState(false)
@@ -112,27 +109,25 @@ export function PostFormDialog({
     const [generationCount, setGenerationCount] = useState<number | null>(null)
     const [generationCap, setGenerationCap] = useState<number | null>(null)
 
-    const getInitialFormValues = useCallback(() => {
+    const getInitialFormValues = useCallback((): FormData => {
         return task
             ? {
                 title: task.title || "",
                 desc: task.desc || "",
-                priority: task.priority || "",
+                priority: task.priority || "medium",
                 column: task.column || "",
                 assignee_id: task.assignee_id?.toString() || "",
                 deadline: task.deadline || null,
                 fid_board: task.fid_board?.toString() || "",
-                post_author: task.post_author?.toString() || "",
             }
             : {
                 title: "",
                 desc: "",
-                priority: "",
+                priority: "medium",
                 column: "",
                 assignee_id: "",
                 deadline: null,
                 fid_board: "",
-                post_author: "",
             }
     }, [task]);
 
@@ -140,6 +135,8 @@ export function PostFormDialog({
         resolver: zodResolver(formSchema),
         defaultValues: getInitialFormValues(),
     })
+
+    const { createTask, updateTask, closeDialog: contextCloseDialog, openDialog: contextOpenDialog } = useBoardContext();
 
     const commentSchema = z.object({
         content: z.string().min(3, "Comment is required and must be longer than 3 characters."),
@@ -189,38 +186,53 @@ export function PostFormDialog({
         }
     }, [task, form, getInitialFormValues]);
 
-    function onSubmit(values: FormData) {
-        if (task) {
-            Inertia.put(`/posts/${task.id}`, values, {
-                onSuccess: () => {
-                    setTimeout(() => {
-                        form.reset(getInitialFormValues())
-                    }, 100)
-                    setIsDialogOpen(false)
-                    onClose && onClose()
-                },
-                onError: (errors) => {
-                    console.error(errors)
-                },
-            })
-        } else {
-            Inertia.post("/posts", values, {
-                onSuccess: () => {
-                    setTimeout(() => {
-                        form.reset(getInitialFormValues())
-                    }, 100)
-                    setIsDialogOpen(false)
-                },
-                onError: (errors) => {
-                    console.error(errors)
-                },
-            })
-        }
+    async function onSubmit(values: FormData) {
         setIsDescriptionModified(false)
+
+        let submissionSuccessful = false; 
+        let submittedTaskData: Task | null = null; 
+
+        if (task) {
+            const apiResponse = await updateTask(task.id, values);
+            if (apiResponse) {
+                submissionSuccessful = true;
+                submittedTaskData = apiResponse;
+                toast({
+                    title: "Post Updated",
+                    description: "The post has been successfully updated.",
+                });
+            }
+        } else {
+            const apiResponse = await createTask({ ...values, post_author: authUserId });
+            if (apiResponse) {
+                submissionSuccessful = true;
+                submittedTaskData = apiResponse;
+                toast({
+                    title: "Post Created",
+                    description: "The new post has been successfully created.",
+                });
+            }
+        }
+
+        if (submissionSuccessful && submittedTaskData) {
+            form.reset(getInitialFormValues());
+
+            if (onClose) {
+                onClose();
+            } else {
+                setIsDialogOpen(false);
+            }
+        } else {
+            console.error("Submission failed, see console/alerts for details.");
+        }
     }
 
     const handleDialogClose = () => {
         setShowDeleteConfirmation(false)
+    }
+
+    const handlePostDeletedSuccessfully = () => {
+        setIsDialogOpen(false);
     }
 
     function onDelete() {
@@ -280,13 +292,10 @@ export function PostFormDialog({
 
     const handleDialogOpenChange = (open: boolean) => {
         if (!open) {
-            document.querySelectorAll('[data-state="open"]').forEach((el) => {
-                ;(el as HTMLElement).blur()
-            })
-            setTimeout(() => {
-                setIsDialogOpen(false)
-                if (onClose) onClose()
-            }, 50)
+            if (onClose) {
+                 onClose()
+            }
+            setIsDialogOpen(false)
         } else {
             setIsDialogOpen(true)
         }
@@ -325,6 +334,14 @@ export function PostFormDialog({
                         className={`bg-gradient-to-b from-zinc-900 to-zinc-950 text-white border border-white/10 transition-all duration-300 ${
                             isExpanded ? "sm:max-w-[90vw] w-[90vw] h-[98vh]" : "sm:max-w-[1000px]"
                         }`}
+                        onInteractOutside={(event) => {
+                            const target = event.target as HTMLElement;
+                            // Check if the click is on or within the mention suggestions list
+                            if (target.closest('.mention-suggestions-list')) {
+                                event.preventDefault(); // Prevent dialog from closing
+                            }
+                        }}
+                        aria-describedby={task ? "post-edit-dialog-description" : "post-create-dialog-description"}
                     >
                         <DialogHeader>
                             <div className="flex items-center w-full">
@@ -377,6 +394,9 @@ export function PostFormDialog({
                                 )}
                             </div>
                         </DialogHeader>
+                        <DialogDescription id={task ? "post-edit-dialog-description" : "post-create-dialog-description"} className="sr-only">
+                            {task ? `Dialog to edit details for post number ${task.id}.` : "Dialog to create a new post."}
+                        </DialogDescription>
 
                         <div 
                             style={{ 
@@ -682,6 +702,7 @@ export function PostFormDialog({
                                                                         setIsDescriptionModified(true)
                                                                     }
                                                                 }}
+                                                                assignees={assignees}
                                                                 className="bg-zinc-700 text-white border border-zinc-600 rounded-md focus-within:border-white focus-within:ring-1 focus-within:ring-white"
                                                                 isPreview={isPreview}
                                                             />
@@ -1013,7 +1034,13 @@ export function PostFormDialog({
                     </DialogContent>
                 )}
             </Dialog>
-            {showDeleteConfirmation && <DeleteConfirmationDialog id={task?.id ?? ""} type="Post" isOpen={true} onClose={handleDialogClose} />}
+            {showDeleteConfirmation && <DeleteConfirmationDialog 
+                id={task?.id ?? ""} 
+                type="Post" 
+                isOpen={true} 
+                onClose={handleDialogClose} 
+                onSuccessfulDelete={handlePostDeletedSuccessfully}
+            />}
             {isFileBrowserOpen && (
                 <FileBrowser
                     isOpen={isFileBrowserOpen}

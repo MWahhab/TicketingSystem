@@ -41,7 +41,7 @@ interface Comment {
 interface CommentsSectionProps {
     taskId: string;
     currentUserId: string;
-    assignees: []
+    assignees: any[];
 }
 
 const commentSchema = z.object({

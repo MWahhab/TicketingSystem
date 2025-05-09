@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef, useMemo } from "react"
 import { usePage, router, Link } from "@inertiajs/react"
 import { DragDropContext } from "react-beautiful-dnd"
 import { Search, ChevronDown, User, LogOut, Settings, Pin, PinOff, ChevronsRight } from "lucide-react"
@@ -44,40 +44,29 @@ function getOpenTaskParam(): string | null {
 }
 
 export function BoardLayout() {
-    const {
-        columns: columnsArray,
-        posts: postsArray,
-        boards,
-        assignees,
-        boardsColumns,
-        priorities,
-        boardTitle,
-        boardId,
-        authUserId,
-        openPostId,
-        dateFrom,
-        dateTo,
-        dateField,
-    } = usePage().props as any
+    const pageProps = usePage().props as any;
+    console.log("Page Props in BoardLayout:", pageProps);
 
-    // Cast assignees here if necessary, or rely on BoardProvider type checking
-    const typedAssignees = assignees as Assignee[];
+    // Memoize assignees from pageProps to stabilize the reference
+    const memoizedAssignees = useMemo(() => {
+        return Array.isArray(pageProps.assignees) ? pageProps.assignees : [];
+    }, [pageProps.assignees]);
 
     return (
         <BoardProvider
-            boardId={boardId}
-            columnsArray={columnsArray}
-            postsArray={postsArray}
-            boards={boards}
-            assignees={typedAssignees}
-            boardsColumns={boardsColumns}
-            priorities={priorities}
-            boardTitle={boardTitle}
-            authUserId={authUserId}
-            openPostId={openPostId}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            dateField={dateField}
+            boardId={pageProps.boardId}
+            columnsArray={pageProps.columns}
+            postsArray={pageProps.posts}
+            boards={pageProps.boards}
+            assignees={memoizedAssignees}
+            boardsColumns={pageProps.boardsColumns}
+            priorities={pageProps.priorities}
+            boardTitle={pageProps.boardTitle}
+            authUserId={pageProps.authUserId}
+            openPostId={pageProps.openPostId}
+            dateFrom={pageProps.dateFrom}
+            dateTo={pageProps.dateTo}
+            dateField={pageProps.dateField}
         >
             <InnerBoardLayout />
         </BoardProvider>
@@ -127,6 +116,8 @@ function InnerBoardLayout() {
     const [isSidebarPinned, setIsSidebarPinned] = useState(true)
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
     const sidebarLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+    console.log("[InnerBoardLayout] Assignees from context before rendering Create New Post dialog:", assignees);
 
     useEffect(() => {
         const openTaskId = getOpenTaskParam()
@@ -600,6 +591,7 @@ function InnerBoardLayout() {
 
                 {isEditDialogOpen && selectedTask && (
                     <PostFormDialog
+                        key={selectedTask.id}
                         boards={boardsColumns}
                         assignees={assignees}
                         priorities={priorities}

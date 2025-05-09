@@ -5,34 +5,60 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { router } from "@inertiajs/react"
+import { useBoardContext } from "../BoardContext"
 
 interface DeleteConfirmationDialogProps {
     id: string
     type: string
     isOpen: boolean
     onClose: () => void
+    onSuccessfulDelete?: () => void
 }
 
-export default function DeleteConfirmationDialog({ id, type, isOpen, onClose }: DeleteConfirmationDialogProps) {
+export default function DeleteConfirmationDialog({ id, type, isOpen, onClose, onSuccessfulDelete }: DeleteConfirmationDialogProps) {
     const { toast } = useToast()
+    const { deleteTask } = useBoardContext()
 
     const handleDelete = async () => {
-        router.delete(`/${type.toLowerCase()}s/${id}`, {
-            onSuccess: () => {
+        if (type.toLowerCase() === "post") {
+            const result = await deleteTask(id);
+            if (result && result.deleted_post_id) {
                 toast({
-                    variant: "success",
-                    title: `${type} deleted successfully!`,
-                })
-                onClose()
-            },
-            onError: (errors) => {
-                console.error(errors)
+                    title: `Post deleted successfully!`,
+                    description: "This action is permanent and can't be undone.",
+                });
+                onClose();
+                if (onSuccessfulDelete) {
+                    onSuccessfulDelete();
+                }
+            } else {
                 toast({
                     variant: "destructive",
-                    title: `Failed to delete ${type}`,
-                })
-            },
-        })
+                    title: `Failed to delete Post`,
+                    description: "Something has gone wrong. Please try again later."
+                });
+            }
+        } else {
+            router.delete(`/${type.toLowerCase()}s/${id}`, {
+                onSuccess: () => {
+                    toast({
+                        variant: "success",
+                        title: `${type} deleted successfully!`,
+                    });
+                    onClose();
+                    if (onSuccessfulDelete) {
+                        onSuccessfulDelete();
+                    }
+                },
+                onError: (errors) => {
+                    console.error(errors);
+                    toast({
+                        variant: "destructive",
+                        title: `Failed to delete ${type}`,
+                    });
+                },
+            });
+        }
     }
 
     return (

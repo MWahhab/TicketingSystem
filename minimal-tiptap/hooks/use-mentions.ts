@@ -1,231 +1,256 @@
+import { Editor } from '@tiptap/core';
+
+export interface Assignee {
+    id: string | number;
+    name: string;
+}
+
+interface Mention extends Assignee {}
+
+interface MentionMetadata extends Assignee {}
+
 export function useMentions() {
-    function initEventListeners(assignees) {
-        const editors = document.querySelectorAll('.minimal-tiptap-editor');
+    // These variables are scoped per hook instance
+    let mentionBox: HTMLUListElement | null = null;
+    let currentIndex = -1;
+    let currentQueryRange: { from: number; to: number } | null = null;
 
-        // In-memory storage for mention metadata
-        const mentionMetadata = new Map();
+    function initEventListeners(assignees: Assignee[], editor: Editor) {
+        const editorViewDom = editor.view.dom; // This is the .ProseMirror contenteditable div
+        const currentEditorElement = editorViewDom.parentElement; // This should be the .minimal-tiptap-editor div
+        const editorId = currentEditorElement?.id || editor.view.dom.closest('.minimal-tiptap-editor')?.classList[0] || 'Unknown Editor';
 
-        editors.forEach(editor => {
-            if (!editor.hasAttribute('data-has-listener')) {
-                let mentionBox = null;
-                let currentIndex = -1;
-                let caretRange = null;
+        console.log(`[Mentions (${editorId})] initEventListeners called. Assignees received:`, JSON.parse(JSON.stringify(assignees))); // Log assignees on init
 
-                // Create the suggestion box
-                function createMentionBox() {
-                    mentionBox = document.createElement('ul');
-                    mentionBox.style.position = 'absolute';
-                    mentionBox.style.backgroundColor = '#fff';
-                    mentionBox.style.border = '1px solid #ccc';
-                    mentionBox.style.borderRadius = '4px';
-                    mentionBox.style.padding = '0';
-                    mentionBox.style.margin = '0';
-                    mentionBox.style.listStyle = 'none';
-                    mentionBox.style.zIndex = '1000';
-                    mentionBox.style.maxHeight = '150px';
-                    mentionBox.style.overflowY = 'auto';
-                    mentionBox.style.display = 'none';
-                    mentionBox.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-                    mentionBox.style.fontFamily = 'Arial, sans-serif';
-                    mentionBox.style.fontSize = '14px';
-                    mentionBox.style.minWidth = '200px';
+        if (!currentEditorElement || !currentEditorElement.classList.contains('minimal-tiptap-editor')) {
+            console.error('[Mentions] Could not find the .minimal-tiptap-editor wrapper for the provided editor instance.', editorViewDom);
+            return { extractMentions: () => [] as MentionMetadata[] };
+        }
 
-                    // Prevent clicks on the mention box from closing the dialog
-                    mentionBox.addEventListener('mousedown', (e) => {
-                        e.preventDefault();
-                    });
+        if (!currentEditorElement.hasAttribute('data-mention-listener')) {
+            function createMentionBox() {
+                mentionBox = document.createElement('ul');
+                mentionBox.classList.add('mention-suggestions-list');
+                mentionBox.style.position = 'absolute';
+                mentionBox.style.backgroundColor = '#1F1F21';
+                mentionBox.style.border = '1px solid #363639';
+                mentionBox.style.borderRadius = '6px';
+                mentionBox.style.padding = '4px';
+                mentionBox.style.margin = '0';
+                mentionBox.style.listStyle = 'none';
+                mentionBox.style.zIndex = '10000';
+                mentionBox.style.maxHeight = '200px';
+                mentionBox.style.overflowY = 'auto';
+                mentionBox.style.display = 'none';
+                mentionBox.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                mentionBox.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+                mentionBox.style.fontSize = '13px';
+                mentionBox.style.minWidth = '220px';
+                mentionBox.addEventListener('mousedown', (e) => e.preventDefault());
+                document.body.appendChild(mentionBox);
+            }
 
-                    document.body.appendChild(mentionBox);
+            function updateMentionBox(matches: Assignee[], coords: { top: number, left: number, bottom: number, right: number } | undefined) {
+                const editorId = currentEditorElement?.id || editor.view.dom.closest('.minimal-tiptap-editor')?.classList[0] || 'Unknown Editor';
+                console.log(`[Mentions (${editorId})] updateMentionBox called. Matches:`, matches.length, 'Coords:', coords, 'CurrentIndex:', currentIndex);
+                if (!mentionBox) {
+                    console.error(`[Mentions (${editorId})] mentionBox is null in updateMentionBox. Cannot update.`);
+                    return;
                 }
-
-                // Update the suggestion box with matches and position it
-                function updateMentionBox(matches, caretRect) {
-                    mentionBox.innerHTML = ''; // Clear previous items
-
-                    matches.forEach((match, idx) => {
-                        const li = document.createElement('li');
-                        li.textContent = match.name;
-                        li.style.padding = '8px 10px';
-                        li.style.cursor = 'pointer';
-                        li.style.backgroundColor = idx === currentIndex ? '#f0f0f0' : '#fff';
-                        li.style.whiteSpace = 'nowrap';
-
-                        li.addEventListener('mouseenter', () => {
-                            currentIndex = idx;
-                            highlightCurrentItem();
-                        });
-
-                        li.addEventListener('mousedown', (e) => {
-                            e.preventDefault();
-                            selectMention(match);
-                        });
-
-                        mentionBox.appendChild(li);
-                    });
-
-                    positionMentionBox(caretRect);
-                    mentionBox.style.display = 'block';
+                mentionBox.innerHTML = ''; // Clear previous items
+                matches.forEach((match, idx) => {
+                    const li = document.createElement('li');
+                    li.textContent = match.name;
+                    li.style.padding = '6px 10px';
+                    li.style.cursor = 'pointer';
+                    li.style.borderRadius = '4px';
+                    li.style.color = '#E0E0E0';
+                    li.style.backgroundColor = idx === currentIndex ? '#363639' : 'transparent';
+                    li.style.whiteSpace = 'nowrap';
+                    li.addEventListener('mouseenter', () => { currentIndex = idx; highlightCurrentItem(); });
+                    li.addEventListener('mousedown', (e) => { e.preventDefault(); selectMention(match); });
+                    mentionBox!.appendChild(li);
+                });
+                if (coords) {
+                    positionMentionBox(coords);
+                } else {
+                    console.warn(`[Mentions (${editorId})] No coords provided to updateMentionBox. Box may not be positioned correctly.`);
                 }
+                mentionBox.style.display = 'block';
+                console.log(`[Mentions (${editorId})] mentionBox display set to block. Actual display:`, mentionBox.style.display);
+            }
 
-                // Position the mention box using the caret rect
-                function positionMentionBox(caretRect) {
-                    if (!caretRect) return;
-
-                    const scrollX = window.scrollX || window.pageXOffset;
-                    const scrollY = window.scrollY || window.pageYOffset;
-
-                    mentionBox.style.left = `${caretRect.left + scrollX}px`;
-                    mentionBox.style.top = `${caretRect.bottom + scrollY}px`;
+            function positionMentionBox(coords: { top: number, left: number, bottom: number, right: number }) {
+                const editorId = currentEditorElement?.id || editor.view.dom.closest('.minimal-tiptap-editor')?.classList[0] || 'Unknown Editor';
+                console.log(`[Mentions (${editorId})] positionMentionBox called with coords:`, coords);
+                if (!mentionBox) {
+                    console.error(`[Mentions (${editorId})] mentionBox is null in positionMentionBox. Cannot position.`);
+                    return;
                 }
+                const scrollX = window.scrollX || window.pageXOffset;
+                const scrollY = window.scrollY || window.pageYOffset;
+                mentionBox.style.left = `${coords.left + scrollX}px`;
+                mentionBox.style.top = `${coords.bottom + scrollY + 5}px`;
+            }
 
-                // Highlight current item based on currentIndex
-                function highlightCurrentItem() {
-                    for (let i = 0; i < mentionBox.childElementCount; i++) {
-                        const li = mentionBox.children[i];
-                        li.style.backgroundColor = i === currentIndex ? '#f0f0f0' : '#fff';
-                    }
+            function highlightCurrentItem() {
+                if (!mentionBox) return;
+                for (let i = 0; i < mentionBox.childElementCount; i++) {
+                    const li = mentionBox.children[i] as HTMLLIElement;
+                    li.style.backgroundColor = i === currentIndex ? '#363639' : 'transparent';
+                    li.style.color = i === currentIndex ? '#FFFFFF' : '#E0E0E0';
                 }
+            }
 
-                // Hide the suggestion box
-                function hideMentionBox() {
-                    if (mentionBox) {
-                        mentionBox.style.display = 'none';
-                        currentIndex = -1;
-                        caretRange = null;
-                    }
-                }
-
-                // Select a mention and replace text
-                function selectMention(match) {
-                    if (!caretRange) return;
-
-                    const textNode = caretRange.startContainer;
-                    const textContent = textNode.textContent;
-
-                    const wordStart = textContent.lastIndexOf('@', caretRange.startOffset - 1);
-                    if (wordStart === -1) return;
-
-                    const beforeWord = textContent.slice(0, wordStart);
-                    const afterWord = textContent.slice(caretRange.startOffset);
-
-                    // Insert a span for the mention
-                    const mentionSpan = document.createElement('span');
-                    mentionSpan.textContent = `@${match.name}`;
-                    mentionSpan.classList.add('mention-span');
-                    mentionSpan.style.color = '#007bff';
-                    mentionSpan.style.cursor = 'pointer';
-                    mentionSpan.style.display = 'inline-block';
-                    mentionSpan.contentEditable = 'false';
-
-                    // Store metadata in memory
-                    mentionMetadata.set(mentionSpan, { id: match.id, name: match.name });
-
-                    const parentNode = caretRange.startContainer.parentNode;
-
-                    // Replace the text node with the new structure
-                    const afterTextNode = document.createTextNode(afterWord);
-                    parentNode.replaceChild(afterTextNode, textNode);
-                    parentNode.insertBefore(mentionSpan, afterTextNode);
-                    parentNode.insertBefore(document.createTextNode(beforeWord), mentionSpan);
-
-                    // Insert a new empty text node after the mention span for continued typing
-                    const newTextNode = document.createTextNode(' ');
-                    parentNode.insertBefore(newTextNode, afterTextNode);
-
-                    // Place the caret in the new text node
-                    const newCaretRange = document.createRange();
-                    newCaretRange.setStart(newTextNode, 1); // After the space
-                    newCaretRange.collapse(true);
-
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(newCaretRange);
-
+            function hideMentionBox() {
+                if (mentionBox) mentionBox.style.display = 'none';
+                currentIndex = -1;
+                currentQueryRange = null;
+            }
+            
+            function selectMention(match: Mention) {
+                console.log('[Mentions] selectMention called for match:', match, 'Editor element ID:', currentEditorElement?.id || 'N/A');
+                if (!currentQueryRange || !editor || !editor.view) {
+                    console.error('[Mentions] Query range, editor, or editor.view not available for selectMention.');
                     hideMentionBox();
+                    return;
+                }
+                 if (!editor.isEditable) {
+                    console.warn('[Mentions] Editor is not editable during selectMention.');
+                    hideMentionBox();
+                    return;
+                }
+                console.log('[Mentions] currentQueryRange:', currentQueryRange, 'isEditable:', editor.isEditable);
+
+                const success = editor.chain().focus()
+                    .deleteRange(currentQueryRange)
+                    .insertContent([
+                        {
+                            type: 'text',
+                            text: `@${match.name}`,
+                            marks: [
+                                {
+                                    type: 'mention',
+                                    attrs: { userName: match.name, userId: String(match.id) },
+                                },
+                            ],
+                        },
+                        { type: 'text', text: ' ' },
+                    ])
+                    .run();
+                console.log('[Mentions] insertContent successful:', success);
+                if (!success) {
+                    console.error('[Mentions] Failed to insert mention content with mark.');
+                }
+                hideMentionBox();
+            }
+
+            if (!mentionBox) createMentionBox();
+            console.log(`[Mentions (${currentEditorElement?.id || editor.view.dom.closest('.minimal-tiptap-editor')?.classList[0] || 'Unknown Editor'})] createMentionBox completed. mentionBox available: ${!!mentionBox}`);
+
+            editorViewDom.addEventListener('input', () => {
+                const editorId = currentEditorElement?.id || editor.view.dom.closest('.minimal-tiptap-editor')?.classList[0] || 'Unknown Editor';
+                console.log(`[Mentions (${editorId})] Input event. Editable: ${editor.isEditable}`);
+                if (!editor || !editor.isEditable) return;
+
+                const { selection } = editor.state;
+                const { from, to } = selection;
+
+                if (from !== to) {
+                    hideMentionBox();
+                    return;
                 }
 
-                // Add the suggestion box to the DOM
-                if (!mentionBox) createMentionBox();
+                let mentionQuery = '';
+                let queryStartPosition: number | null = null;
 
-                editor.addEventListener('input', () => {
-                    const selection = window.getSelection();
-                    if (!selection.rangeCount) return;
-                    const range = selection.getRangeAt(0);
-                    caretRange = range.cloneRange();
+                editor.state.doc.nodesBetween(Math.max(0, from - 25), from, (node, pos) => {
+                    if (!node.isText || !node.text) return true;
 
-                    const textNode = range.startContainer;
-                    const textContent = textNode.textContent || '';
-                    const caretPosition = range.startOffset;
+                    const textContentUpToCursor = node.textBetween(0, from - pos);
+                    const atMatch = /@([a-zA-Z0-9_\-]*)$/.exec(textContentUpToCursor);
 
-                    const wordStart = textContent.lastIndexOf('@', caretPosition - 1);
-                    const wordEnd = caretPosition;
-                    const word = textContent.slice(wordStart + 1, wordEnd);
+                    if (atMatch) {
+                        mentionQuery = atMatch[1];
+                        queryStartPosition = pos + atMatch.index;
+                        return false;
+                    }
+                    return true;
+                });
 
-                    if (wordStart !== -1 && /^[a-zA-Z]*$/.test(word) && word.length > 0) {
-                        const matches = assignees.filter(person =>
-                            person.name.toLowerCase().startsWith(word.toLowerCase())
-                        );
 
-                        if (matches.length > 0) {
-                            const caretRect = range.getBoundingClientRect();
-                            updateMentionBox(matches, caretRect);
-                        } else {
-                            hideMentionBox();
-                        }
+                if (queryStartPosition !== null) {
+                    currentQueryRange = { from: queryStartPosition, to: to };
+                    console.log(`[Mentions (${editorId})] Current assignees list before filtering:`, JSON.parse(JSON.stringify(assignees)));
+                    const matches = assignees.filter(person => 
+                        person.name.toLowerCase().startsWith(mentionQuery.toLowerCase())
+                    );
+                    console.log(`[Mentions (${editorId})] Query: '${mentionQuery}', Matches found: ${matches.length}`);
+
+                    if (matches.length > 0) {
+                        const coords = editor.view.coordsAtPos(currentQueryRange.to);
+                        console.log(`[Mentions (${editorId})] Coords for mention box:`, coords);
+                        updateMentionBox(matches, coords);
                     } else {
                         hideMentionBox();
                     }
-                });
+                } else {
+                    hideMentionBox();
+                }
+            });
 
-                editor.addEventListener('keydown', (event) => {
-                    const visible = mentionBox && mentionBox.style.display === 'block';
+            editorViewDom.addEventListener('keydown', (event: Event) => {
+                const keyboardEvent = event as KeyboardEvent;
+                const visible = mentionBox && mentionBox.style.display === 'block';
+                const editorId = currentEditorElement?.id || editor.view.dom.closest('.minimal-tiptap-editor')?.classList[0] || 'Unknown Editor';
+                console.log(`[Mentions (${editorId})] Keydown event. Key: ${keyboardEvent.key}, MentionBox visible: ${visible}`);
+                if (!visible || !mentionBox) return;
 
-                    if (visible) {
-                        if (event.key === 'ArrowDown') {
-                            event.preventDefault();
-                            currentIndex = (currentIndex + 1) % mentionBox.childElementCount;
-                            highlightCurrentItem();
-                        } else if (event.key === 'ArrowUp') {
-                            event.preventDefault();
-                            currentIndex = (currentIndex - 1 + mentionBox.childElementCount) % mentionBox.childElementCount;
-                            highlightCurrentItem();
-                        } else if (event.key === 'Enter' || event.key === 'Tab') {
-                            event.preventDefault();
-                            if (currentIndex >= 0) {
-                                const selectedMatch = mentionBox.children[currentIndex];
-                                const match = {
-                                    name: selectedMatch.textContent,
-                                    id: assignees.find(a => a.name === selectedMatch.textContent)?.id
-                                };
-                                selectMention(match);
-                            }
-                        } else if (event.key === 'Escape') {
-                            event.preventDefault();
-                            hideMentionBox();
-                        }
+                if (keyboardEvent.key === 'ArrowDown') {
+                    keyboardEvent.preventDefault();
+                    currentIndex = (currentIndex + 1) % mentionBox.childElementCount;
+                    highlightCurrentItem();
+                } else if (keyboardEvent.key === 'ArrowUp') {
+                    keyboardEvent.preventDefault();
+                    currentIndex = (currentIndex - 1 + mentionBox.childElementCount) % mentionBox.childElementCount;
+                    highlightCurrentItem();
+                } else if (keyboardEvent.key === 'Enter' || keyboardEvent.key === 'Tab') {
+                    keyboardEvent.preventDefault();
+                    if (keyboardEvent.key === 'Tab' && currentIndex === -1 && mentionBox.childElementCount > 0) {
+                        currentIndex = 0;
                     }
-                });
-
-                editor.setAttribute('data-has-listener', 'true');
-            }
-        });
-
-        // Function to extract mentions with metadata
-        function extractMentions() {
-            const mentions = [];
-            editors.forEach(editor => {
-                editor.querySelectorAll('.mention-span').forEach(span => {
-                    const metadata = mentionMetadata.get(span);
-                    if (metadata) {
-                        mentions.push(metadata);
+                    if (currentIndex >= 0 && currentIndex < mentionBox.childElementCount) {
+                        const selectedMatchElement = mentionBox.children[currentIndex] as HTMLLIElement;
+                        const assignee = assignees.find(a => a.name === selectedMatchElement.textContent);
+                        if (assignee) selectMention(assignee);
+                    } else {
+                        hideMentionBox();
                     }
-                });
+                } else if (keyboardEvent.key === 'Escape') {
+                    keyboardEvent.preventDefault();
+                    hideMentionBox();
+                }
+            });
+
+            currentEditorElement.setAttribute('data-mention-listener', 'true');
+        }
+
+
+        function extractMentions(): MentionMetadata[] {
+            const mentions: MentionMetadata[] = [];
+            if (!editor || !editor.state || !editor.state.doc) return mentions;
+            editor.state.doc.descendants((node) => {
+                if (node.marks && node.marks.some(mark => mark.type.name === 'mention')) {
+                    const mentionMark = node.marks.find(mark => mark.type.name === 'mention');
+                    if (mentionMark && mentionMark.attrs.userName && mentionMark.attrs.userId) {
+                        mentions.push({ id: mentionMark.attrs.userId, name: mentionMark.attrs.userName });
+                    }
+                }
             });
             return mentions;
         }
-
         return { extractMentions };
-    }
+    } // End of initEventListeners
 
     return { initEventListeners };
 }
