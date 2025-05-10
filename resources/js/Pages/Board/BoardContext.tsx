@@ -638,7 +638,6 @@ export function BoardProvider({
      * Open the PostFormDialog for a specific Task
      */
     const openDialog = useCallback((taskId: string | null, type: "edit" | "new" = "edit") => {
-        console.log(`[BoardContext] openDialog called with taskId: ${taskId}, type: ${type}`);
         if (type === "new") {
             const defaultPriorityObj = priorities.find(p => p.is_default);
             const defaultPriorityName = defaultPriorityObj ? defaultPriorityObj.name.toLowerCase() : "medium";
@@ -667,23 +666,16 @@ export function BoardProvider({
         }
 
         if (!taskId) { 
-            console.log("[BoardContext] openDialog: Task ID is missing for edit mode.");
             closeDialog();
             return;
         }
 
-        const taskIdsInState = Object.keys(tasks);
-        console.log(`[BoardContext] openDialog: Attempting to find task ID '${taskId}'. Current task IDs in state: [${taskIdsInState.join(', ')}]`);
-
-        const taskToOpen = tasks[taskId]; 
-
-        console.log(`[BoardContext] openDialog: Task found for ID '${taskId}':`, taskToOpen ? `ID ${taskToOpen.id} (Title: ${taskToOpen.title})` : 'Not Found');
+        const taskToOpen = tasks[taskId];
 
         if (taskToOpen) {
             setSelectedTask(taskToOpen);
             setIsEditDialogOpen(true);
         } else { 
-            console.log(`[BoardContext] openDialog: Task with ID ${taskId} not found in 'tasks' object. Current task IDs in state: [${taskIdsInState.join(', ')}]`);
             closeDialog();
         }
     }, [tasks, assignees, columns, closeDialog, priorities, statuses, boardId, defaultAssignee]);

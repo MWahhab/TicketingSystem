@@ -1,12 +1,12 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useForm, useWatch } from "react-hook-form"
 import { Button } from "@/components/ui/button"
-import { ExpandableTipTapTextArea } from "./ExpandableTipTapTextArea"
+import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor"
 import { FileBrowser } from "./post-form-dialog-components/file-browser"
 import { WatcherButton } from "./post-form-dialog-components/watcher-button"
 
@@ -69,6 +69,31 @@ const hasPremiumAccess = (premiumLevel: string): boolean => {
     return premiumLevel === "pro" || premiumLevel === "premium"
 }
 
+// Define the Assignee type expected by SimpleEditor locally if not importable
+// This should match the one in SimpleEditor.tsx
+interface SimpleEditorAssignee {
+    id: string;
+    name: string;
+    avatar?: string; // Assuming avatar might be part of the structure from context
+}
+
+const DescriptionPreview = React.memo(({ htmlContent }: { htmlContent: string }) => {
+    // console.log("--- DescriptionPreview RENDER ---");
+    // console.log("DescriptionPreview htmlContent (first 50 chars):", htmlContent?.substring(0, 50) + "...");
+    return (
+        <div
+            className="bg-zinc-800 text-white border border-zinc-700 rounded-md p-4 min-h-[200px] prose prose-invert max-w-none overflow-y-auto overflow-x-hidden"
+            dangerouslySetInnerHTML={{ __html: htmlContent }}
+            style={{
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
+                letterSpacing: 'normal',
+                overflowWrap: 'break-word',
+            }}
+        />
+    );
+});
+
 export function PostFormDialog({
                                    boards = [],
                                    assignees = [],
@@ -78,7 +103,9 @@ export function PostFormDialog({
                                    authUserId,
                                    isPremium,
                                }: PostFormDialogProps) {
-    console.log("[PostFormDialog] Received assignees prop:", assignees, "for task:", task?.id || 'new_post');
+    // console.log("--- PostFormDialog RENDER START ---");
+    // console.log("Task prop:", task ? `ID: ${task.id}` : "null");
+
     const [isDialogOpen, setIsDialogOpen] = useState(!!task)
 
     const [boardSelectOpen, setBoardSelectOpen] = useState(false)
@@ -98,6 +125,9 @@ export function PostFormDialog({
     const [isFileBrowserOpen, setIsFileBrowserOpen] = useState(false)
     const [selectedPRFiles, setSelectedPRFiles] = useState<string[]>([])
 
+    // console.log("Initial isPreview state:", isPreview);
+    // console.log("Initial isExpanded state:", isExpanded);
+
     const { toast } = useToast()
 
     const [originalDescription, setOriginalDescription] = useState("")
@@ -108,6 +138,16 @@ export function PostFormDialog({
 
     const [generationCount, setGenerationCount] = useState<number | null>(null)
     const [generationCap, setGenerationCap] = useState<number | null>(null)
+
+    const dialogContentRef = useRef<HTMLDivElement>(null); // Ref for DialogContent
+
+    // Add a function to manage focus within the dialog properly
+    const handleDialogInteraction = useCallback(() => {
+        // Don't show focus outline when clicking within the dialog
+        if (dialogContentRef.current) {
+            dialogContentRef.current.style.outline = 'none';
+        }
+    }, []);
 
     const getInitialFormValues = useCallback((): FormData => {
         return task
@@ -135,6 +175,9 @@ export function PostFormDialog({
         resolver: zodResolver(formSchema),
         defaultValues: getInitialFormValues(),
     })
+
+    // console.log("Current form values:", form.getValues());
+    // console.log("Specifically, form.desc:", form.getValues("desc")?.substring(0, 50) + "...");
 
     const { createTask, updateTask, closeDialog: contextCloseDialog, openDialog: contextOpenDialog } = useBoardContext();
 
@@ -186,11 +229,18 @@ export function PostFormDialog({
         }
     }, [task, form, getInitialFormValues]);
 
+    useEffect(() => {
+        if (isDialogOpen) {
+            // Try to focus the dialog content itself when it opens
+            setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 0); 
+        }
+    }, [isDialogOpen]);
+
     async function onSubmit(values: FormData) {
         setIsDescriptionModified(false)
 
-        let submissionSuccessful = false; 
-        let submittedTaskData: Task | null = null; 
+        let submissionSuccessful = false;
+        let submittedTaskData: Task | null = null;
 
         if (task) {
             const apiResponse = await updateTask(task.id, values);
@@ -223,7 +273,7 @@ export function PostFormDialog({
                 setIsDialogOpen(false);
             }
         } else {
-            console.error("Submission failed, see console/alerts for details.");
+            // console.error("Submission failed, see console/alerts for details.");
         }
     }
 
@@ -257,7 +307,7 @@ export function PostFormDialog({
                 }
             }
         } catch (error) {
-            console.error("Error fetching branches:", error)
+            // console.error("Error fetching branches:", error)
             toast({
                 title: "Error",
                 description: "Failed to load branches",
@@ -282,7 +332,7 @@ export function PostFormDialog({
                     setGenerationCap(data.generation_cap)
                 }
             } catch (err) {
-                console.error("Failed to fetch generation count:", err)
+                // console.error("Failed to fetch generation count:", err)
             }
         }
         if (hasPremiumAccess(isPremium)) {
@@ -293,7 +343,7 @@ export function PostFormDialog({
     const handleDialogOpenChange = (open: boolean) => {
         if (!open) {
             if (onClose) {
-                 onClose()
+                onClose()
             }
             setIsDialogOpen(false)
         } else {
@@ -311,7 +361,7 @@ export function PostFormDialog({
                 setIsGeneratingPR(true)
             }
         } catch (err) {
-            console.error("Failed to check queue status:", err)
+            // console.error("Failed to check queue status:", err)
         }
     }, [task, isPremium]);
 
@@ -319,6 +369,22 @@ export function PostFormDialog({
         checkQueueStatus()
     }, [checkQueueStatus])
 
+    const editorAssignees = useMemo(() => {
+        return assignees.map((a: any) => ({ // Use 'any' for input if original type is complex/conflicting
+            id: String(a.id),
+            name: a.name,
+            // ...(a.avatar && { avatar: a.avatar }), // Conditionally spread avatar if it exists
+        })) as SimpleEditorAssignee[];
+    }, [assignees]);
+
+    const handleSelectChange = useCallback((setValue: (value: string) => void, setOpen: (open: boolean) => void) => (value: string) => {
+        setValue(value);
+        setOpen(false);
+        // Single timeout to handle focus restoration
+        setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 10);
+    }, []);
+
+    // console.log("--- PostFormDialog RENDER END (before return) ---");
     return (
         <>
             <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
@@ -329,11 +395,15 @@ export function PostFormDialog({
                         </Button>
                     </DialogTrigger>
                 )}
-                {isDialogOpen && (
+
                     <DialogContent
-                        className={`bg-gradient-to-b from-zinc-900 to-zinc-950 text-white border border-white/10 transition-all duration-300 ${
+                        ref={dialogContentRef}
+                        tabIndex={-1}
+                        className={`bg-gradient-to-b from-zinc-900 to-zinc-950 text-white border border-white/10 transition-all duration-300 focus:outline-none ${
                             isExpanded ? "sm:max-w-[90vw] w-[90vw] h-[98vh]" : "sm:max-w-[1000px]"
                         }`}
+                        onClick={handleDialogInteraction}
+                        onFocus={handleDialogInteraction}
                         onInteractOutside={(event) => {
                             const target = event.target as HTMLElement;
                             // Check if the click is on or within the mention suggestions list
@@ -393,14 +463,13 @@ export function PostFormDialog({
                                     </div>
                                 )}
                             </div>
+                            <DialogDescription id={task ? "post-edit-dialog-description" : "post-create-dialog-description"} className="sr-only">
+                                {task ? `Dialog to edit details for post number ${task.id}.` : "Dialog to create a new post."}
+                            </DialogDescription>
                         </DialogHeader>
-                        <DialogDescription id={task ? "post-edit-dialog-description" : "post-create-dialog-description"} className="sr-only">
-                            {task ? `Dialog to edit details for post number ${task.id}.` : "Dialog to create a new post."}
-                        </DialogDescription>
-
-                        <div 
-                            style={{ 
-                                height: isExpanded ? 'calc(98vh - 180px)' : undefined, 
+                        <div
+                            style={{
+                                height: isExpanded ? 'calc(98vh - 180px)' : undefined,
                                 maxHeight: !isExpanded ? 'calc(100vh - 240px)' : undefined,
                                 paddingRight: '1rem'
                             }}
@@ -409,7 +478,7 @@ export function PostFormDialog({
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                                     <div className="grid grid-cols-[2fr_1fr] gap-6">
-                                        <div className="space-y-8">
+                                        <div className="space-y-8 min-w-0">
                                             <FormField
                                                 control={form.control}
                                                 name="title"
@@ -421,6 +490,7 @@ export function PostFormDialog({
                                                                 placeholder="Enter title"
                                                                 {...field}
                                                                 className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500"
+                                                                onFocus={handleDialogInteraction}
                                                             />
                                                         </FormControl>
                                                         <FormMessage className="text-red-400" />
@@ -454,6 +524,7 @@ export function PostFormDialog({
                                                                                         form.setValue("desc", data.description)
                                                                                         setIsDescriptionModified(true)
                                                                                         setIsPreview(true)
+                                                                                        // console.log("Description optimized, isPreview set to:", true);
                                                                                         toast({
                                                                                             title: "Description optimized",
                                                                                             description: "Updated description has been set, but not saved yet.",
@@ -470,7 +541,7 @@ export function PostFormDialog({
                                                                                         description: "Something went wrong during the optimization.",
                                                                                         variant: "destructive",
                                                                                     })
-                                                                                    console.error(err)
+                                                                                    // console.error(err)
                                                                                 } finally {
                                                                                     setIsOptimizing(false)
                                                                                 }
@@ -551,6 +622,7 @@ export function PostFormDialog({
                                                                                     form.setValue("desc", originalDescription);
                                                                                     setIsDescriptionModified(false);
                                                                                     setIsPreview(true);
+                                                                                    // console.log("Description restored, isPreview set to:", true);
                                                                                     toast({
                                                                                         title: "Description restored",
                                                                                         description: "Original description has been restored.",
@@ -600,7 +672,7 @@ export function PostFormDialog({
                                                                                         })
                                                                                     }
                                                                                 } catch (error: any) {
-                                                                                    console.error("Error generating PR files:", error)
+                                                                                    // console.error("Error generating PR files:", error)
                                                                                     toast({
                                                                                         title: "Error",
                                                                                         description: axios.isAxiosError(error) ? error.response?.data?.error : error.message || "Failed to generate PR files",
@@ -684,6 +756,7 @@ export function PostFormDialog({
                                                                         e.preventDefault()
                                                                         e.stopPropagation()
                                                                         setIsPreview(!isPreview)
+                                                                        // console.log("Toggled isPreview to:", !isPreview);
                                                                     }}
                                                                     className="border border-white/10 bg-transparent text-zinc-300 hover:bg-amber-800/30 hover:text-amber-200 hover:ring-1 hover:ring-amber-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                                                                     title={isPreview ? "Edit" : "Preview"}
@@ -694,25 +767,28 @@ export function PostFormDialog({
                                                             </div>
                                                         </div>
                                                         <FormControl>
-                                                            <ExpandableTipTapTextArea
-                                                                value={field.value}
-                                                                onChange={(value) => {
-                                                                    field.onChange(value)
-                                                                    if (value !== getInitialFormValues().desc) {
-                                                                        setIsDescriptionModified(true)
-                                                                    }
-                                                                }}
-                                                                assignees={assignees}
-                                                                className="bg-zinc-700 text-white border border-zinc-600 rounded-md focus-within:border-white focus-within:ring-1 focus-within:ring-white"
-                                                                isPreview={isPreview}
-                                                            />
+                                                            {isPreview ? (
+                                                                <DescriptionPreview htmlContent={field.value} />
+                                                            ) : (
+                                                                <SimpleEditor
+                                                                    value={field.value}
+                                                                    onChange={(value) => {
+                                                                        field.onChange(value)
+                                                                        if (value !== getInitialFormValues().desc) {
+                                                                            setIsDescriptionModified(true)
+                                                                        }
+                                                                    }}
+                                                                    assignees={editorAssignees}
+                                                                    className="p-4"
+                                                                />
+                                                            )}
                                                         </FormControl>
                                                         <FormMessage className="text-red-400" />
                                                     </FormItem>
                                                 )}
                                             />
                                         </div>
-                                        <div className="space-y-4">
+                                        <div className="space-y-4 min-w-[200px]">
                                             <FormField
                                                 control={form.control}
                                                 name="fid_board"
@@ -721,21 +797,23 @@ export function PostFormDialog({
                                                         <FormLabel className="text-white">Board</FormLabel>
                                                         <Select
                                                             open={boardSelectOpen}
-                                                            onOpenChange={setBoardSelectOpen}
-                                                            onValueChange={(value) => {
-                                                                field.onChange(value)
-                                                                setBoardSelectOpen(false)
+                                                            onOpenChange={(open) => {
+                                                                setBoardSelectOpen(open);
+                                                                if (!open) {
+                                                                    setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 10);
+                                                                }
                                                             }}
+                                                            onValueChange={handleSelectChange(field.onChange, setBoardSelectOpen)}
                                                             value={field.value || ""}
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
+                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:outline-none focus:ring-0">
                                                                     <SelectValue placeholder="Select board" />
                                                                 </SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent className="bg-zinc-800 text-white border-zinc-700">
                                                                 {boards.map((board) => (
-                                                                    <SelectItem key={board.id} value={board.id.toString()} className="hover:bg-zinc-700">
+                                                                    <SelectItem key={board.id} value={board.id.toString()} className="focus:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-700">
                                                                         {board.title}
                                                                     </SelectItem>
                                                                 ))}
@@ -753,22 +831,28 @@ export function PostFormDialog({
                                                         <FormLabel className="text-white">Column</FormLabel>
                                                         <Select
                                                             open={columnSelectOpen}
-                                                            onOpenChange={setColumnSelectOpen}
-                                                            onValueChange={(value) => {
-                                                                field.onChange(value)
-                                                                setColumnSelectOpen(false)
+                                                            onOpenChange={(open) => {
+                                                                setColumnSelectOpen(open);
+                                                                if (!open) {
+                                                                    setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 10);
+                                                                }
                                                             }}
+                                                            onValueChange={handleSelectChange(field.onChange, setColumnSelectOpen)}
                                                             value={field.value || ""}
                                                             disabled={!availableColumns.length}
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
+                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:outline-none focus:ring-0">
                                                                     <SelectValue placeholder={availableColumns.length ? "Select column" : "Select a board first"} />
                                                                 </SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent className="bg-zinc-800 text-white border-zinc-700">
-                                                                {availableColumns.map((col, idx) => (
-                                                                    <SelectItem key={idx} value={col} className="hover:bg-zinc-700">
+                                                                {availableColumns.map((col) => (
+                                                                    <SelectItem
+                                                                        key={col}
+                                                                        value={col}
+                                                                        className="hover:bg-zinc-700 focus:bg-zinc-700"
+                                                                    >
                                                                         {col}
                                                                     </SelectItem>
                                                                 ))}
@@ -786,21 +870,27 @@ export function PostFormDialog({
                                                         <FormLabel className="text-white">Priority</FormLabel>
                                                         <Select
                                                             open={prioritySelectOpen}
-                                                            onOpenChange={setPrioritySelectOpen}
-                                                            onValueChange={(value) => {
-                                                                field.onChange(value)
-                                                                setPrioritySelectOpen(false)
+                                                            onOpenChange={(open) => {
+                                                                setPrioritySelectOpen(open);
+                                                                if (!open) {
+                                                                    setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 10);
+                                                                }
                                                             }}
+                                                            onValueChange={handleSelectChange(field.onChange, setPrioritySelectOpen)}
                                                             value={field.value}
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
+                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:outline-none focus:ring-0">
                                                                     <SelectValue placeholder="Select priority" />
                                                                 </SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent className="bg-zinc-800 text-white border-zinc-700">
                                                                 {priorities.map((priority) => (
-                                                                    <SelectItem key={priority} value={priority} className="hover:bg-zinc-700">
+                                                                    <SelectItem
+                                                                        key={priority}
+                                                                        value={priority}
+                                                                        className="focus:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-700"
+                                                                    >
                                                                         {priority}
                                                                     </SelectItem>
                                                                 ))}
@@ -828,21 +918,23 @@ export function PostFormDialog({
                                                         <FormLabel className="text-white">Assignee</FormLabel>
                                                         <Select
                                                             open={assigneeSelectOpen}
-                                                            onOpenChange={setAssigneeSelectOpen}
-                                                            onValueChange={(value) => {
-                                                                field.onChange(value)
-                                                                setAssigneeSelectOpen(false)
+                                                            onOpenChange={(open) => {
+                                                                setAssigneeSelectOpen(open);
+                                                                if (!open) {
+                                                                    setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 10);
+                                                                }
                                                             }}
+                                                            onValueChange={handleSelectChange(field.onChange, setAssigneeSelectOpen)}
                                                             value={field.value || ""}
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500">
+                                                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:outline-none focus:ring-0">
                                                                     <SelectValue placeholder="Select assignee" />
                                                                 </SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent className="bg-zinc-800 text-white border-zinc-700">
                                                                 {assignees.map((assignee) => (
-                                                                    <SelectItem key={assignee.id} value={assignee.id.toString()} className="hover:bg-zinc-700">
+                                                                    <SelectItem key={assignee.id} value={assignee.id.toString()} className="focus:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-700">
                                                                         {assignee.name}
                                                                     </SelectItem>
                                                                 ))}
@@ -860,13 +952,21 @@ export function PostFormDialog({
                                                     return (
                                                         <FormItem className="flex flex-col mt-2">
                                                             <FormLabel className="text-white">Deadline</FormLabel>
-                                                            <Popover open={deadlinePopoverOpen} onOpenChange={setDeadlinePopoverOpen}>
+                                                            <Popover 
+                                                                open={deadlinePopoverOpen} 
+                                                                onOpenChange={(open) => {
+                                                                    setDeadlinePopoverOpen(open);
+                                                                    if (!open) {
+                                                                        setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 10);
+                                                                    }
+                                                                }}
+                                                            >
                                                                 <PopoverTrigger asChild>
                                                                     <FormControl>
                                                                         <Button
                                                                             variant="outline"
                                                                             className={cn(
-                                                                                "w-full pl-3 text-left font-normal bg-zinc-800 border-zinc-700 text-white focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500",
+                                                                                "w-full pl-3 text-left font-normal bg-zinc-800 border-zinc-700 text-white focus:outline-none focus:ring-0 focus:border-zinc-500",
                                                                                 !field.value && "text-muted-foreground",
                                                                             )}
                                                                         >
@@ -889,7 +989,8 @@ export function PostFormDialog({
                                                                                 selected={dateValue || undefined}
                                                                                 onSelect={(date) => {
                                                                                     field.onChange(date ? format(date, "yyyy-MM-dd") : null);
-                                                                                    setDeadlinePopoverOpen(false)
+                                                                                    setTimeout(() => setDeadlinePopoverOpen(false), 0);
+                                                                                    setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 0);
                                                                                 }}
                                                                                 disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) || date < new Date("1900-01-01")}
                                                                                 initialFocus
@@ -1032,13 +1133,13 @@ export function PostFormDialog({
                             </Button>
                         </div>
                     </DialogContent>
-                )}
+
             </Dialog>
-            {showDeleteConfirmation && <DeleteConfirmationDialog 
-                id={task?.id ?? ""} 
-                type="Post" 
-                isOpen={true} 
-                onClose={handleDialogClose} 
+            {showDeleteConfirmation && <DeleteConfirmationDialog
+                id={task?.id ?? ""}
+                type="Post"
+                isOpen={true}
+                onClose={handleDialogClose}
                 onSuccessfulDelete={handlePostDeletedSuccessfully}
             />}
             {isFileBrowserOpen && (
@@ -1049,7 +1150,7 @@ export function PostFormDialog({
                     onFilesSelected={async (files) => {
                         setSelectedPRFiles(files)
                         setIsFileBrowserOpen(false)
-                        
+
                         if (!task || !task.id) {
                             toast({
                                 title: "Error",
@@ -1081,7 +1182,7 @@ export function PostFormDialog({
                                     title: "Queued successfully!",
                                     description: data.message,
                                 })
-                                setGenerationCount((generationCount ?? 1) - 1) 
+                                setGenerationCount((generationCount ?? 1) - 1)
                                 await fetchBranches()
                             } else {
                                 toast({

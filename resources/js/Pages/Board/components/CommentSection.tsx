@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useForm } from 'react-hook-form';
-import { TipTapTextArea } from '@/Pages/Board/components/TipTapTextArea';
+import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { MessageSquareIcon, SendIcon, PlusIcon, ChevronUpIcon, ChevronDownIcon, MoreVerticalIcon } from 'lucide-react';
@@ -19,16 +19,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import axios from 'axios';
-
-<style jsx>{`
-  .hide-scrollbar {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-`}</style>
 
 interface Comment {
     id: string;
@@ -88,11 +78,13 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
             });
     };
 
-    const commentForm = useForm({
+    const addCommentForm = useForm({
         resolver: zodResolver(commentSchema),
-        defaultValues: {
-            content: '',
-        },
+        defaultValues: { content: '' },
+    });
+    const editCommentForm = useForm({
+        resolver: zodResolver(commentSchema),
+        defaultValues: { content: '' },
     });
 
     const addComment = (values: { content: string }) => {
@@ -102,12 +94,10 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                 content: content,
                 fid_post: taskId,
             };
-
             axios
                 .post('/comments', data)
                 .then((response) => {
                     const newComment = response.data;
-
                     if (newComment.content) {
                         const formattedNewComment = {
                             id: newComment.id.toString(),
@@ -123,7 +113,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                 : [formattedNewComment, ...prevVisible.slice(0, commentsPerPage - 1)]
                         );
                     }
-                    commentForm.reset();
+                    addCommentForm.reset({ content: '' });
                     setIsExpanded(false);
                 })
                 .catch((error) => {
@@ -150,9 +140,11 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
 
     const editComment = (commentId: string) => {
         setEditingCommentId(commentId);
+        setIsExpanded(false);
+        addCommentForm.reset({ content: '' });
         const commentToEdit = comments.find(comment => comment.id === commentId);
         if (commentToEdit) {
-            commentForm.setValue('content', commentToEdit.content);
+            editCommentForm.reset({ content: commentToEdit.content });
         }
     };
 
@@ -172,7 +164,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                         setComments(updateCommentList);
                         setVisibleComments(updateCommentList);
                         setEditingCommentId(null);
-                        commentForm.reset();
+                        editCommentForm.reset({ content: '' });
                     })
                     .catch((error) => {
                         console.error(error);
@@ -194,6 +186,11 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
         setShowAllComments(true);
         setHasMore(false);
     };
+
+    // Transform assignees for SimpleEditor
+    const editorAssignees = React.useMemo(() => 
+        assignees.map(a => ({ ...a, id: String(a.id) }))
+    , [assignees]);
 
     return (
         <Card className="mt-8 bg-zinc-800 border-zinc-700">
@@ -218,69 +215,71 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
             </CardHeader>
             {isCommentsExpanded && (
                 <CardContent className="space-y-3">
-                    <Form {...commentForm}>
-                        <form onSubmit={commentForm.handleSubmit(editingCommentId ? updateComment : addComment)}>
-                            <FormField
-                                control={commentForm.control}
-                                name="content"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <div className="space-y-2">
-                                            <FormControl>
-                                                {isExpanded ? (
-                                                    <TipTapTextArea
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        assignees={assignees}
-                                                        className="min-h-[100px] bg-zinc-900 text-zinc-200 border-zinc-700 resize-none focus:border-zinc-500 focus:ring-zinc-500"
-                                                        placeholder="Write your comment..."
-                                                    />
-                                                ) : (
-                                                    <div
-                                                        className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md p-2 cursor-text hover:bg-zinc-700 transition-colors"
-                                                        onClick={() => setIsExpanded(true)}
-                                                    >
-                                                        <PlusIcon className="h-5 w-5 text-zinc-400 mr-2" />
-                                                        <span className="text-zinc-400">Add a comment...</span>
-                                                    </div>
-                                                )}
-                                            </FormControl>
-                                            {isExpanded && (
-                                                <div className="flex justify-end items-center">
-                                                    <FormMessage className="text-red-400 mr-auto" />
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            className="border border-white/10 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
+                    {!editingCommentId && (
+                        <Form {...addCommentForm}>
+                            <form onSubmit={addCommentForm.handleSubmit(addComment)}>
+                                <FormField
+                                    control={addCommentForm.control}
+                                    name="content"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="space-y-2">
+                                                <FormControl>
+                                                    {isExpanded ? (
+                                                        <SimpleEditor
+                                                            value={field.value}
+                                                            onChange={field.onChange}
+                                                            assignees={editorAssignees}
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md p-2 cursor-text hover:bg-zinc-700 transition-colors"
                                                             onClick={() => {
-                                                                setIsExpanded(false);
-                                                                commentForm.reset();
+                                                                setIsExpanded(true);
+                                                                setEditingCommentId(null);
+                                                                editCommentForm.reset({ content: '' });
                                                             }}
                                                         >
-                                                            Cancel
-                                                        </Button>
-                                                        <Button
-                                                            type="submit"
-                                                            size="sm"
-                                                            className="border border-white/10 bg-zinc-900 text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
-                                                            disabled={commentForm.formState.isSubmitting}
-                                                        >
-                                                            <SendIcon className="h-4 w-4" />
-                                                            {commentForm.formState.isSubmitting ? 'Sending...' : 'Send'}
-                                                        </Button>
+                                                            <PlusIcon className="h-5 w-5 text-zinc-400 mr-2" />
+                                                            <span className="text-zinc-400">Add a comment...</span>
+                                                        </div>
+                                                    )}
+                                                </FormControl>
+                                                {isExpanded && (
+                                                    <div className="flex justify-end items-center">
+                                                        <FormMessage className="text-red-400 mr-auto" />
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                className="border border-white/10 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
+                                                                onClick={() => {
+                                                                    setIsExpanded(false);
+                                                                    addCommentForm.reset({ content: '' });
+                                                                }}
+                                                            >
+                                                                Cancel
+                                                            </Button>
+                                                            <Button
+                                                                type="submit"
+                                                                size="sm"
+                                                                className="border border-white/10 bg-zinc-900 text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
+                                                                disabled={addCommentForm.formState.isSubmitting}
+                                                            >
+                                                                <SendIcon className="h-4 w-4" />
+                                                                {addCommentForm.formState.isSubmitting ? 'Sending...' : 'Send'}
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
-                        </form>
-                    </Form>
-
+                                                )}
+                                            </div>
+                                        </FormItem>
+                                    )}
+                                />
+                            </form>
+                        </Form>
+                    )}
                     <Separator className="bg-zinc-700" />
-
                     <ScrollArea className="pr-4 -mr-4 max-h-[440px] overflow-y-auto hide-scrollbar">
                         <div className="space-y-4">
                             {visibleComments.map((comment) => (
@@ -298,7 +297,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                     {new Date(comment.createdAt).toLocaleString()}
                                                 </span>
                                             </div>
-                                            {comment.authorId == currentUserId && (
+                                            {comment.authorId == currentUserId && editingCommentId !== comment.id && (
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-300 hover:bg-zinc-700">
@@ -320,19 +319,18 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                             )}
                                         </div>
                                         {editingCommentId === comment.id ? (
-                                            <Form {...commentForm}>
-                                                <form onSubmit={commentForm.handleSubmit(updateComment)}>
+                                            <Form {...editCommentForm}>
+                                                <form onSubmit={editCommentForm.handleSubmit(updateComment)}>
                                                     <FormField
-                                                        control={commentForm.control}
+                                                        control={editCommentForm.control}
                                                         name="content"
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormControl>
-                                                                    <TipTapTextArea
+                                                                    <SimpleEditor
                                                                         value={field.value}
                                                                         onChange={field.onChange}
-                                                                        assignees={assignees}
-                                                                        className="min-h-[100px] bg-zinc-800 text-zinc-300 border-zinc-700 resize-none focus:border-zinc-600 focus:ring-zinc-600"
+                                                                        assignees={editorAssignees}
                                                                     />
                                                                 </FormControl>
                                                                 <div className="flex justify-end items-center mt-2">
@@ -344,7 +342,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                                             className="border border-white/10 bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 hover:ring-1 hover:ring-white/20 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 transition-all"
                                                                             onClick={() => {
                                                                                 setEditingCommentId(null);
-                                                                                commentForm.reset();
+                                                                                editCommentForm.reset({ content: '' });
                                                                             }}
                                                                         >
                                                                             Cancel
@@ -353,9 +351,9 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                                             type="submit"
                                                                             size="sm"
                                                                             className="border border-white/10 bg-transparent text-zinc-400 hover:bg-green-800/30 hover:text-green-200 hover:ring-1 hover:ring-green-500/50 focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition-all flex items-center gap-1"
-                                                                            disabled={commentForm.formState.isSubmitting}
+                                                                            disabled={editCommentForm.formState.isSubmitting}
                                                                         >
-                                                                            {commentForm.formState.isSubmitting ? 'Updating...' : 'Update'}
+                                                                            {editCommentForm.formState.isSubmitting ? 'Updating...' : 'Update'}
                                                                         </Button>
                                                                     </div>
                                                                 </div>
@@ -365,9 +363,10 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ taskId, currentUserId
                                                 </form>
                                             </Form>
                                         ) : (
-                                            <div className="rounded-lg bg-zinc-900 p-3 text-sm text-zinc-300">
+                                            <div className="rounded-lg bg-zinc-900 p-4">
                                                 <div
-                                                    className="prose prose-sm prose-invert max-w-none"
+                                                    className="prose prose-invert max-w-none text-base leading-relaxed text-zinc-100 font-normal"
+                                                    style={{ fontFamily: 'inherit', fontSize: '1rem', lineHeight: '1.7' }}
                                                     dangerouslySetInnerHTML={{ __html: comment.content }}
                                                 />
                                             </div>

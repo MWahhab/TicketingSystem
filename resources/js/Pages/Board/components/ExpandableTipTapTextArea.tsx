@@ -126,8 +126,6 @@ export function ExpandableTipTapTextArea({ value, onChange, className, isPreview
                 const editorView = document.querySelector('.ProseMirror');
                 if (editorView) {
                     const mentionSpans = editorView.querySelectorAll('span.mention-span');
-                    console.log('[ExpandableTextArea] Found mention spans in .ProseMirror after delay:', mentionSpans);
-                    mentionSpans.forEach(span => console.log('[ExpandableTextArea] Mention span HTML:', span.outerHTML));
                 }
             }, 2000); // 2 second delay, adjust if needed
             return () => clearTimeout(timer);

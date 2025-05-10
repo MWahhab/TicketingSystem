@@ -45,7 +45,6 @@ function getOpenTaskParam(): string | null {
 
 export function BoardLayout() {
     const pageProps = usePage().props as any;
-    console.log("Page Props in BoardLayout:", pageProps);
 
     // Memoize assignees from pageProps to stabilize the reference
     const memoizedAssignees = useMemo(() => {
@@ -116,8 +115,6 @@ function InnerBoardLayout() {
     const [isSidebarPinned, setIsSidebarPinned] = useState(true)
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
     const sidebarLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-    console.log("[InnerBoardLayout] Assignees from context before rendering Create New Post dialog:", assignees);
 
     useEffect(() => {
         const openTaskId = getOpenTaskParam()
@@ -231,7 +228,7 @@ function InnerBoardLayout() {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-gradient-to-br from-zinc-950 to-neutral-950 text-zinc-200">
+        <div className="flex h-screen bg-gradient-to-br from-zinc-950 to-neutral-950 text-zinc-200">
             {/* Sidebar */}
             <div
                 onMouseEnter={handleMouseEnterSidebar}
@@ -342,7 +339,7 @@ function InnerBoardLayout() {
             {/* Main Content Area - Updated padding logic */}
             <div
                 className={`
-                    flex-1 flex flex-col overflow-hidden transition-padding duration-300 ease-in-out overflow-x-auto
+                    flex-1 flex flex-col overflow-x-auto transition-padding duration-300 ease-in-out
                     ${isSidebarOpen ? "pl-60" : "pl-0"} // Padding whenever sidebar is open
                 `}
             >

@@ -16,6 +16,8 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
+        document.documentElement.classList.add('dark');
+
         root.render(
             <>
                 <TooltipProvider>
