@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
 import { router } from "@inertiajs/react"
 import type { DropResult } from "react-beautiful-dnd"
+import { isAxiosError } from 'axios';
 
 export interface Board {
     id: string
@@ -249,9 +250,8 @@ export function BoardProvider({
     useEffect(() => {
         fetch("/premium/status", {
             headers: {
-                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
             },
-            credentials: "same-origin",
         })
             .then((res) => res.json())
             .then((data) => {
@@ -267,11 +267,11 @@ export function BoardProvider({
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+                    Accept: "application/json",
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                 },
                 body: JSON.stringify(taskData),
-                credentials: "same-origin",
+                credentials: 'same-origin'
             })
 
             if (!response.ok) {
@@ -349,30 +349,16 @@ export function BoardProvider({
 
     const updateTask = useCallback(async (taskId: string, taskData: Partial<Omit<Task, "id" | "watchers" | "comments" | "history" | "linked_issues" | "created_at" | "updated_at" | "assignee" | "pinned" | "had_branch" | "deadline_color"> & { fid_board: string | number }>): Promise<Task | null> => {
         try {
-            const response = await fetch(`/posts/${taskId}`, {
-                method: "PUT", // Or PATCH if your backend supports it
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
-                },
-                body: JSON.stringify(taskData),
-                credentials: "same-origin",
-            })
+            // Use window.axios which is configured in bootstrap.ts
+            const response = await window.axios.put(`/posts/${taskId}`, taskData);
 
-            if (!response.ok) {
-                const errorData = await response.json()
-                console.error("Error updating task:", errorData)
-                alert(`Error updating task: ${errorData.message || response.statusText}`)
-                return null
-            }
+            // Axios places response data in response.data
+            const { post: updatedPostData, message } = response.data;
+            // console.log(message); // Optional: for toast notification or debugging
 
-            const { post: updatedPostData, message } = await response.json()
-            // alert(message) // Or use a toast notification
-
-            const assigneeIdNum = parseInt(updatedPostData.assignee_id, 10)
-            const assigneeName = memoizedAssignees.find(a => a.id === assigneeIdNum)?.name || 'Unassigned'
-            const taskPriority = updatedPostData.priority === 'med' ? 'medium' : updatedPostData.priority
+            const assigneeIdNum = parseInt(updatedPostData.assignee_id, 10);
+            const assigneeName = memoizedAssignees.find(a => a.id === assigneeIdNum)?.name || 'Unassigned';
+            const taskPriority = updatedPostData.priority === 'med' ? 'medium' : updatedPostData.priority;
 
             const updatedTask: Task = {
                 ...tasks[taskId], // Preserve existing fields not returned by API if any
@@ -380,74 +366,70 @@ export function BoardProvider({
                 id: updatedPostData.id.toString(),
                 assignee: { name: assigneeName },
                 priority: taskPriority,
-                 // Assuming backend might send these or they are updated separately
                 watchers: updatedPostData.watchers || tasks[taskId]?.watchers || [],
                 comments: updatedPostData.comments || tasks[taskId]?.comments || [],
                 history: updatedPostData.history || tasks[taskId]?.history || {},
                 linked_issues: updatedPostData.linked_issues || tasks[taskId]?.linked_issues || [],
-            }
+            };
 
             setTasks(prevTasks => ({
                 ...prevTasks,
                 [updatedTask.id]: updatedTask,
-            }))
+            }));
             
-            // Handle column change if taskData included a new column
             const oldColumnId = tasks[taskId]?.column?.toString();
             const newColumnId = updatedTask.column?.toString();
 
             if (oldColumnId && newColumnId && oldColumnId !== newColumnId) {
                 setColumns(prevColumns => {
                     const newCols = { ...prevColumns };
-                    // Remove from old column
                     if (newCols[oldColumnId]) {
                         newCols[oldColumnId] = {
                             ...newCols[oldColumnId],
                             taskIds: newCols[oldColumnId].taskIds.filter(id => id !== updatedTask.id)
                         };
                     }
-                    // Add to new column
                     if (newCols[newColumnId]) {
-                         // Avoid duplicates, ensure it's added if not present
                         const taskIdsSet = new Set(newCols[newColumnId].taskIds);
                         taskIdsSet.add(updatedTask.id);
                         newCols[newColumnId] = {
                             ...newCols[newColumnId],
                             taskIds: Array.from(taskIdsSet)
                         };
-                    } else { // If new column somehow doesn't exist (should not happen)
-                        newCols[newColumnId] = { id: newColumnId, title: newColumnId /* or fetch title */, taskIds: [updatedTask.id] };
+                    } else {
+                        newCols[newColumnId] = { id: newColumnId, title: newColumnId, taskIds: [updatedTask.id] };
                     }
                     return newCols;
                 });
             }
 
-
-            // If the updated task is the one currently selected in a dialog, update that too
             if (selectedTask && selectedTask.id === updatedTask.id) {
-                setSelectedTask(updatedTask)
+                setSelectedTask(updatedTask);
             }
             
-            // Optionally, close any dialogs
-            // closeDialog(); // If an edit dialog is open and you want to close on save
-
-            return updatedTask
+            return updatedTask;
         } catch (error) {
-            console.error("Network error updating task:", error)
-            alert("Network error updating task. Please try again.")
-            return null
+            console.error("Error updating task:", error);
+            let errorMessage = "Network error updating task. Please try again.";
+            if (isAxiosError(error) && error.response && error.response.data && typeof error.response.data.message === 'string') {
+                errorMessage = `Error updating task: ${error.response.data.message}`;
+            } else if (error instanceof Error) {
+                errorMessage = `Error updating task: ${error.message}`;
+            }
+            alert(errorMessage);
+            return null;
         }
-    }, [tasks, memoizedAssignees, selectedTask])
+    }, [tasks, memoizedAssignees, selectedTask]);
 
     const deleteTask = useCallback(async (taskId: string): Promise<{deleted_post_id: string; board_id: string} | null> => {
         try {
             const response = await fetch(`/posts/${taskId}`, {
                 method: "DELETE",
                 headers: {
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+                    Accept: "application/json",
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                 },
-                credentials: "same-origin",
+                credentials: 'same-origin'
             });
 
             if (!response.ok) {
@@ -607,14 +589,13 @@ export function BoardProvider({
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
             },
             body: JSON.stringify({
                 _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute("content"),
                 _method: "POST",
                 column: destination.droppableId,
             }),
-            credentials: "same-origin",
         })
             .then((response) => {
                 if (!response.ok) {
@@ -725,14 +706,13 @@ export function BoardProvider({
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
             },
             body: JSON.stringify({
                 _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute("content"),
                 _method: "POST",
                 pinned: isPinned ? 1 : 0,
             }),
-            credentials: "same-origin",
         })
             .then((response) => {
                 if (!response.ok) {

@@ -305,6 +305,9 @@ export function PostFormDialog({
     }, [isDialogOpen]);
 
     async function onSubmit(values: FormData) {
+        const metaTokenOnSubmit = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+        console.log('CSRF token in meta tag AT START of onSubmit:', metaTokenOnSubmit);
+
         setIsDescriptionModified(false)
 
         let submissionSuccessful = false;
@@ -365,6 +368,8 @@ export function PostFormDialog({
         if (!task || !task.id || !hasPremiumAccess(isPremium)) return
         setIsLoadingBranches(true)
         try {
+            const metaTokenBeforeFetchBranches = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+            console.log('CSRF token in meta tag BEFORE fetchBranches call:', metaTokenBeforeFetchBranches);
             const response = await axios.post("/premium/branches/get", {
                 post_id: task.id,
             })
@@ -394,6 +399,8 @@ export function PostFormDialog({
     useEffect(() => {
         const fetchGenerationCount = async () => {
             try {
+                const metaTokenBeforeFetchGenCount = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+                console.log('CSRF token in meta tag BEFORE fetchGenerationCount call:', metaTokenBeforeFetchGenCount);
                 const { data } = await axios.post("/premium/generation/count")
                 if (data) {
                     setGenerationCount(data.generation_count)
@@ -422,6 +429,8 @@ export function PostFormDialog({
     const checkQueueStatus = useCallback(async () => {
         if (!task?.id || !hasPremiumAccess(isPremium)) return
         try {
+            const metaTokenBeforeQueueStatus = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+            console.log('CSRF token in meta tag BEFORE checkQueueStatus call:', metaTokenBeforeQueueStatus);
             const { data } = await axios.post("/premium/queue/status", {
                 post_id: task.id,
             })
@@ -592,6 +601,8 @@ export function PostFormDialog({
                                                                                 if (isOptimizing) return
                                                                                 setIsOptimizing(true)
                                                                                 try {
+                                                                                    const metaTokenBeforeOptimizeDesc = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+                                                                                    console.log('CSRF token in meta tag BEFORE Optimize Description call:', metaTokenBeforeOptimizeDesc);
                                                                                     const { data } = await axios.post("/premium/description/optimise", {
                                                                                         post_id: task.id,
                                                                                     })
@@ -735,6 +746,8 @@ export function PostFormDialog({
                                                                                 if (isGeneratingPR || !task || !task.id) return
                                                                                 setIsGeneratingPR(true)
                                                                                 try {
+                                                                                    const metaTokenBeforeFileStructure = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+                                                                                    console.log('CSRF token in meta tag BEFORE Get File Structure call (for PR):', metaTokenBeforeFileStructure);
                                                                                     const response = await axios.post("/premium/file-structure/get", {
                                                                                         post_id: task.id,
                                                                                     })
@@ -1240,6 +1253,8 @@ export function PostFormDialog({
                         setIsGeneratingPR(true)
 
                         try {
+                            const metaTokenBeforeGeneratePR = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+                            console.log('CSRF token in meta tag BEFORE Generate PR call:', metaTokenBeforeGeneratePR);
                             const { data } = await axios.post("/premium/generate/pr", {
                                 post_id: task.id,
                                 context_files: files,
