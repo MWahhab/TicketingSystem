@@ -99,12 +99,12 @@ const previewStyles = `
 /* Basic mention styling */
 .prose .mention,
 .description-preview .mention {
-    color: #d4d4d8 !important; /* Force the color with !important to prevent overrides */
+    color: #f4f4f5 !important; /* Brighter text (zinc-100) for better contrast */
     background-color: #27272a;
     padding: 0.15em 0.4em;
     border-radius: 0.3em;
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 700; /* Changed from 500 to 700 for bold text */
     display: inline-block;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     font-size: 0.9em;
