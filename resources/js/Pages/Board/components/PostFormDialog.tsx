@@ -415,7 +415,7 @@ export function PostFormDialog({
             <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
                 {!task && (
                     <DialogTrigger asChild>
-                        <Button variant="outline" className="bg-white text-sm text-light text-zinc-900 hover:bg-zinc-100">
+                        <Button variant="outline" className="bg-white text-sm text-light text-zinc-900 hover:bg-zinc-50 hover:text-zinc-800">
                             Create New Post
                         </Button>
                     </DialogTrigger>
