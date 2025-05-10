@@ -8,6 +8,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useBoardContext, type Task } from "../BoardContext"
+import 'highlight.js/styles/atom-one-dark.css'
+import hljs from 'highlight.js'
 
 const priorityColors: { [key in Task["priority"]]: { bg: string; ring: string } } = {
     high: { bg: "bg-red-500", ring: "ring-red-500/30" },
@@ -247,6 +249,12 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
 
     const handleMouseEnterPopoverContent = () => {
         if (leaveTimeoutRef.current) clearTimeout(leaveTimeoutRef.current);
+        
+        setTimeout(() => {
+            document.querySelectorAll('.popover-content pre code').forEach((block) => {
+                hljs.highlightElement(block as HTMLElement);
+            });
+        }, 0);
     };
 
     const handleMouseLeavePopoverContent = () => {
@@ -421,7 +429,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                 side="right"
                 align="start"
                 sideOffset={10} 
-                className="w-96 p-0 bg-zinc-850 border-zinc-700/90 text-zinc-200 shadow-2xl rounded-lg overflow-hidden transition-all duration-150 ease-out flex flex-col"
+                className="w-96 p-0 bg-zinc-850 border-zinc-700/90 text-zinc-200 shadow-2xl rounded-lg overflow-hidden transition-all duration-150 ease-out flex flex-col popover-content"
                 onMouseEnter={handleMouseEnterPopoverContent}
                 onMouseLeave={handleMouseLeavePopoverContent}
                 onEscapeKeyDown={resetFocusState}
@@ -592,6 +600,24 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                 </div>
                 <div className="bg-zinc-900/80 px-3.5 py-2 border-t border-zinc-700/60 mt-auto shrink-0 backdrop-blur-sm">
                 </div>
+                <style jsx global>{`
+                    .popover-content pre {
+                        background-color: #282c34;
+                        color: #abb2bf;
+                        font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+                        padding: 0.75rem 1rem;
+                        margin: 0.5rem 0;
+                        border-radius: 0.3rem;
+                        overflow-x: auto;
+                    }
+                    
+                    .popover-content pre code {
+                        color: inherit;
+                        padding: 0;
+                        background: none;
+                        font-size: 0.85rem;
+                    }
+                `}</style>
             </PopoverContent>
         </Popover>
     )

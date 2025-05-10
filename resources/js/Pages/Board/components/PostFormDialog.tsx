@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor"
 import { FileBrowser } from "./post-form-dialog-components/file-browser"
 import { WatcherButton } from "./post-form-dialog-components/watcher-button"
+import 'highlight.js/styles/github-dark.css'
+import hljs from 'highlight.js'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -77,23 +79,6 @@ interface SimpleEditorAssignee {
     avatar?: string; // Assuming avatar might be part of the structure from context
 }
 
-const DescriptionPreview = React.memo(({ htmlContent }: { htmlContent: string }) => {
-    // console.log("--- DescriptionPreview RENDER ---");
-    // console.log("DescriptionPreview htmlContent (first 50 chars):", htmlContent?.substring(0, 50) + "...");
-    return (
-        <div
-            className="bg-zinc-800 text-white border border-zinc-700 rounded-md p-4 min-h-[200px] prose prose-invert max-w-none overflow-y-auto overflow-x-hidden description-preview"
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
-            style={{
-                whiteSpace: 'normal',
-                wordBreak: 'break-word',
-                letterSpacing: 'normal',
-                overflowWrap: 'break-word',
-            }}
-        />
-    );
-});
-
 // Add mention styles for preview mode
 const previewStyles = `
 /* Basic mention styling */
@@ -116,7 +101,66 @@ const previewStyles = `
     background-color: #3f3f46; /* Slightly lighter than container */
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Code block styling */
+.description-preview pre {
+    background-color: #1e1e1e;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.description-preview pre code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #e4e4e7;
+    display: block;
+    white-space: pre;
+}
+
+.description-preview code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.875rem;
+    background-color: #27272a;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+}
+
+.description-preview .hljs {
+    background: transparent;
+    padding: 0;
+}
 `;
+
+const DescriptionPreview = React.memo(({ htmlContent }: { htmlContent: string }) => {
+    // console.log("--- DescriptionPreview RENDER ---");
+    // console.log("DescriptionPreview htmlContent (first 50 chars):", htmlContent?.substring(0, 50) + "...");
+    
+    useEffect(() => {
+        // Highlight code blocks whenever content changes
+        if (htmlContent) {
+            document.querySelectorAll('.description-preview pre code').forEach((block) => {
+                hljs.highlightElement(block as HTMLElement);
+            });
+        }
+    }, [htmlContent]);
+    
+    return (
+        <div
+            className="bg-zinc-800 text-white border border-zinc-700 rounded-md p-4 min-h-[200px] prose prose-invert max-w-none overflow-y-auto overflow-x-hidden description-preview"
+            dangerouslySetInnerHTML={{ __html: htmlContent }}
+            style={{
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
+                letterSpacing: 'normal',
+                overflowWrap: 'break-word',
+            }}
+        />
+    );
+});
 
 export function PostFormDialog({
                                    boards = [],
@@ -406,6 +450,14 @@ export function PostFormDialog({
         setOpen(false);
         // Single timeout to handle focus restoration
         setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 10);
+    }, []);
+
+    useEffect(() => {
+        // Configure highlight.js once on component mount
+        hljs.configure({
+            languages: ['javascript', 'typescript', 'css', 'html', 'php', 'java', 'python', 'bash', 'json', 'sql'],
+            ignoreUnescapedHTML: true
+        });
     }, []);
 
     // console.log("--- PostFormDialog RENDER END (before return) ---");

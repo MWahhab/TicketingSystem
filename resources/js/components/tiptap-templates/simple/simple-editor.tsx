@@ -15,6 +15,9 @@ import { Superscript } from "@tiptap/extension-superscript"
 import { Underline } from "@tiptap/extension-underline"
 import Mention, { MentionOptions, MentionNodeAttrs } from '@tiptap/extension-mention'
 import { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { createLowlight } from 'lowlight'
+import 'highlight.js/styles/atom-one-dark.css'
 
 // --- Custom Extensions ---
 import { Link } from "@/components/tiptap-extension/link-extension"
@@ -71,6 +74,39 @@ import { useCursorVisibility } from "@/hooks/use-cursor-visibility"
 import "@/components/tiptap-templates/simple/simple-editor.scss"
 import './mention-styles.scss';
 
+// Add custom styles for code blocks to ensure they work well in dark mode
+const codeBlockStyles = `
+.tiptap pre {
+  background-color: #282c34;
+  color: #abb2bf;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-radius: 0.3rem;
+  overflow-x: auto;
+}
+
+.tiptap pre code {
+  color: inherit;
+  padding: 0;
+  background: none;
+  font-size: 0.9rem;
+}
+
+/* Language display */
+.tiptap pre::before {
+  content: attr(data-language);
+  text-transform: uppercase;
+  display: block;
+  text-align: right;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+  color: #9fa6b3;
+  margin-bottom: 0.5rem;
+}
+`;
+
 // --- Modal Content ClassNames ---
 export const MODAL_CONTENT_CLASSNAMES = "p-4 w-full max-w-md";
 
@@ -80,6 +116,27 @@ interface Assignee {
   name: string;
   // avatar?: string;
 }
+
+// Register only the languages we need with lowlight
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import php from 'highlight.js/lib/languages/php'
+import css from 'highlight.js/lib/languages/css'
+import html from 'highlight.js/lib/languages/xml' // html is xml in highlight.js
+import json from 'highlight.js/lib/languages/json'
+import python from 'highlight.js/lib/languages/python'
+
+// Create a lowlight instance with registered languages
+const lowlight = createLowlight()
+lowlight.register('javascript', javascript)
+lowlight.register('js', javascript)
+lowlight.register('typescript', typescript)
+lowlight.register('ts', typescript)
+lowlight.register('php', php)
+lowlight.register('css', css)
+lowlight.register('html', html)
+lowlight.register('json', json)
+lowlight.register('python', python)
 
 interface SimpleEditorProps {
   value: string;
@@ -247,6 +304,19 @@ export function SimpleEditor({ value, onChange, assignees, className }: SimpleEd
   >("main")
   const toolbarRef = React.useRef<HTMLDivElement>(null)
 
+  // Add style element for code block styling
+  React.useEffect(() => {
+    // Add the styles to the document
+    const styleEl = document.createElement('style');
+    styleEl.textContent = codeBlockStyles;
+    document.head.appendChild(styleEl);
+    
+    return () => {
+      // Clean up on unmount
+      document.head.removeChild(styleEl);
+    };
+  }, []);
+
   const editor = useEditor({
     immediatelyRender: false,
     editorProps: {
@@ -332,7 +402,16 @@ export function SimpleEditor({ value, onChange, assignees, className }: SimpleEd
       },
     },
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: false, // Disable default code block
+      }),
+      CodeBlockLowlight.configure({
+        lowlight,
+        defaultLanguage: 'javascript',
+        HTMLAttributes: {
+          class: 'language-js',
+        },
+      }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Underline,
       TaskList,
