@@ -82,7 +82,7 @@ const DescriptionPreview = React.memo(({ htmlContent }: { htmlContent: string })
     // console.log("DescriptionPreview htmlContent (first 50 chars):", htmlContent?.substring(0, 50) + "...");
     return (
         <div
-            className="bg-zinc-800 text-white border border-zinc-700 rounded-md p-4 min-h-[200px] prose prose-invert max-w-none overflow-y-auto overflow-x-hidden"
+            className="bg-zinc-800 text-white border border-zinc-700 rounded-md p-4 min-h-[200px] prose prose-invert max-w-none overflow-y-auto overflow-x-hidden description-preview"
             dangerouslySetInnerHTML={{ __html: htmlContent }}
             style={{
                 whiteSpace: 'normal',
@@ -93,6 +93,30 @@ const DescriptionPreview = React.memo(({ htmlContent }: { htmlContent: string })
         />
     );
 });
+
+// Add mention styles for preview mode
+const previewStyles = `
+/* Basic mention styling */
+.prose .mention,
+.description-preview .mention {
+    color: #d4d4d8 !important; /* Force the color with !important to prevent overrides */
+    background-color: #27272a;
+    padding: 0.15em 0.4em;
+    border-radius: 0.3em;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-block;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    font-size: 0.9em;
+}
+
+/* Ensure mentions stand out in the preview context */
+.bg-zinc-800 .mention,
+.description-preview .mention {
+    background-color: #3f3f46; /* Slightly lighter than container */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+`;
 
 export function PostFormDialog({
                                    boards = [],
@@ -387,6 +411,7 @@ export function PostFormDialog({
     // console.log("--- PostFormDialog RENDER END (before return) ---");
     return (
         <>
+            <style>{previewStyles}</style>
             <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
                 {!task && (
                     <DialogTrigger asChild>
