@@ -248,17 +248,18 @@ export function BoardProvider({
     }, [columnsArray, postsArray, memoizedAssignees])
 
     useEffect(() => {
-        fetch("/premium/status", {
-            headers: {
-                Accept: "application/json",
-            },
-        })
-            .then((res) => res.json())
-            .then((data) => {
+        window.axios.get("/premium/status")
+            .then((response) => {
+                const data = response.data; // Axios wraps response in .data
                 if (typeof data?.data?.isPremium === "string") {
-                    setIsPremium(data.data.isPremium)
+                    setIsPremium(data.data.isPremium);
                 }
             })
+            .catch(error => {
+                console.error("Error fetching premium status:", error);
+                // Optionally set a default or handle the error in the UI
+                // setIsPremium("standard"); // Example: default to standard on error
+            });
     }, [])
 
     const createTask = useCallback(async (taskData: Omit<Task, "id" | "watchers" | "comments" | "history" | "linked_issues" | "created_at" | "updated_at" | "assignee" | "pinned" | "had_branch" | "deadline_color"> & { fid_board: string | number }): Promise<Task | null> => {
@@ -440,23 +441,9 @@ export function BoardProvider({
 
     const deleteTask = useCallback(async (taskId: string): Promise<{deleted_post_id: string; board_id: string} | null> => {
         try {
-            const response = await fetch(`/posts/${taskId}`, {
-                method: "DELETE",
-                headers: {
-                    Accept: "application/json",
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                },
-                credentials: 'same-origin'
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({})); // Catch if body is not JSON
-                console.error("Error deleting task:", errorData);
-                alert(`Error deleting task: ${errorData.message || response.statusText}`);
-                return null;
-            }
-
-            const { deleted_post_id, board_id, message } = await response.json();
+            const response = await window.axios.delete(`/posts/${taskId}`);
+            const { deleted_post_id, board_id, message } = response.data; // Axios puts data in response.data
+            // console.log(message); // Optional: for toast notification or debugging
 
             setTasks(prevTasks => {
                 const newTasks = { ...prevTasks };
@@ -483,8 +470,16 @@ export function BoardProvider({
 
             return { deleted_post_id, board_id };
         } catch (error) {
-            console.error("Network error deleting task:", error);
-            alert("Network error deleting task. Please try again.");
+            console.error("Error deleting task:", error); // Changed from "Network error deleting task:"
+            let errorMessage = "Error deleting task. Please try again.";
+            if (isAxiosError(error) && error.response && error.response.data && typeof error.response.data.message === 'string') {
+                errorMessage = `Error deleting task: ${error.response.data.message}`;
+            } else if (isAxiosError(error) && error.response) {
+                errorMessage = `Error deleting task: ${error.response.statusText}`;
+            } else if (error instanceof Error) {
+                errorMessage = `Error deleting task: ${error.message}`;
+            }
+            alert(errorMessage);
             return null;
         }
     }, [selectedTask]);

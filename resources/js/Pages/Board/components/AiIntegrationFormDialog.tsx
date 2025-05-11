@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select"
 import { Eye, EyeOff, Loader2, Check } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { isAxiosError } from 'axios'
 
 
 const formSchema = z
@@ -102,12 +103,12 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
         setLoading(true)
         setRepositoryError(false)
         setAiIntegrationError(false)
+        setRepositorySuccess(false)
+        setAiIntegrationSuccess(false)
 
-        fetch(`/premiumSettings/board/${boardId}/edit`, {
-            headers: { "X-Requested-With": "XMLHttpRequest" },
-        })
-            .then((res) => (res.ok ? res.json() : null))
-            .then((data) => {
+        window.axios.get(`/premiumSettings/board/${boardId}/edit`)
+            .then((response) => {
+                const data = response.data;
                 if (data) {
                     setAgents(data.agents || [])
                     const settings = data.settings || {}
@@ -119,11 +120,32 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                         aiToken:     settings.ai_token || "",
                     })
                 } else {
-                    form.reset()
+                    form.reset({
+                        copyFrom: "",
+                        githubRepo: "",
+                        githubToken: "",
+                        aiProvider: "",
+                        aiToken: "",
+                    });
                 }
             })
+            .catch(error => {
+                console.error("Error fetching board settings:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not load AI settings for this board.",
+                });
+                form.reset({
+                    copyFrom: "",
+                    githubRepo: "",
+                    githubToken: "",
+                    aiProvider: "",
+                    aiToken: "",
+                });
+            })
             .finally(() => setLoading(false))
-    }, [isOpen])
+    }, [isOpen, boardId, form, toast])
 
     const githubRepo = form.watch("githubRepo")
     const aiProvider = form.watch("aiProvider")
@@ -134,11 +156,10 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
 
     useEffect(() => {
         if (!copyFrom || copyFrom === "") return
-        fetch(`/premiumSettings/board/${copyFrom}/copy`, {
-            headers: { "X-Requested-With": "XMLHttpRequest" },
-        })
-            .then((res) => (res.ok ? res.json() : null))
-            .then((data) => {
+
+        window.axios.get(`/premiumSettings/board/${copyFrom}/copy`)
+            .then((response) => {
+                const data = response.data;
                 if (data) {
                     form.setValue("githubRepo", data.repository_address || "")
                     form.setValue("githubToken", data.repository_token || "")
@@ -151,14 +172,15 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                     })
                 }
             })
-            .catch(() => {
+            .catch((error) => {
+                console.error("Error copying settings:", error);
                 toast({
                     variant: "destructive",
                     title: "Copy failed",
                     description: "Could not load settings from the selected board.",
                 })
             })
-    }, [copyFrom])
+    }, [copyFrom, form, toast])
 
 
     function onSubmit(values: FormValues) {
@@ -181,77 +203,103 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
             ai_token: values.aiToken || null,
         }
 
-        fetch(`/premiumSettings/board/${boardId}/edit`, {
-            headers: { "X-Requested-With": "XMLHttpRequest" },
-        })
-            .then((res) => (res.ok ? res.json() : null))
-            .then((existing) => {
-                const method = existing && existing.settings ? "put" : "post"
-                const url = method === "put" ? `/premiumSettings/${boardId}` : `/premiumSettings`
-                fetch(url, {
-                    method: method.toUpperCase(),
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-Requested-With": "XMLHttpRequest",
-                        "X-CSRF-TOKEN":
-                            document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
-                    },
-                    body: JSON.stringify(payload),
-                })
-                    .then((response) => response.json())
-                    .then((dataArray) => {
-                        let repoValid = false
-                        let aiValid = false
+        window.axios.get(`/premiumSettings/board/${boardId}/edit`)
+            .then(existingResponse => {
+                const existingSettings = existingResponse.data;
+                const method = existingSettings && existingSettings.settings ? "put" : "post";
+                const url = method === "put" ? `/premiumSettings/${boardId}` : `/premiumSettings`;
 
-                        dataArray.forEach((item: ApiResponseItem) => {
-                            if (item.json.integration === "repository") {
-                                const success = item.json.statusCode === 200
-                                repoValid = success
-                                setRepositorySuccess(success)
-                                setRepositoryError(!success)
-                            }
-                            if (item.json.integration === "ai_integration") {
-                                const success = item.json.statusCode === 200
-                                aiValid = success
-                                setAiIntegrationSuccess(success)
-                                setAiIntegrationError(!success)
-                            }
-                        })
+                const requestPromise = method === "put"
+                    ? window.axios.put(url, payload)
+                    : window.axios.post(url, payload);
+
+                requestPromise
+                    .then((response) => {
+                        const dataArray = response.data;
+                        let repoValid = false;
+                        let aiValid = false;
+
+                        if (Array.isArray(dataArray)) {
+                            dataArray.forEach((item: ApiResponseItem) => {
+                                if (item.json.integration === "repository") {
+                                    const success = item.json.statusCode === 200;
+                                    repoValid = success;
+                                    setRepositorySuccess(success);
+                                    setRepositoryError(!success);
+                                }
+                                if (item.json.integration === "ai_integration") {
+                                    const success = item.json.statusCode === 200;
+                                    aiValid = success;
+                                    setAiIntegrationSuccess(success);
+                                    setAiIntegrationError(!success);
+                                }
+                            });
+                        } else {
+                            console.warn("API response was not an array:", dataArray);
+                            setRepositoryError(true);
+                            setAiIntegrationError(true);
+                        }
+
+                        if (!values.githubRepo) {
+                            repoValid = true;
+                            setRepositorySuccess(false);
+                            setRepositoryError(false);
+                        }
 
                         if (!repoValid) {
                             toast({
                                 variant: "destructive",
                                 title: "Repository integration failed",
                                 description: "Could not authenticate with the provided repository credentials.",
-                            })
+                            });
                         }
                         if (!aiValid) {
                             toast({
                                 variant: "destructive",
                                 title: "AI integration failed",
                                 description: "Could not authenticate with the provided AI credentials.",
-                            })
+                            });
                         }
-                        if (repoValid && aiValid) {
-                            toast({ variant: "success", title: "AI settings saved" })
-                            setIsSuccess(true)
+                        const overallSuccess = (values.githubRepo ? repoValid : true) && aiValid;
+
+                        if (overallSuccess) {
+                            toast({ variant: "success", title: "AI settings saved" });
+                            setIsSuccess(true);
                             setTimeout(() => {
-                                onClose()
-                                setIsSuccess(false)
-                            }, 1500)
+                                onClose();
+                                setIsSuccess(false);
+                            }, 1500);
+                        } else {
+                            
                         }
                     })
-                    .catch(() => {
+                    .catch((error) => {
+                        console.error("Error saving AI settings:", error);
+                        let errorMessage = "An unexpected error occurred.";
+                        if (isAxiosError(error) && error.response && error.response.data) {
+                            errorMessage = error.response.data.message || error.response.data.error || errorMessage;
+                        }
                         toast({
                             variant: "destructive",
                             title: "Save failed",
-                            description: "An unexpected error occurred.",
-                        })
+                            description: errorMessage,
+                        });
+                        setRepositoryError(true);
+                        setAiIntegrationError(true);
                     })
                     .finally(() => {
-                        setSubmitting(false)
-                    })
+                        setSubmitting(false);
+                    });
             })
+            .catch(error => {
+                console.error("Error checking existing settings:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not verify existing settings before saving.",
+                });
+                setSubmitting(false);
+            });
     }
 
 
