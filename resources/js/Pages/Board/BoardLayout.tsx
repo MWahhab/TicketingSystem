@@ -21,6 +21,7 @@ import { AISettingsDialog } from "@/Pages/Board/components/AiIntegrationFormDial
 
 import { BoardProvider, useBoardContext, type Assignee } from "./BoardContext"
 import {clsx} from "clsx";
+import BoardEventsBridge from "@/Pages/Board/BoardEventsBridge";
 
 const PreventCloseMenuItem = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<typeof DropdownMenuItem>>(
     ({ children, ...props }, forwardedRef) => (
@@ -68,6 +69,7 @@ export function BoardLayout() {
             dateField={pageProps.dateField}
         >
             <InnerBoardLayout />
+            <BoardEventsBridge />
         </BoardProvider>
     )
 }

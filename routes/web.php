@@ -54,6 +54,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/activity/{post}', [NotificationController::class, 'getActivityHistory']);
     Route::post('/api/notifications/mark-as-seen', [NotificationController::class, 'markAsSeen']);
 
+    Route::get('/test-broadcast', function () {
+        $event = new \App\Events\TestBroadcast(1);
+
+        logger('📦 Dispatching TestBroadcast', ['class' => $event::class]);
+
+        broadcast($event); // or: event($event)
+
+        return 'ok';
+    });
+
     // PREMIUM ROUTE
     if (is_dir(base_path('PremiumAddons'))) {
         Route::resource('premiumSettings', PremiumSettingsController::class);

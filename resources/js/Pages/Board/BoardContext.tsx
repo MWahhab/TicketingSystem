@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { router } from "@inertiajs/react"
 import type { DropResult } from "react-beautiful-dnd"
 import { isAxiosError } from 'axios';
+import StateMachine from "@/utils/state-machine";
+
 
 export interface Board {
     id: string
@@ -248,6 +250,88 @@ export function BoardProvider({
     }, [columnsArray, postsArray, memoizedAssignees])
 
     useEffect(() => {
+        StateMachine.define("CardMoved", ({ post_id, new_column_id, title, desc, deadline, pinned, priority, assignee_id, assignee_name }) => {
+            const taskId = String(post_id);
+            const eventTargetColumnId = String(new_column_id); // Column ID from the event
+
+            // First, update the task's own data, including its intended column
+            setTasks(prevTasks => {
+                const task = prevTasks[taskId];
+                if (!task) return prevTasks; // Task not found, do nothing
+                return {
+                    ...prevTasks,
+                    [taskId]: {
+                        ...task,
+                        column: eventTargetColumnId, // Update task's own column property
+                        title: title,
+                        desc: desc, // Update description
+                        deadline: deadline,
+                        pinned: pinned,
+                        priority: priority as Task["priority"],
+                        assignee_id: String(assignee_id),
+                        assignee: { name: assignee_name }
+                    }
+                };
+            });
+
+            // Then, update the columns structure if the task actually moved
+            // or needs to be placed correctly if it was somehow not in any column list.
+            setColumns(prevColumns => {
+                let currentColumnIdOfTaskInStructure: string | null = null;
+                for (const colId in prevColumns) {
+                    if (prevColumns[colId].taskIds.includes(taskId)) {
+                        currentColumnIdOfTaskInStructure = colId;
+                        break;
+                    }
+                }
+
+                // If the task's reported column from the event is different from where it is in the columns structure,
+                // or if it wasn't found in any column structure but should be in the eventTargetColumnId.
+                if (currentColumnIdOfTaskInStructure !== eventTargetColumnId) {
+                    const newColumnsState = { ...prevColumns };
+
+                    // Remove from old column if it was in one
+                    if (currentColumnIdOfTaskInStructure && newColumnsState[currentColumnIdOfTaskInStructure]) {
+                        newColumnsState[currentColumnIdOfTaskInStructure] = {
+                            ...newColumnsState[currentColumnIdOfTaskInStructure],
+                            taskIds: newColumnsState[currentColumnIdOfTaskInStructure].taskIds.filter(id => id !== taskId)
+                        };
+                    }
+
+                    // Add to new column
+                    if (eventTargetColumnId) { // Ensure target column is valid
+                        if (!newColumnsState[eventTargetColumnId]) {
+                            // If target column doesn't exist in current state, create it.
+                            // This might happen if columns are dynamic or not fully synced.
+                            // For title, ideally, you'd get the actual column title if available.
+                            newColumnsState[eventTargetColumnId] = {
+                                id: eventTargetColumnId,
+                                title: eventTargetColumnId, // Placeholder title
+                                taskIds: [taskId]
+                            };
+                        } else {
+                            // Add to existing target column if not already present
+                            if (!newColumnsState[eventTargetColumnId].taskIds.includes(taskId)) {
+                                newColumnsState[eventTargetColumnId] = {
+                                    ...newColumnsState[eventTargetColumnId],
+                                    taskIds: [...newColumnsState[eventTargetColumnId].taskIds, taskId]
+                                };
+                            }
+                        }
+                    }
+                    return newColumnsState; // Return the modified columns
+                }
+
+                // If the task didn't change its column structurally, return the previous columns state.
+                // The re-render for task *attribute* changes is driven by the `setTasks` update.
+                return prevColumns;
+            });
+        });
+
+        return () => StateMachine.reset();
+    }, [memoizedAssignees]); // Dependencies for the effect hook
+
+    useEffect(() => {
         window.axios.get("/premium/status")
             .then((response) => {
                 const data = response.data; // Axios wraps response in .data
@@ -335,7 +419,7 @@ export function BoardProvider({
         try {
             const response = await window.axios.put(`/posts/${taskId}`, taskData);
 
-            const { post: updatedPostData, message } = response.data;
+            const { post: updatedPostData } = response.data;
             // console.log(message); // Optional: for toast notification or debugging
 
             // Get the task's state *before* this update operation from the existing state.
@@ -358,7 +442,6 @@ export function BoardProvider({
                 id: updatedPostData.id.toString(), // Ensure ID is a string from server data
                 assignee: { name: assigneeName },  // Add resolved assignee name
                 priority: taskPriority,           // Add normalized priority
-                // Ensure related data arrays are initialized or correctly merged from server data or preserved
                 watchers: updatedPostData.watchers || taskAsItWasInState.watchers || [],
                 comments: updatedPostData.comments || taskAsItWasInState.comments || [],
                 history: updatedPostData.history || taskAsItWasInState.history || {},

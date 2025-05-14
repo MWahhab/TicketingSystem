@@ -11,7 +11,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-
 class NotificationController extends Controller
 {
     /**
@@ -32,9 +31,6 @@ class NotificationController extends Controller
         ]);
     }
 
-    /**
-     * @return JsonResponse
-     */
     public function markAsSeen(): JsonResponse
     {
         $userId = Auth::id();
@@ -94,16 +90,16 @@ class NotificationController extends Controller
 
         $seenContent = [];
         foreach ($rawNotifications as $index => $notification) {
-            if (str_contains($notification['content'], 'mention')) {
+            if (str_contains((string) $notification['content'], 'mention')) {
                 unset($rawNotifications[$index]);
 
                 continue;
             }
 
-            $position = strpos($notification['content'], ' on post');
+            $position = strpos((string) $notification['content'], ' on post');
 
             if ($position !== false) {
-                $rawNotifications[$index]['content'] = substr($notification['content'], 0, $position);
+                $rawNotifications[$index]['content'] = substr((string) $notification['content'], 0, $position);
             }
 
             if (!isset($seenContent[$rawNotifications[$index]['content']])) {

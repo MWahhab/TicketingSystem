@@ -19,13 +19,8 @@ use PremiumAddons\services\PRQueueService;
 
 class NotificationService
 {
-    const NOTIFICATION_GROUPING_INTERVAL = 5;
+    public const NOTIFICATION_GROUPING_INTERVAL = 5;
 
-    /**
-     * @param Object $object
-     *
-     * @return void
-     */
     public function notify(Object $object): void
     {
         switch ($object) {
@@ -56,11 +51,6 @@ class NotificationService
         }
     }
 
-    /**
-     * @param  Comment $object
-     *
-     * @return array
-     */
     public function parseCommentNotification(Comment $object): array
     {
         $post = Post::find($object->fid_post);
@@ -71,10 +61,10 @@ class NotificationService
         $userIds[$post->assignee_id] = true;
         $userIds[$post->fid_user]    = true;
 
-        $userIds        = $userIds + $this->getWatcherIds($object->fid_post);
+        $userIds += $this->getWatcherIds($object->fid_post);
 
         $truncatedTitle = Str::limit($post->title, 5, '...');
-        $scopeContext   = "#" . $object->fid_post . ": " . $truncatedTitle . $boardName;
+        $scopeContext   = '#' . $object->fid_post . ': ' . $truncatedTitle . $boardName;
 
         $notifications = $this->parseMentions(
             $object->content,
@@ -84,7 +74,7 @@ class NotificationService
             $scopeContext
         );
 
-        foreach ($userIds as $userId => $value) {
+        foreach (array_keys($userIds) as $userId) {
             if ($userId == Auth::id()) {
                 continue;
             }
@@ -92,7 +82,7 @@ class NotificationService
             $notifications[] = [
                 'created_by' => Auth::id(),
                 'type'       => NotificationTypeEnums::COMMENT->value,
-                'content'    => $object->creator->name . " commented on post " . $scopeContext,
+                'content'    => $object->creator->name . ' commented on post ' . $scopeContext,
                 'fid_post'   => $object->fid_post,
                 'fid_board'  => $post->board->id,
                 'fid_user'   => $userId,
@@ -104,18 +94,15 @@ class NotificationService
         return $notifications;
     }
 
-    /**
-     * @param Post   $object
-     * @return array
-     */
     public function parsePostNotification(Post $object): array
     {
         $changes = $object->getChanges();
+        $content = [];
 
         $userIds[$object->assignee_id] = true;
         $userIds[$object->fid_user]    = true;
 
-        $userIds = $userIds + $this->getWatcherIds($object->id);
+        $userIds += $this->getWatcherIds($object->id);
 
         $board          = BoardConfig::find($object->fid_board);
         $boardName      = $board->title;
@@ -135,13 +122,48 @@ class NotificationService
             )];
         } elseif (count($changes) > 0) {
             $content = $this->parsePostChangeNotification($changes, $object, $truncatedTitle, $boardName);
+
+            // Define attributes that should trigger a real-time update via CardMoved event
+            $attributesForRealTimeUpdate = [
+                'column', 'title', 'desc', // desc was not explicitly requested for live update, but often changes with title
+                'assignee_id', 'deadline', 'priority', 'pinned',
+            ];
+
+            $shouldBroadcastUpdate = false;
+            foreach ($attributesForRealTimeUpdate as $attribute) {
+                if (array_key_exists($attribute, $changes)) {
+                    $shouldBroadcastUpdate = true;
+                    break;
+                }
+            }
+
+            if ($shouldBroadcastUpdate) {
+                // If the model exists (it was an update, not a create) and has changes,
+                // refresh it to get the absolute latest attributes before broadcasting.
+                if ($object->exists && count($changes) > 0) {
+                    $object->refresh();
+                }
+
+                // If 'column' changed, use the new value from $changes. Otherwise, use the post's current column.
+                $columnToBroadcast = $changes['column'] ?? $object->column;
+
+                // Log the state before broadcasting
+                logger('Broadcasting CardMoved', [
+                    'post_id'                       => $object->id,
+                    'changed_attributes'            => $changes,
+                    'full_post_object_to_broadcast' => $object->toArray(), // Log the entire post object being used
+                    'column_to_broadcast'           => $columnToBroadcast,
+                ]);
+
+                app(RealTimeSyncService::class)->postMoved($object, $columnToBroadcast);
+            }
         }
 
-        if (empty($content)) {
+        if ($content === []) {
             return [];
         }
 
-        $scopeContext = "#" . $object->id . ":$truncatedTitle ($boardName)";
+        $scopeContext = '#' . $object->id . ":$truncatedTitle ($boardName)";
 
         $notifications = $this->parseMentions(
             $object->desc,
@@ -151,7 +173,7 @@ class NotificationService
             $scopeContext
         );
 
-        foreach ($userIds as $userId => $value) {
+        foreach (array_keys($userIds) as $userId) {
             foreach ($content as $notification) {
                 $notifications[] = [
                     'created_by' => Auth::id(),
@@ -169,13 +191,6 @@ class NotificationService
         return $notifications;
     }
 
-    /**
-     * @param array $changes
-     * @param Post $object
-     * @param string $truncatedTitle
-     * @param $boardName
-     * @return array
-     */
     public function parsePostChangeNotification(array $changes, Post $object, string $truncatedTitle, $boardName): array
     {
         $content = [];
@@ -187,7 +202,7 @@ class NotificationService
                 continue;
             }
 
-            if ($changedColumn == "assignee_id") { // this column needs special formatting and additional information
+            if ($changedColumn == 'assignee_id') { // this column needs special formatting and additional information
                 $assigneeIds = [(int) $object->getOriginal($changedColumn), (int) $newValue];
                 $assignees   = User::whereIn('id', $assigneeIds)->pluck('name', 'id');
 
@@ -203,7 +218,7 @@ class NotificationService
                 continue;
             }
 
-            if ($changedColumn == "fid_board") { // this column needs special formatting and additional information
+            if ($changedColumn == 'fid_board') { // this column needs special formatting and additional information
                 $newBoard = BoardConfig::find($newValue);
 
                 $content[] = sprintf(
@@ -230,12 +245,15 @@ class NotificationService
         return $content;
     }
 
-    /**
-     * @param int   $userId
-     * @return array
-     */
     public function getGroupedNotifications(int $userId): array
     {
+        $cacheService = app(GroupedNotificationCacheService::class);
+        $redisResults = $cacheService->getGroupedNotifications($userId);
+
+        if (!empty($redisResults)) {
+            return $redisResults;
+        }
+
         $rawNotifications = Notification::where('fid_user', $userId)
             ->orderBy('created_at', 'DESC')
             ->take(50)
@@ -281,30 +299,22 @@ class NotificationService
                     'additionalCount' => $count > 1 ? $count - 1 : 0,
                     'seen'            => !is_null($firstNotification->seen_at),
                     'timestamp'       => $firstNotification->created_at->timestamp,
+                    'raw_group'       => array_map(fn ($n) => $n->toArray(), $group),
                 ];
             }
         }
 
-        usort($finalNotifications, function ($a, $b) {
-            return $b['timestamp'] <=> $a['timestamp'];
-        });
+        usort($finalNotifications, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);
 
-        foreach ($finalNotifications as &$fn) {
-            unset($fn['timestamp']);
+        $cacheService->primeFromDatabase($userId, $finalNotifications);
+
+        foreach ($finalNotifications as &$r) {
+            unset($r['timestamp']);
         }
 
         return $finalNotifications;
     }
 
-    /**
-     * @param string                $content
-     * @param NotificationTypeEnums $objectContext
-     * @param int                   $postId
-     * @param int                   $boardId
-     * @param string                $scopeContext
-     *
-     * @return array
-     */
     public function parseMentions(
         string                $content,
         NotificationTypeEnums $objectContext,
@@ -314,7 +324,7 @@ class NotificationService
     ): array {
         $mentions = $this->extractAndCleanSpanContent($content);
 
-        if (empty($mentions)) {
+        if ($mentions === []) {
             return [];
         }
 
@@ -329,7 +339,7 @@ class NotificationService
             $notifications[] = [
                 'created_by' => Auth::id(),
                 'type'       => $objectContext->value,
-                'content'    => "You were mentioned in a " . $objectContext->value . " on $scopeContext",
+                'content'    => 'You were mentioned in a ' . $objectContext->value . " on $scopeContext",
                 'fid_post'   => $postId,
                 'fid_board'  => $boardId,
                 'fid_user'   => $userId,
@@ -341,11 +351,7 @@ class NotificationService
         return $notifications;
     }
 
-    /**
-     * @param string $contents
-     * @return array
-     */
-    function extractAndCleanSpanContent(string $contents): array
+    public function extractAndCleanSpanContent(string $contents): array
     {
         $pattern = '/<span[^>]*>\s*@([^<]+)<\/span>/i';
 
@@ -353,19 +359,13 @@ class NotificationService
 
         $cleanedContents = [];
 
-        if (!empty($matches[1])) {
-            foreach ($matches[1] as $content) {
-                $cleanedContents[] = trim($content);
-            }
+        foreach ($matches[1] as $content) {
+            $cleanedContents[] = trim($content);
         }
 
         return $cleanedContents;
     }
 
-    /**
-     * @param LinkedIssues $object
-     * @return array
-     */
     private function parseLinkedIssueNotification(LinkedIssues $object): array
     {
         if ($object->wasRecentlyCreated) {
@@ -376,7 +376,7 @@ class NotificationService
             $action = 'updated';
         }
 
-        if (!isset($object->fid_origin_post, $object->fid_related_post)) {
+        if ($object->fid_origin_post === null && $object->fid_related_post === null) {
             return [];
         }
 
@@ -389,7 +389,8 @@ class NotificationService
         /** @var Post $relatedPost */
         $relatedPost = $object->relatedPost;
 
-        $userIds     = array_unique(array_merge([
+        $userIds     = array_unique(array_merge(
+            [
                 $object->fid_user,
                 $relatedPost->assignee_id,
                 $relatedPost->fid_user,
@@ -435,10 +436,6 @@ class NotificationService
         return $notifications;
     }
 
-    /**
-     * @param PRQueue $queue
-     * @return array
-     */
     private function parsePRQueueNotifications(PRQueue $queue): array
     {
         /**
@@ -464,7 +461,7 @@ class NotificationService
 
         $now = now();
 
-        return array_map(fn($userId) => [
+        return array_map(fn ($userId) => [
             'created_by' => $actorId,
             'type'       => NotificationTypeEnums::BRANCH->value,
             'content'    => $message,
@@ -512,22 +509,15 @@ class NotificationService
         };
     }
 
-    /**
-     * @param PRQueue $queue
-     * @param array   $changes
-     * @param int     $maxRetries
-     * @return string|null
-     */
     private function classifyQueueEvent(PRQueue $queue, array $changes, int $maxRetries): ?string
     {
-        if (empty($changes)) {
+        if ($changes === []) {
             return 'submitted';
         }
 
-        if (isset($changes['outcome']) &&
+        if (isset($changes['outcome'])     &&
             $queue->retries >= $maxRetries &&
-            $queue->outcome === PRQueueOutcomeEnum::Failure->value)
-        {
+            $queue->outcome === PRQueueOutcomeEnum::Failure->value) {
             return 'max_retries_failed';
         }
 
@@ -538,10 +528,6 @@ class NotificationService
         return null;
     }
 
-    /**
-     * @param int $postId
-     * @return array
-     */
     private function getWatcherIds(int $postId): array
     {
         $watcherIds = [];

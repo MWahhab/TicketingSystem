@@ -58,6 +58,13 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
     const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const moreFiltersButtonRef = useRef<HTMLButtonElement>(null);
 
+    // Force re-rendering when key task properties change by calculating a version key
+    // This ensures the component re-renders even when the parent hasn't changed
+    const taskVersion = useMemo(() => {
+        const { title, priority, deadline, pinned, assignee } = task;
+        return `${title}-${priority}-${deadline || 'none'}-${pinned || 0}-${assignee?.name || 'unassigned'}`;
+    }, [task.title, task.priority, task.deadline, task.pinned, task.assignee?.name]);
+
     const [selectedActivityFilter, setSelectedActivityFilter] = useState<string | null>(null);
     const [isMoreFiltersDropdownOpen, setIsMoreFiltersDropdownOpen] = useState(false);
 
@@ -600,7 +607,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                 </div>
                 <div className="bg-zinc-900/80 px-3.5 py-2 border-t border-zinc-700/60 mt-auto shrink-0 backdrop-blur-sm">
                 </div>
-                <style jsx global>{`
+                <style dangerouslySetInnerHTML={{ __html: `
                     .popover-content pre {
                         background-color: #282c34;
                         color: #abb2bf;
@@ -617,7 +624,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                         background: none;
                         font-size: 0.85rem;
                     }
-                `}</style>
+                `}} />
             </PopoverContent>
         </Popover>
     )

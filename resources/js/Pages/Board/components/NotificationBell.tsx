@@ -56,8 +56,6 @@ const useNotifications = () => {
 
     useEffect(() => {
         fetchNotifications()
-        const interval = setInterval(fetchNotifications, 60000) // Refresh every minute
-        return () => clearInterval(interval)
     }, [])
 
     return { notifications, unseenCount, loading, error, refetch: fetchNotifications }

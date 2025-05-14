@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useMemo } from "react";
+import React, { memo } from "react";
 import {
     Droppable,
     Draggable,
@@ -26,7 +26,7 @@ interface ColumnProps {
 
 export const Column = memo(function Column({ column, tasks }: ColumnProps) {
     const { focusedTaskId } = useBoardContext();
-
+    
     return (
         <Card className="h-full bg-zinc-800/50 border-zinc-700/50 flex flex-col rounded-lg shadow-sm">
             <CardHeader className="p-3 border-b border-white/5">
