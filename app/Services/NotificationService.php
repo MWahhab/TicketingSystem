@@ -324,7 +324,7 @@ class NotificationService
                 return (int)$isMentionB <=> (int)$isMentionA;
             });
 
-            $firstNotificationModel = $groupOfModels[0];
+            $firstNotificationModel = $groupOfModels[0][0];
 
             $finalNotifications[] = [
                 'id'              => $firstNotificationModel->id,
@@ -336,7 +336,7 @@ class NotificationService
                 'additionalCount' => count($groupOfModels) > 1 ? count($groupOfModels) - 1 : 0,
                 'seen'            => !is_null($firstNotificationModel->seen_at),
                 'timestamp'       => $firstNotificationModel->created_at->timestamp,
-                'raw_group'       => array_map(fn ($n) => $n->toArray(), $groupOfModels),
+                'raw_group'       => array_map(fn ($n) => $n->toArray(), array_merge(...$groupOfModels)),
             ];
         }
 

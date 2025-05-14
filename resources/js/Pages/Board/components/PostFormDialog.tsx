@@ -71,15 +71,12 @@ const hasPremiumAccess = (premiumLevel: string): boolean => {
     return premiumLevel === "pro" || premiumLevel === "premium"
 }
 
-// Define the Assignee type expected by SimpleEditor locally if not importable
-// This should match the one in SimpleEditor.tsx
 interface SimpleEditorAssignee {
     id: string;
     name: string;
-    avatar?: string; // Assuming avatar might be part of the structure from context
+    avatar?: string;
 }
 
-// Add mention styles for preview mode
 const previewStyles = `
 /* Basic mention styling */
 .prose .mention,
@@ -136,11 +133,8 @@ const previewStyles = `
 `;
 
 const DescriptionPreview = React.memo(({ htmlContent }: { htmlContent: string }) => {
-    // console.log("--- DescriptionPreview RENDER ---");
-    // console.log("DescriptionPreview htmlContent (first 50 chars):", htmlContent?.substring(0, 50) + "...");
-    
+
     useEffect(() => {
-        // Highlight code blocks whenever content changes
         if (htmlContent) {
             document.querySelectorAll('.description-preview pre code').forEach((block) => {
                 hljs.highlightElement(block as HTMLElement);
@@ -171,8 +165,6 @@ export function PostFormDialog({
                                    authUserId,
                                    isPremium,
                                }: PostFormDialogProps) {
-    // console.log("--- PostFormDialog RENDER START ---");
-    // console.log("Task prop:", task ? `ID: ${task.id}` : "null");
 
     const [isDialogOpen, setIsDialogOpen] = useState(!!task)
 
@@ -193,9 +185,6 @@ export function PostFormDialog({
     const [isFileBrowserOpen, setIsFileBrowserOpen] = useState(false)
     const [selectedPRFiles, setSelectedPRFiles] = useState<string[]>([])
 
-    // console.log("Initial isPreview state:", isPreview);
-    // console.log("Initial isExpanded state:", isExpanded);
-
     const { toast } = useToast()
 
     const [originalDescription, setOriginalDescription] = useState("")
@@ -209,9 +198,7 @@ export function PostFormDialog({
 
     const dialogContentRef = useRef<HTMLDivElement>(null); // Ref for DialogContent
 
-    // Add a function to manage focus within the dialog properly
     const handleDialogInteraction = useCallback(() => {
-        // Don't show focus outline when clicking within the dialog
         if (dialogContentRef.current) {
             dialogContentRef.current.style.outline = 'none';
         }
@@ -243,9 +230,6 @@ export function PostFormDialog({
         resolver: zodResolver(formSchema),
         defaultValues: getInitialFormValues(),
     })
-
-    // console.log("Current form values:", form.getValues());
-    // console.log("Specifically, form.desc:", form.getValues("desc")?.substring(0, 50) + "...");
 
     const { createTask, updateTask, closeDialog: contextCloseDialog, openDialog: contextOpenDialog } = useBoardContext();
 
@@ -299,8 +283,7 @@ export function PostFormDialog({
 
     useEffect(() => {
         if (isDialogOpen) {
-            // Try to focus the dialog content itself when it opens
-            setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 0); 
+            setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 0);
         }
     }, [isDialogOpen]);
 
@@ -378,7 +361,6 @@ export function PostFormDialog({
                 }
             }
         } catch (error) {
-            // console.error("Error fetching branches:", error)
             toast({
                 title: "Error",
                 description: "Failed to load branches",
@@ -443,29 +425,25 @@ export function PostFormDialog({
     }, [checkQueueStatus])
 
     const editorAssignees = useMemo(() => {
-        return assignees.map((a: any) => ({ // Use 'any' for input if original type is complex/conflicting
+        return assignees.map((a: any) => ({
             id: String(a.id),
             name: a.name,
-            // ...(a.avatar && { avatar: a.avatar }), // Conditionally spread avatar if it exists
         })) as SimpleEditorAssignee[];
     }, [assignees]);
 
     const handleSelectChange = useCallback((setValue: (value: string) => void, setOpen: (open: boolean) => void) => (value: string) => {
         setValue(value);
         setOpen(false);
-        // Single timeout to handle focus restoration
         setTimeout(() => dialogContentRef.current?.focus({ preventScroll: true }), 10);
     }, []);
 
     useEffect(() => {
-        // Configure highlight.js once on component mount
         hljs.configure({
             languages: ['javascript', 'typescript', 'css', 'html', 'php', 'java', 'python', 'bash', 'json', 'sql'],
             ignoreUnescapedHTML: true
         });
     }, []);
 
-    // console.log("--- PostFormDialog RENDER END (before return) ---");
     return (
         <>
             <style>{previewStyles}</style>
@@ -488,9 +466,8 @@ export function PostFormDialog({
                         onFocus={handleDialogInteraction}
                         onInteractOutside={(event) => {
                             const target = event.target as HTMLElement;
-                            // Check if the click is on or within the mention suggestions list
                             if (target.closest('.mention-suggestions-list')) {
-                                event.preventDefault(); // Prevent dialog from closing
+                                event.preventDefault();
                             }
                         }}
                         aria-describedby={task ? "post-edit-dialog-description" : "post-create-dialog-description"}
@@ -607,7 +584,6 @@ export function PostFormDialog({
                                                                                         form.setValue("desc", data.description)
                                                                                         setIsDescriptionModified(true)
                                                                                         setIsPreview(true)
-                                                                                        // console.log("Description optimized, isPreview set to:", true);
                                                                                         toast({
                                                                                             title: "Description optimized",
                                                                                             description: "Updated description has been set, but not saved yet.",
@@ -705,7 +681,6 @@ export function PostFormDialog({
                                                                                     form.setValue("desc", originalDescription);
                                                                                     setIsDescriptionModified(false);
                                                                                     setIsPreview(true);
-                                                                                    // console.log("Description restored, isPreview set to:", true);
                                                                                     toast({
                                                                                         title: "Description restored",
                                                                                         description: "Original description has been restored.",
@@ -840,7 +815,6 @@ export function PostFormDialog({
                                                                         e.preventDefault()
                                                                         e.stopPropagation()
                                                                         setIsPreview(!isPreview)
-                                                                        // console.log("Toggled isPreview to:", !isPreview);
                                                                     }}
                                                                     className="border border-white/10 bg-transparent text-zinc-300 hover:bg-amber-800/30 hover:text-amber-200 hover:ring-1 hover:ring-amber-500/50 rounded-md px-2.5 py-0.5 text-xs flex items-center gap-1 transition-all focus-visible:ring-offset-zinc-950 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                                                                     title={isPreview ? "Edit" : "Preview"}
