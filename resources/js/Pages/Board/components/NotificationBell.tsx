@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import axios from "axios"
 import { useBoardContext } from "../BoardContext"
 import { router } from "@inertiajs/react"
+import StateMachine from "@/utils/state-machine"
+import type { RawNotificationPayload } from "@/utils/state-machine"
 
 interface Notification {
     id: string
@@ -58,7 +60,7 @@ const useNotifications = () => {
         fetchNotifications()
     }, [])
 
-    return { notifications, unseenCount, loading, error, refetch: fetchNotifications }
+    return { notifications, unseenCount, setUnseenCount, loading, error, refetch: fetchNotifications }
 }
 
 /**
@@ -67,13 +69,24 @@ const useNotifications = () => {
  */
 export default function InlineNotificationCenter() {
     const { boardId: currentBoardId, openDialog } = useBoardContext()
-    const { notifications, unseenCount, loading, error, refetch } = useNotifications()
+    const { notifications, unseenCount, setUnseenCount, loading, error, refetch } = useNotifications()
     const [isOpen, setIsOpen] = useState(false)
     const [dimensions, setDimensions] = useState({ width: 320, height: 450 }) // Initial dimensions (w-80 is 320px)
     const [isResizing, setIsResizing] = useState(false)
     const resizeRef = useRef<HTMLDivElement>(null) // Ref for the resizable container
     const startPos = useRef({ x: 0, y: 0 })
     const startSize = useRef({ width: 0, height: 0 })
+
+    useEffect(() => {
+        const dispose = StateMachine.define('UserNotificationReceived', (payload: { notification: RawNotificationPayload }) => {
+            refetch(); 
+            setUnseenCount(prevCount => prevCount + 1); 
+        });
+
+        return () => {
+            dispose();
+        };
+    }, [refetch, setUnseenCount]);
 
     const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
         setIsResizing(true)

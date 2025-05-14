@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\NotificationTypeEnums;
+use App\Events\UserNotificationReceived;
 use App\Models\BoardConfig;
 use App\Models\Comment;
 use App\Models\LinkedIssues;
@@ -23,31 +24,48 @@ class NotificationService
 
     public function notify(Object $object): void
     {
+        $preparedNotificationsData        = [];
+        $cacheService                     = app(GroupedNotificationCacheService::class);
+        $newlyNotifiedMentionTextsForPost = [];
+
         switch ($object) {
             case $object instanceof Comment:
-                $notifications = $this->parseCommentNotification($object);
-                Notification::insert($notifications);
-
+                $preparedNotificationsData = $this->parseCommentNotification($object);
                 break;
             case $object instanceof Post:
-                $notifications = $this->parsePostNotification($object);
-                Notification::insert($notifications);
-
+                $postProcessingResult             = $this->parsePostNotification($object);
+                $preparedNotificationsData        = $postProcessingResult['notifications'];
+                $newlyNotifiedMentionTextsForPost = $postProcessingResult['newlyNotifiedTexts'];
                 break;
             case $object instanceof LinkedIssues:
-                $notifications = $this->parseLinkedIssueNotification($object);
-                Notification::insert($notifications);
-
+                $preparedNotificationsData = $this->parseLinkedIssueNotification($object);
                 break;
             case $object instanceof BoardConfig:
-
                 break;
             case is_dir(base_path('PremiumAddons')) && $object instanceof PRQueue:
-                $notifications = $this->parsePRQueueNotifications($object);
-                Notification::insert($notifications);
+                $preparedNotificationsData = $this->parsePRQueueNotifications($object);
                 break;
             default:
                 throw new \InvalidArgumentException('Unsupported object type for notification.');
+        }
+
+        if (!empty($preparedNotificationsData)) {
+            Notification::insert($preparedNotificationsData);
+
+            foreach ($preparedNotificationsData as $notificationArrayWithoutId) {
+                if (isset($notificationArrayWithoutId['fid_user'], $notificationArrayWithoutId['fid_post'])) {
+                    $cacheService->pushNotification(
+                        (int)$notificationArrayWithoutId['fid_user'],
+                        (int)$notificationArrayWithoutId['fid_post'],
+                        $notificationArrayWithoutId
+                    );
+                    event(new UserNotificationReceived((int)$notificationArrayWithoutId['fid_user'], $notificationArrayWithoutId));
+                }
+            }
+
+            if ($object instanceof Post && !empty($newlyNotifiedMentionTextsForPost)) {
+                $this->updatePostDescriptionWithNotifiedMentions($object, $newlyNotifiedMentionTextsForPost);
+            }
         }
     }
 
@@ -86,8 +104,9 @@ class NotificationService
                 'fid_post'   => $object->fid_post,
                 'fid_board'  => $post->board->id,
                 'fid_user'   => $userId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+                'is_mention' => false,
             ];
         }
 
@@ -96,24 +115,50 @@ class NotificationService
 
     public function parsePostNotification(Post $object): array
     {
-        $changes = $object->getChanges();
-        $content = [];
+        $changes               = $object->getChanges();
+        $finalNotifications    = [];
+        $allNewlyNotifiedTexts = [];
 
         $userIds[$object->assignee_id] = true;
         $userIds[$object->fid_user]    = true;
-
         $userIds += $this->getWatcherIds($object->id);
 
         $board          = BoardConfig::find($object->fid_board);
         $boardName      = $board->title;
-
-        $fiveMinutesAgo = Carbon::now()->subMinutes(5);
-        $postCreatedAt  = Carbon::parse($object->created_at);
-
         $truncatedTitle = Str::limit($object->title, 5, '...');
+        $scopeContext   = '#' . $object->id . ':' . $truncatedTitle . ' (' . $boardName . ')';
 
-        if (empty($changes) && $postCreatedAt->gte($fiveMinutesAgo)) {
-            $content = [sprintf(
+        $descriptionForMentionParsing = $object->desc;
+
+        if (isset($changes['desc'])) {
+            $changeEntryForDesc = $changes['desc'];
+
+            if (is_array($changeEntryForDesc) && count($changeEntryForDesc) === 2 && array_key_exists(0, $changeEntryForDesc) && array_key_exists(1, $changeEntryForDesc)) {
+                $descriptionForMentionParsing = $changeEntryForDesc[1];
+            } else {
+                $descriptionForMentionParsing = $changeEntryForDesc;
+            }
+        } elseif ($object->wasRecentlyCreated && array_key_exists('desc', $object->getAttributes())) {
+            $descriptionForMentionParsing = $object->getAttributes()['desc'];
+        }
+
+        $mentionsResult = $this->parseMentions(
+            $descriptionForMentionParsing,
+            NotificationTypeEnums::POST,
+            $object->id,
+            $object->fid_board,
+            $scopeContext
+        );
+
+        $finalNotifications    = array_merge($finalNotifications, $mentionsResult['notifications']);
+        $allNewlyNotifiedTexts = array_merge($allNewlyNotifiedTexts, $mentionsResult['newlyNotifiedTexts']);
+
+        $generatedContentForChanges = [];
+        $fiveMinutesAgo             = Carbon::now()->subMinutes(5);
+        $postCreatedAt              = Carbon::parse($object->created_at);
+
+        if (empty($changes) && $object->wasRecentlyCreated && $postCreatedAt->gte($fiveMinutesAgo)) {
+            $generatedContentForChanges = [sprintf(
                 '%s created a new post #%d: %s (%s)',
                 $object->creator->name,
                 $object->id,
@@ -121,14 +166,12 @@ class NotificationService
                 $boardName
             )];
         } elseif (count($changes) > 0) {
-            $content = $this->parsePostChangeNotification($changes, $object, $truncatedTitle, $boardName);
+            $generatedContentForChanges = $this->parsePostChangeNotification($changes, $object, $truncatedTitle, $boardName);
 
-            // Define attributes that should trigger a real-time update via CardMoved event
             $attributesForRealTimeUpdate = [
-                'column', 'title', 'desc', // desc was not explicitly requested for live update, but often changes with title
+                'column', 'title', 'desc',
                 'assignee_id', 'deadline', 'priority', 'pinned',
             ];
-
             $shouldBroadcastUpdate = false;
             foreach ($attributesForRealTimeUpdate as $attribute) {
                 if (array_key_exists($attribute, $changes)) {
@@ -136,59 +179,38 @@ class NotificationService
                     break;
                 }
             }
-
             if ($shouldBroadcastUpdate) {
-                // If the model exists (it was an update, not a create) and has changes,
-                // refresh it to get the absolute latest attributes before broadcasting.
                 if ($object->exists && count($changes) > 0) {
                     $object->refresh();
                 }
-
-                // If 'column' changed, use the new value from $changes. Otherwise, use the post's current column.
                 $columnToBroadcast = $changes['column'] ?? $object->column;
-
-                // Log the state before broadcasting
-                logger('Broadcasting CardMoved', [
-                    'post_id'                       => $object->id,
-                    'changed_attributes'            => $changes,
-                    'full_post_object_to_broadcast' => $object->toArray(), // Log the entire post object being used
-                    'column_to_broadcast'           => $columnToBroadcast,
-                ]);
-
                 app(RealTimeSyncService::class)->postMoved($object, $columnToBroadcast);
             }
         }
 
-        if ($content === []) {
-            return [];
-        }
+        if ($generatedContentForChanges !== []) {
+            foreach (array_keys($userIds) as $userId) {
+                if ($userId == Auth::id() && !$object->wasRecentlyCreated && !($object->assignee_id == Auth::id() && array_key_exists('assignee_id', $changes))) {
+                    continue;
+                }
 
-        $scopeContext = '#' . $object->id . ":$truncatedTitle ($boardName)";
-
-        $notifications = $this->parseMentions(
-            $object->desc,
-            NotificationTypeEnums::POST,
-            $object->id,
-            $object->fid_board,
-            $scopeContext
-        );
-
-        foreach (array_keys($userIds) as $userId) {
-            foreach ($content as $notification) {
-                $notifications[] = [
-                    'created_by' => Auth::id(),
-                    'type'       => NotificationTypeEnums::POST->value,
-                    'content'    => $notification,
-                    'fid_post'   => $object->id,
-                    'fid_board'  => $object->fid_board,
-                    'fid_user'   => $userId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+                foreach ($generatedContentForChanges as $notificationMessage) {
+                    $finalNotifications[] = [
+                        'created_by' => Auth::id(),
+                        'type'       => NotificationTypeEnums::POST->value,
+                        'content'    => $notificationMessage,
+                        'fid_post'   => $object->id,
+                        'fid_board'  => $object->fid_board,
+                        'fid_user'   => $userId,
+                        'created_at' => now()->toIso8601String(),
+                        'updated_at' => now()->toIso8601String(),
+                        'is_mention' => false,
+                    ];
+                }
             }
         }
 
-        return $notifications;
+        return ['notifications' => $finalNotifications, 'newlyNotifiedTexts' => array_unique($allNewlyNotifiedTexts)];
     }
 
     public function parsePostChangeNotification(array $changes, Post $object, string $truncatedTitle, $boardName): array
@@ -196,13 +218,11 @@ class NotificationService
         $content = [];
         foreach ($changes as $changedColumn => $newValue) {
 
-            // no need to create a notification for this, we can just read the created_at timestamp
-            // of other notifications
             if ($changedColumn == 'updated_at') {
                 continue;
             }
 
-            if ($changedColumn == 'assignee_id') { // this column needs special formatting and additional information
+            if ($changedColumn == 'assignee_id') {
                 $assigneeIds = [(int) $object->getOriginal($changedColumn), (int) $newValue];
                 $assignees   = User::whereIn('id', $assigneeIds)->pluck('name', 'id');
 
@@ -218,7 +238,7 @@ class NotificationService
                 continue;
             }
 
-            if ($changedColumn == 'fid_board') { // this column needs special formatting and additional information
+            if ($changedColumn == 'fid_board') {
                 $newBoard = BoardConfig::find($newValue);
 
                 $content[] = sprintf(
@@ -284,24 +304,36 @@ class NotificationService
 
         $finalNotifications = [];
 
-        foreach ($groupedByPost as $groups) {
-            foreach ($groups as $group) {
-                $firstNotification = $group[0];
-                $count             = count($group);
-
-                $finalNotifications[] = [
-                    'id'              => $firstNotification->id,
-                    'fid_post'        => $firstNotification->fid_post,
-                    'fid_board'       => $firstNotification->fid_board,
-                    'content'         => $firstNotification->content,
-                    'time'            => $firstNotification->created_at->diffForHumans(),
-                    'type'            => $firstNotification->type,
-                    'additionalCount' => $count > 1 ? $count - 1 : 0,
-                    'seen'            => !is_null($firstNotification->seen_at),
-                    'timestamp'       => $firstNotification->created_at->timestamp,
-                    'raw_group'       => array_map(fn ($n) => $n->toArray(), $group),
-                ];
+        foreach ($groupedByPost as $groupOfModels) {
+            if ($groupOfModels === []) {
+                continue;
             }
+
+            usort($groupOfModels, function ($a, $b) {
+                if ($b->created_at->timestamp !== $a->created_at->timestamp) {
+                    return $b->created_at->timestamp <=> $a->created_at->timestamp;
+                }
+
+                $isMentionA = ($a->is_mention ?? false);
+                $isMentionB = ($b->is_mention ?? false);
+
+                return (int)$isMentionB <=> (int)$isMentionA;
+            });
+
+            $firstNotificationModel = $groupOfModels[0];
+
+            $finalNotifications[] = [
+                'id'              => $firstNotificationModel->id,
+                'fid_post'        => $firstNotificationModel->fid_post,
+                'fid_board'       => $firstNotificationModel->fid_board,
+                'content'         => $firstNotificationModel->content,
+                'time'            => $firstNotificationModel->created_at->diffForHumans(),
+                'type'            => $firstNotificationModel->type,
+                'additionalCount' => count($groupOfModels) > 1 ? count($groupOfModels) - 1 : 0,
+                'seen'            => !is_null($firstNotificationModel->seen_at),
+                'timestamp'       => $firstNotificationModel->created_at->timestamp,
+                'raw_group'       => array_map(fn ($n) => $n->toArray(), $groupOfModels),
+            ];
         }
 
         usort($finalNotifications, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);
@@ -322,48 +354,90 @@ class NotificationService
         int                   $boardId,
         string                $scopeContext
     ): array {
-        $mentions = $this->extractAndCleanSpanContent($content);
+        $extractedMentions = $this->extractAndCleanSpanContent($content);
 
-        if ($mentions === []) {
-            return [];
+        if ($extractedMentions === []) {
+            return ['notifications' => [], 'newlyNotifiedTexts' => []];
         }
 
-        $notifications    = [];
-        $mentionedUserIds = User::whereIn('name', $mentions)->pluck('id')->toArray();
+        $notificationsToReturn     = [];
+        $newlyNotifiedMentionTexts = [];
 
-        if (empty($mentionedUserIds)) {
-            return [];
+        $mentionsToConsider = array_filter($extractedMentions, fn ($mention) => !$mention['notified']);
+        $userNamesToQuery   = array_column($mentionsToConsider, 'text');
+
+        if ($userNamesToQuery === []) {
+            return ['notifications' => [], 'newlyNotifiedTexts' => []];
         }
 
-        foreach ($mentionedUserIds as $userId) {
-            $notifications[] = [
-                'created_by' => Auth::id(),
-                'type'       => $objectContext->value,
-                'content'    => 'You were mentioned in a ' . $objectContext->value . " on $scopeContext",
-                'fid_post'   => $postId,
-                'fid_board'  => $boardId,
-                'fid_user'   => $userId,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+        $mentionedUsers = User::whereIn('name', array_unique($userNamesToQuery))->pluck('id', 'name')->toArray();
+
+        if (empty($mentionedUsers)) {
+            return ['notifications' => [], 'newlyNotifiedTexts' => []];
         }
 
-        return $notifications;
+        foreach ($mentionsToConsider as $mention) {
+            $userName = $mention['text'];
+            if (isset($mentionedUsers[$userName])) {
+                $userId = $mentionedUsers[$userName];
+
+                if ($userId == Auth::id()) {
+                    continue;
+                }
+
+                $notificationsToReturn[] = [
+                    'created_by' => Auth::id(),
+                    'type'       => $objectContext->value,
+                    'content'    => 'You were mentioned in a ' . $objectContext->value . " on $scopeContext",
+                    'fid_post'   => $postId,
+                    'fid_board'  => $boardId,
+                    'fid_user'   => $userId,
+                    'created_at' => now()->toIso8601String(),
+                    'updated_at' => now()->toIso8601String(),
+                    'is_mention' => true,
+                ];
+                $newlyNotifiedMentionTexts[] = $userName;
+            }
+        }
+
+        return ['notifications' => $notificationsToReturn, 'newlyNotifiedTexts' => array_unique($newlyNotifiedMentionTexts)];
     }
 
     public function extractAndCleanSpanContent(string $contents): array
     {
-        $pattern = '/<span[^>]*>\s*@([^<]+)<\/span>/i';
-
-        preg_match_all($pattern, $contents, $matches);
-
-        $cleanedContents = [];
-
-        foreach ($matches[1] as $content) {
-            $cleanedContents[] = trim($content);
+        if (in_array(trim($contents), ['', '0'], true)) {
+            return [];
         }
 
-        return $cleanedContents;
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+
+        if (!$dom->loadHTML('<?xml encoding="utf-8" ?><body>' . $contents . '</body>')) {
+            libxml_clear_errors();
+            return [];
+        }
+        libxml_clear_errors();
+
+        $xpath = new \DOMXPath($dom);
+        $spans = $xpath->query("//span[@data-type='mention']");
+
+        $extractedMentions = [];
+        if ($spans) {
+            foreach ($spans as $spanNode) {
+                if ($spanNode instanceof \DOMElement) {
+                    $text = trim((string) $spanNode->nodeValue);
+                    if (str_starts_with($text, '@')) {
+                        $username            = substr($text, 1);
+                        $notified            = $spanNode->hasAttribute('data-notified') && $spanNode->getAttribute('data-notified') === 'true';
+                        $extractedMentions[] = [
+                            'text'     => $username,
+                            'notified' => $notified,
+                        ];
+                    }
+                }
+            }
+        }
+        return $extractedMentions;
     }
 
     private function parseLinkedIssueNotification(LinkedIssues $object): array
@@ -380,7 +454,6 @@ class NotificationService
             return [];
         }
 
-        // 3. Eager-load relationships before building the notification.
         $object->load(['creator', 'post', 'relatedPost']);
 
         /** @var Post $post */
@@ -428,8 +501,9 @@ class NotificationService
                 'fid_post'   => $post->id,
                 'fid_board'  => $post->fid_board,
                 'fid_user'   => $userId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+                'is_mention' => false,
             ];
         }
 
@@ -459,7 +533,8 @@ class NotificationService
             array_keys($this->getWatcherIds($post->id))
         ));
 
-        $now = now();
+        $now    = now();
+        $nowIso = $now->toIso8601String();
 
         return array_map(fn ($userId) => [
             'created_by' => $actorId,
@@ -468,8 +543,9 @@ class NotificationService
             'fid_post'   => $post->id,
             'fid_board'  => $post->fid_board,
             'fid_user'   => $userId,
-            'created_at' => $now,
-            'updated_at' => $now,
+            'created_at' => $nowIso,
+            'updated_at' => $nowIso,
+            'is_mention' => false,
         ], $recipientIds);
     }
 
@@ -541,5 +617,59 @@ class NotificationService
         }
 
         return $watcherIds;
+    }
+
+    protected function updatePostDescriptionWithNotifiedMentions(Post $post, array $newlyNotifiedTexts): void
+    {
+        if ($newlyNotifiedTexts === []) {
+            return;
+        }
+
+        $currentDesc = $post->desc;
+        if (in_array(trim($currentDesc), ['', '0'], true)) {
+            return;
+        }
+
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        if (!$dom->loadHTML('<?xml encoding="utf-8" ?><body>' . $currentDesc . '</body>')) {
+            libxml_clear_errors();
+            return;
+        }
+        libxml_clear_errors();
+
+        $xpath = new \DOMXPath($dom);
+        $spans = $xpath->query("//span[@data-type='mention']");
+
+        $modified = false;
+        if ($spans && $spans->length > 0) {
+            foreach ($spans as $spanNode) {
+                if ($spanNode instanceof \DOMElement) {
+                    $text = trim((string) $spanNode->nodeValue);
+                    if (str_starts_with($text, '@')) {
+                        $username = substr($text, 1);
+                        if (in_array($username, $newlyNotifiedTexts) && (!$spanNode->hasAttribute('data-notified') || $spanNode->getAttribute('data-notified') !== 'true')) {
+                            $spanNode->setAttribute('data-notified', 'true');
+                            $modified = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($modified) {
+            $bodyNode = $dom->getElementsByTagName('body')->item(0);
+            $newDesc  = '';
+            if ($bodyNode && $bodyNode->hasChildNodes()) {
+                foreach ($bodyNode->childNodes as $child) {
+                    $newDesc .= $dom->saveHTML($child);
+                }
+            }
+
+            if (!in_array(trim($newDesc), ['', '0'], true)) {
+                $post->desc = $newDesc;
+                $post->saveQuietly();
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Redis;
 
 class GroupedNotificationCacheService
@@ -21,20 +22,14 @@ class GroupedNotificationCacheService
         $prefix   = $this->prefix($userId);
         $groupKey = "{$prefix}:p:$postId";
         $indexKey = "{$prefix}:index";
-        $seenKey  = "{$groupKey}:seen";
 
-        $group = Redis::exists($groupKey)
+        $rawGroup = Redis::exists($groupKey)
             ? json_decode(Redis::get($groupKey), true)
             : [];
 
-        // Invalidate seen if pushing into an already-seen group
-        if (Redis::exists($groupKey) && Redis::exists($seenKey)) {
-            Redis::del($seenKey);
-        }
+        array_unshift($rawGroup, $notification);
 
-        array_unshift($group, $notification);
-
-        Redis::set($groupKey, json_encode($group));
+        Redis::set($groupKey, json_encode($rawGroup));
         Redis::zadd($indexKey, now()->timestamp, (string)$postId);
 
         $this->enforceGroupLimit($userId);
@@ -55,7 +50,6 @@ class GroupedNotificationCacheService
 
         foreach ($toEvict as $postId) {
             Redis::del("{$prefix}:p:$postId");
-            Redis::del("{$prefix}:p:$postId:seen");
             Redis::zrem($indexKey, (string)$postId);
         }
     }
@@ -65,39 +59,87 @@ class GroupedNotificationCacheService
      */
     public function getGroupedNotifications(int $userId): array
     {
-        $prefix   = $this->prefix($userId);
-        $postIds  = Redis::zrevrange("{$prefix}:index", 0, -1);
-        $results  = [];
+        $prefix                       = $this->prefix($userId);
+        $postIds                      = Redis::zrevrange("{$prefix}:index", 0, -1);
+        $finalProcessedNotifications  = [];
 
         foreach ($postIds as $postId) {
-            $groupKey = "{$prefix}:p:$postId";
-
-            $group = json_decode(Redis::get($groupKey), true);
-            if (empty($group)) {
+            $groupKey                = "{$prefix}:p:$postId";
+            $rawNotificationsInGroup = json_decode(Redis::get($groupKey), true);
+            if (empty($rawNotificationsInGroup)) {
+                continue;
+            }
+            if (!is_array($rawNotificationsInGroup)) {
                 continue;
             }
 
-            $primary                    = $group[0];
-            $primary['additionalCount'] = count($group) - 1;
+            $generalUpdateCandidates = [];
 
-            $seenAt    = isset($primary['seen_at']) ? strtotime((string) $primary['seen_at']) : 0;
-            $createdAt = isset($primary['created_at']) ? strtotime((string) $primary['created_at']) : 0;
+            foreach ($rawNotificationsInGroup as $rawNotification) {
+                $isMention = $rawNotification['is_mention'] ?? false;
+                $seenAt    = $rawNotification['seen_at']    ?? null;
+                $createdAt = $rawNotification['created_at'] ?? null;
 
-            $primary['seen']      = $seenAt >= $createdAt;
-            $primary['timestamp'] = $createdAt;
-            $primary['time']      = \Carbon\Carbon::parse($primary['created_at'])->diffForHumans();
+                if ($isMention && is_null($seenAt)) {
+                    $finalProcessedNotifications[] = [
+                        'id'              => $rawNotification['id'] ?? 'mention_' . ($rawNotification['fid_post'] ?? 'unknownpost') . '_' . substr(md5($rawNotification['content'] ?? ''), 0, 8),
+                        'fid_post'        => $rawNotification['fid_post'],
+                        'fid_board'       => $rawNotification['fid_board'],
+                        'content'         => $rawNotification['content'],
+                        'time'            => $createdAt ? Carbon::parse($createdAt)->diffForHumans() : 'N/A',
+                        'type'            => $rawNotification['type'],
+                        'additionalCount' => 0,
+                        'seen'            => false,
+                        'timestamp'       => $createdAt ? Carbon::parse($createdAt)->timestamp : 0,
+                        'is_mention'      => true,
+                        'raw_group'       => [$rawNotification],
+                    ];
+                } else {
+                    $generalUpdateCandidates[] = $rawNotification;
+                }
+            }
 
-            $results[] = $primary;
+            if ($generalUpdateCandidates !== []) {
+                usort($generalUpdateCandidates, function ($a, $b) {
+                    $tsA = isset($a['created_at']) ? Carbon::parse($a['created_at'])->timestamp : 0;
+                    $tsB = isset($b['created_at']) ? Carbon::parse($b['created_at'])->timestamp : 0;
+
+                    if ($tsB !== $tsA) {
+                        return $tsB <=> $tsA;
+                    }
+
+                    $isMentionA = (bool)($a['is_mention'] ?? false);
+                    $isMentionB = (bool)($b['is_mention'] ?? false);
+
+                    return (int)$isMentionB <=> (int)$isMentionA;
+                });
+
+                $primaryGroupNotification = $generalUpdateCandidates[0];
+                $count                    = count($generalUpdateCandidates);
+                $createdAtPrimary         = $primaryGroupNotification['created_at'] ?? null;
+
+                $finalProcessedNotifications[] = [
+                    'id'              => $primaryGroupNotification['id'] ?? 'group_' . ($primaryGroupNotification['fid_post'] ?? 'unknownpost'),
+                    'fid_post'        => $primaryGroupNotification['fid_post'],
+                    'fid_board'       => $primaryGroupNotification['fid_board'],
+                    'content'         => $primaryGroupNotification['content'],
+                    'time'            => $createdAtPrimary ? Carbon::parse($createdAtPrimary)->diffForHumans() : 'N/A',
+                    'type'            => $primaryGroupNotification['type'],
+                    'additionalCount' => $count > 1 ? $count - 1 : 0,
+                    'seen'            => !is_null($primaryGroupNotification['seen_at'] ?? null),
+                    'timestamp'       => $createdAtPrimary ? Carbon::parse($createdAtPrimary)->timestamp : 0,
+                    'is_mention'      => $primaryGroupNotification['is_mention'] ?? false,
+                    'raw_group'       => $generalUpdateCandidates,
+                ];
+            }
         }
-
-        return $results;
+        return $finalProcessedNotifications;
     }
 
     public function markAsSeen(int $userId, int $postId): void
     {
         $prefix   = $this->prefix($userId);
         $seenKey  = "{$prefix}:p:$postId:seen";
-
         Redis::set($seenKey, now()->timestamp);
     }
 
@@ -109,9 +151,7 @@ class GroupedNotificationCacheService
 
         foreach ($postIds as $postId) {
             Redis::del("{$prefix}:p:$postId");
-            Redis::del("{$prefix}:p:$postId:seen");
         }
-
         Redis::del($indexKey);
     }
 
@@ -119,28 +159,73 @@ class GroupedNotificationCacheService
     {
         $prefix = $this->prefix($userId);
         Redis::del("{$prefix}:p:$postId");
-        Redis::del("{$prefix}:p:$postId:seen");
         Redis::zrem("{$prefix}:index", (string)$postId);
     }
 
-    /**
-     * @param array<string, mixed> $grouped
-     */
-    public function primeFromDatabase(int $userId, array $grouped): void
+    public function primeFromDatabase(int $userId, array $processedNotificationsFromDB): void
     {
-        foreach ($grouped as $notification) {
-            if (!isset($notification['fid_post'], $notification['raw_group'])) {
+        $this->clearUserCache($userId);
+
+        foreach ($processedNotificationsFromDB as $notificationEntry) {
+            if (!isset($notificationEntry['fid_post'], $notificationEntry['raw_group'])) {
                 continue;
             }
 
-            $groupKey = $this->prefix($userId) . ':p:' . $notification['fid_post'];
+            $postId          = $notificationEntry['fid_post'];
+            $rawGroupToCache = $notificationEntry['raw_group'];
+
+            $groupKey = $this->prefix($userId) . ':p:' . $postId;
             $indexKey = $this->prefix($userId) . ':index';
 
-            Redis::set($groupKey, json_encode($notification['raw_group']));
-            Redis::zadd($indexKey, now()->timestamp, (string)$notification['fid_post']);
-        }
+            Redis::set($groupKey, json_encode($rawGroupToCache));
 
+            $latestTimestampInRawGroup = 0;
+            if (!empty($rawGroupToCache) && isset($rawGroupToCache[0]['created_at'])) {
+                uasort(
+                    $rawGroupToCache,
+                    fn ($a, $b) =>
+                    (isset($b['created_at']) ? Carbon::parse($b['created_at'])->timestamp : 0)
+                    <=>
+                    (isset($a['created_at']) ? Carbon::parse($a['created_at'])->timestamp : 0)
+                );
+                $latestTimestampInRawGroup = Carbon::parse($rawGroupToCache[0]['created_at'])->timestamp;
+            } elseif (isset($notificationEntry['timestamp'])) {
+                $latestTimestampInRawGroup = $notificationEntry['timestamp'];
+            }
+
+            Redis::zadd($indexKey, $latestTimestampInRawGroup, (string)$postId);
+        }
         $this->enforceGroupLimit($userId);
+    }
+
+    public function markAllGroupsAsSeen(int $userId): void
+    {
+        $nowIso      = now()->toIso8601String();
+        $redisPrefix = $this->prefix($userId);
+        $postIds     = Redis::zrevrange("{$redisPrefix}:index", 0, -1);
+
+        foreach ($postIds as $postId) {
+            $groupKey             = "{$redisPrefix}:p:{$postId}";
+            $rawNotificationsJson = Redis::get($groupKey);
+
+            if ($rawNotificationsJson) {
+                $rawNotificationsArray = json_decode($rawNotificationsJson, true);
+                if (is_array($rawNotificationsArray)) {
+                    $updated = false;
+                    foreach ($rawNotificationsArray as &$rawNotification) {
+                        if (isset($rawNotification['fid_user']) && $rawNotification['fid_user'] == $userId && empty($rawNotification['seen_at'])) {
+                            $rawNotification['seen_at'] = $nowIso;
+                            $updated                    = true;
+                        }
+                    }
+                    unset($rawNotification);
+
+                    if ($updated) {
+                        Redis::set($groupKey, json_encode($rawNotificationsArray));
+                    }
+                }
+            }
+        }
     }
 
 }
