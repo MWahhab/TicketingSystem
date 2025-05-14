@@ -174,16 +174,20 @@ class NotificationService
             ];
             $shouldBroadcastUpdate = false;
             foreach ($attributesForRealTimeUpdate as $attribute) {
-                if (array_key_exists($attribute, $changes)) {
+                if ($object->wasChanged($attribute)) {
                     $shouldBroadcastUpdate = true;
                     break;
                 }
             }
+
             if ($shouldBroadcastUpdate) {
-                if ($object->exists && count($changes) > 0) {
-                    $object->refresh();
+                $object->refresh();
+
+                if ($object->wasChanged('assignee_id')) {
+                    $object->load('assignee');
                 }
-                $columnToBroadcast = $changes['column'] ?? $object->column;
+
+                $columnToBroadcast = $object->column;
                 app(RealTimeSyncService::class)->postMoved($object, $columnToBroadcast);
             }
         }

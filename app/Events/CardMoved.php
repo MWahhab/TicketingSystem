@@ -46,19 +46,6 @@ class CardMoved implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
-        logger('🚀 CardMoved broadcastWith called', [
-            'post_id'       => $this->postId,
-            'new_column_id' => $this->newColumnId,
-            'board_id'      => $this->boardId,
-            'title'         => $this->title,
-            'deadline'      => $this->deadline,
-            'pinned'        => $this->pinned,
-            'priority'      => $this->priority,
-            'assignee_id'   => $this->assigneeId,
-            'assignee_name' => $this->assigneeName,
-            'desc'          => $this->desc,
-        ]);
-
         return [
             'post_id'       => $this->postId,
             'new_column_id' => $this->newColumnId,

@@ -250,7 +250,7 @@ export function BoardProvider({
     }, [columnsArray, postsArray, memoizedAssignees])
 
     useEffect(() => {
-        StateMachine.define("CardMoved", ({ post_id, new_column_id, title, desc, deadline, pinned, priority, assignee_id, assignee_name }) => {
+        const unsubscribe = StateMachine.define("CardMoved", ({ post_id, new_column_id, title, desc, deadline, pinned, priority, assignee_id, assignee_name }) => {
             const taskId = String(post_id);
             const eventTargetColumnId = String(new_column_id); // Column ID from the event
 
@@ -285,12 +285,9 @@ export function BoardProvider({
                     }
                 }
 
-                // If the task's reported column from the event is different from where it is in the columns structure,
-                // or if it wasn't found in any column structure but should be in the eventTargetColumnId.
                 if (currentColumnIdOfTaskInStructure !== eventTargetColumnId) {
                     const newColumnsState = { ...prevColumns };
 
-                    // Remove from old column if it was in one
                     if (currentColumnIdOfTaskInStructure && newColumnsState[currentColumnIdOfTaskInStructure]) {
                         newColumnsState[currentColumnIdOfTaskInStructure] = {
                             ...newColumnsState[currentColumnIdOfTaskInStructure],
@@ -298,19 +295,14 @@ export function BoardProvider({
                         };
                     }
 
-                    // Add to new column
-                    if (eventTargetColumnId) { // Ensure target column is valid
+                    if (eventTargetColumnId) { 
                         if (!newColumnsState[eventTargetColumnId]) {
-                            // If target column doesn't exist in current state, create it.
-                            // This might happen if columns are dynamic or not fully synced.
-                            // For title, ideally, you'd get the actual column title if available.
                             newColumnsState[eventTargetColumnId] = {
                                 id: eventTargetColumnId,
-                                title: eventTargetColumnId, // Placeholder title
+                                title: eventTargetColumnId, 
                                 taskIds: [taskId]
                             };
                         } else {
-                            // Add to existing target column if not already present
                             if (!newColumnsState[eventTargetColumnId].taskIds.includes(taskId)) {
                                 newColumnsState[eventTargetColumnId] = {
                                     ...newColumnsState[eventTargetColumnId],
@@ -319,17 +311,17 @@ export function BoardProvider({
                             }
                         }
                     }
-                    return newColumnsState; // Return the modified columns
+                    return newColumnsState; 
                 }
-
-                // If the task didn't change its column structurally, return the previous columns state.
-                // The re-render for task *attribute* changes is driven by the `setTasks` update.
                 return prevColumns;
             });
         });
 
-        return () => StateMachine.reset();
-    }, [memoizedAssignees]); // Dependencies for the effect hook
+        // Cleanup: unregister only this "CardMoved" handler
+        return () => {
+            unsubscribe();
+        };
+    }, [memoizedAssignees]);
 
     useEffect(() => {
         window.axios.get("/premium/status")
