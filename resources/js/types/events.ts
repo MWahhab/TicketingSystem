@@ -28,6 +28,9 @@ export interface EventPayloads {
         assignee_name: string;
     };
     UserNotificationReceived: { notification: RawNotificationPayload };
+    CommentNotificationReceived: { notification: RawNotificationPayload };
+    LinkedIssueNotificationReceived: { notification: RawNotificationPayload };
+    BranchNotificationReceived: { notification: RawNotificationPayload };
 }
 
 export type EventName = keyof EventPayloads;

@@ -23,9 +23,18 @@ class GroupedNotificationCacheService
         $groupKey = "{$prefix}:p:$postId";
         $indexKey = "{$prefix}:index";
 
-        $rawGroup = Redis::exists($groupKey)
-            ? json_decode(Redis::get($groupKey), true)
-            : [];
+        $existingGroupJson = Redis::get($groupKey);
+        $rawGroup          = $existingGroupJson ? json_decode($existingGroupJson, true) : [];
+
+        if ($existingGroupJson && json_last_error() !== JSON_ERROR_NONE) {
+            logger("[CacheService] JSON DECODE ERROR for user:{$userId}, post:{$postId}. Existing JSON: ", [$existingGroupJson]);
+            $rawGroup = [];
+        }
+
+        if (!is_array($rawGroup)) {
+            logger("[CacheService] Non-array rawGroup RESET after potential decode error for user:{$userId}, post:{$postId}");
+            $rawGroup = [];
+        }
 
         array_unshift($rawGroup, $notification);
 

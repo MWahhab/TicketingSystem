@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Enums\NotificationTypeEnums;
+use App\Events\BranchNotificationReceived;
+use App\Events\CommentNotificationReceived;
+use App\Events\LinkedIssueNotificationReceived;
 use App\Events\UserNotificationReceived;
 use App\Models\BoardConfig;
 use App\Models\Comment;
@@ -60,6 +63,16 @@ class NotificationService
                         $notificationArrayWithoutId
                     );
                     event(new UserNotificationReceived((int)$notificationArrayWithoutId['fid_user'], $notificationArrayWithoutId));
+
+                    $notificationType = $notificationArrayWithoutId['type'] ?? null;
+
+                    if ($notificationType === NotificationTypeEnums::COMMENT->value) {
+                        event(new CommentNotificationReceived((int)$notificationArrayWithoutId['fid_user'], $notificationArrayWithoutId));
+                    } elseif ($notificationType === NotificationTypeEnums::LINKED_ISSUE->value) {
+                        event(new LinkedIssueNotificationReceived((int)$notificationArrayWithoutId['fid_user'], $notificationArrayWithoutId));
+                    } elseif ($notificationType === NotificationTypeEnums::BRANCH->value) {
+                        event(new BranchNotificationReceived((int)$notificationArrayWithoutId['fid_user'], $notificationArrayWithoutId));
+                    }
                 }
             }
 
@@ -84,20 +97,25 @@ class NotificationService
         $truncatedTitle = Str::limit($post->title, 5, '...');
         $scopeContext   = '#' . $object->fid_post . ': ' . $truncatedTitle . $boardName;
 
-        $notifications = $this->parseMentions(
+        $finalNotifications = [];
+
+        $mentionParseResult = $this->parseMentions(
             $object->content,
             NotificationTypeEnums::COMMENT,
             $object->fid_post,
             $post->fid_board,
             $scopeContext
         );
+        if (!empty($mentionParseResult['notifications'])) {
+            $finalNotifications = array_merge($finalNotifications, $mentionParseResult['notifications']);
+        }
 
         foreach (array_keys($userIds) as $userId) {
             if ($userId == Auth::id()) {
                 continue;
             }
 
-            $notifications[] = [
+            $finalNotifications[] = [
                 'created_by' => Auth::id(),
                 'type'       => NotificationTypeEnums::COMMENT->value,
                 'content'    => $object->creator->name . ' commented on post ' . $scopeContext,
@@ -110,7 +128,7 @@ class NotificationService
             ];
         }
 
-        return $notifications;
+        return $finalNotifications;
     }
 
     public function parsePostNotification(Post $object): array
