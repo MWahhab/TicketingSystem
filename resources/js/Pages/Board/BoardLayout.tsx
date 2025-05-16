@@ -19,7 +19,7 @@ import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell"
 import { DateFilter } from "./components/DateFilter"
 import { AISettingsDialog } from "@/Pages/Board/components/AiIntegrationFormDialog"
 
-import { BoardProvider, useBoardContext, type Assignee } from "./BoardContext"
+import { BoardProvider, useBoardContext, type Assignee, type Task } from "./BoardContext"
 import {clsx} from "clsx";
 import BoardEventsBridge from "@/Pages/Board/BoardEventsBridge";
 
@@ -113,7 +113,6 @@ function InnerBoardLayout() {
     const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("")
     const [authorSearchQuery, setAuthorSearchQuery] = useState("")
 
-    // Sidebar State & Ref for leave delay
     const [isSidebarPinned, setIsSidebarPinned] = useState(true)
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
     const sidebarLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -228,6 +227,44 @@ function InnerBoardLayout() {
             }, 200) // 200ms delay before closing
         }
     }
+
+    const processedColumns = useMemo(() => {
+        return Object.values(columns).map((column: any) => {
+            const columnTasksResult = column.taskIds
+                .map((taskId: string) => tasks[taskId] as FilterableTask)
+                .filter((task: FilterableTask) => {
+                    if (!task) return false;
+                    const matchesSearch =
+                        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        task.id.toString().includes(searchQuery.toLowerCase())
+                    const matchesAssignee =
+                        selectedAssignees.length === 0 || selectedAssignees.includes(parseInt(task.assignee_id, 10))
+                    const matchesAuthor = selectedAuthors.length === 0 || selectedAuthors.includes(task.post_author)
+                    const matchesPriority =
+                        selectedPriorities.length === 0 || selectedPriorities.includes(task.priority.toLowerCase())
+                    return matchesSearch && matchesAssignee && matchesAuthor && matchesPriority
+                })
+                .sort((a: FilterableTask, b: FilterableTask) => {
+                    if (!a || !b) return 0;
+
+                    if (a.pinned === 1 && b.pinned !== 1) return -1;
+                    if (a.pinned !== 1 && b.pinned === 1) return 1;
+
+                    const priorityOrder: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
+                    const priorityA = priorityOrder[a.priority?.toLowerCase() || 'low'] || 0;
+                    const priorityB = priorityOrder[b.priority?.toLowerCase() || 'low'] || 0;
+
+                    if (priorityA !== priorityB) {
+                        return priorityB - priorityA;
+                    }
+                    return 0;
+                });
+            return {
+                ...column,
+                tasks: columnTasksResult,
+            };
+        });
+    }, [columns, tasks, searchQuery, selectedAssignees, selectedAuthors, selectedPriorities]);
 
     return (
         <div className="flex h-screen bg-gradient-to-br from-zinc-950 to-neutral-950 text-zinc-200">
@@ -548,40 +585,10 @@ function InnerBoardLayout() {
 
                 <DragDropContext onDragEnd={onDragEnd}>
                     <div className="flex flex-1 p-4 space-x-4 h-full">
-                        {Object.values(columns).map((column: any) => {
-                            const columnTasks = column.taskIds
-                                .map((taskId: string) => tasks[taskId] as FilterableTask)
-                                .filter((task: FilterableTask) => {
-                                    if (!task) return false;
-                                    const matchesSearch =
-                                        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                        task.id.toString().includes(searchQuery.toLowerCase())
-                                    const matchesAssignee =
-                                        selectedAssignees.length === 0 || selectedAssignees.includes(parseInt(task.assignee_id, 10))
-                                    const matchesAuthor = selectedAuthors.length === 0 || selectedAuthors.includes(task.post_author)
-                                    const matchesPriority =
-                                        selectedPriorities.length === 0 || selectedPriorities.includes(task.priority.toLowerCase())
-                                    return matchesSearch && matchesAssignee && matchesAuthor && matchesPriority
-                                })
-                                .sort((a: FilterableTask, b: FilterableTask) => {
-                                    if (!a || !b) return 0;
-
-                                    if (a.pinned === 1 && b.pinned !== 1) return -1; // Pinned a comes first
-                                    if (a.pinned !== 1 && b.pinned === 1) return 1;  // Pinned b comes first
-
-                                    const priorityOrder: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
-                                    const priorityA = priorityOrder[a.priority?.toLowerCase() || 'low'] || 0;
-                                    const priorityB = priorityOrder[b.priority?.toLowerCase() || 'low'] || 0;
-
-                                    if (priorityA !== priorityB) {
-                                        return priorityB - priorityA; // Higher priority value comes first
-                                    }
-
-                                    return 0; // Keep original relative order if pinned and priority are the same
-                                })
+                        {processedColumns.map((columnWithTasks: any) => {
                             return (
-                                <div key={column.id} className="flex-1 min-w-[250px] max-w-screen">
-                                    <Column column={column} tasks={columnTasks} />
+                                <div key={columnWithTasks.id} className="flex-1 min-w-[250px] max-w-screen">
+                                    <Column column={columnWithTasks} tasks={columnWithTasks.tasks} />
                                 </div>
                             )
                         })}
