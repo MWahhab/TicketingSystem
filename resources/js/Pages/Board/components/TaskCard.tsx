@@ -50,23 +50,25 @@ const BranchIcon = () => (
 
 const GlobalDndStyles = () => (
     <style dangerouslySetInnerHTML={{ __html: `
-        body[data-rbd-is-dragging="true"],
-        body[data-rbd-is-dragging="true"] * { /* Apply to body and ALL its descendants */
+        /* Use high-specificity selectors to avoid expensive style recalculations */
+        html body[data-rbd-is-dragging="true"],
+        html body[data-rbd-is-dragging="true"] * { 
             cursor: default !important;
+            /* Hint to browser to avoid unnecessary style recalculations */
+            will-change: auto; 
+            /* Only update at the end of animation */
+            transition-duration: 0.001ms !important;
         }
-        /* Keep specific attribute selectors for good measure, and target children */
+        /* More specific attribute selectors */
         [data-rbd-draggable-context-id],
-        [data-rbd-draggable-context-id] *,
         [data-rbd-draggable-id],
-        [data-rbd-draggable-id] *,
         [data-rbd-drag-handle-context-id],
-        [data-rbd-drag-handle-context-id] *,
         [data-rbd-drag-handle-draggable-id],
+        /* And their children */
+        [data-rbd-draggable-context-id] *,
+        [data-rbd-draggable-id] *,
+        [data-rbd-drag-handle-context-id] *,
         [data-rbd-drag-handle-draggable-id] * {
-            cursor: default !important;
-        }
-        /* Potentially, the library might add a class to the draggable item itself */
-        .is-dragging { /* Replace with actual class if known */
             cursor: default !important;
         }
     `}} />
@@ -381,11 +383,18 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                         data-post-id={task.id}
                         className={`
                             relative
-                            mb-4 shadow-md hover:shadow-lg transition-all duration-300 ease-in-out
+                            mb-4 hover:shadow-sm transition-all duration-300 ease-in-out
                             bg-zinc-800 hover:bg-zinc-700/50 border border-white/10 rounded-lg overflow-hidden
                             ${task.pinned === 1 ? "border-l-blue-400 border-l-2 bg-zinc-800/50" : ""}
-                            ${focusedTaskId === task.id ? "shadow-2xl z-10" : "z-0"}
+                            ${focusedTaskId === task.id ? "z-10" : "z-0"}
                         `}
+                        style={{
+                            /* Help browser optimize layout/paint operations during parent animations */
+                            contain: 'paint layout',
+                            willChange: 'transform',
+                            /* Force GPU acceleration */
+                            transform: 'translateZ(0)',
+                        }}
                     >
                         <div 
                             className="absolute top-0 left-0 h-0.5 bg-blue-400 transition-transform duration-50 ease-linear" 

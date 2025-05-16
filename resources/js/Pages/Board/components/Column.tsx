@@ -50,10 +50,9 @@ const TaskListItem = memo(function TaskListItem({ index, style, data }: ListChil
                         ...style,
                     }}
                     className={`
-                        ${snapshotDraggable.isDragging ? "opacity-80 shadow-lg" : "opacity-100 shadow-md"}
+                        ${snapshotDraggable.isDragging ? "opacity-80" : "opacity-100"}
                         transition-opacity duration-300
                         ${isDimmed ? 'opacity-40 pointer-events-none' : 'opacity-100'}
-                        pr-2
                     `}
                 >
                     <TaskCard task={task} />
@@ -64,11 +63,36 @@ const TaskListItem = memo(function TaskListItem({ index, style, data }: ListChil
 });
 TaskListItem.displayName = 'TaskListItem';
 
+interface VirtualizedTaskListProps {
+    height: number;
+    width: number;
+    tasks: Task[];
+    focusedTaskId: string | null;
+}
+
+const VirtualizedTaskList = memo(function VirtualizedTaskList({ height, width, tasks, focusedTaskId }: VirtualizedTaskListProps) {
+    return (
+        <FixedSizeList
+            height={height}
+            width={width}
+            itemCount={tasks.length}
+            itemSize={TASK_CARD_HEIGHT}
+            itemData={{ tasks, focusedTaskId }}
+            className="actual-list-scroller"
+        >
+            {TaskListItem}
+        </FixedSizeList>
+    );
+});
+VirtualizedTaskList.displayName = 'VirtualizedTaskList';
+
 export const Column = memo(function Column({ column, tasks }: ColumnProps) {
     const { focusedTaskId } = useBoardContext();
 
     return (
-        <Card className="h-full bg-zinc-800/50 border-zinc-700/50 flex flex-col rounded-lg shadow-sm">
+        <Card 
+            className="h-full bg-zinc-800/50 border-zinc-700/50 flex flex-col rounded-lg shadow-sm" 
+        >
             <style>
                 {`
                 .column-droppable-area {
@@ -103,7 +127,7 @@ export const Column = memo(function Column({ column, tasks }: ColumnProps) {
                                 ref={providedDraggableClone.innerRef}
                                 {...providedDraggableClone.draggableProps}
                                 {...providedDraggableClone.dragHandleProps}
-                                className={`opacity-90 shadow-xl ${isDimmed ? 'opacity-40 pointer-events-none' : ''} w-[240px]`}
+                                className={`opacity-90 ${isDimmed ? 'opacity-40 pointer-events-none' : ''} w-[240px]`}
                             >
                                 <TaskCard task={task} />
                             </div>
@@ -114,20 +138,19 @@ export const Column = memo(function Column({ column, tasks }: ColumnProps) {
                         <div
                             ref={providedDroppable.innerRef}
                             {...providedDroppable.droppableProps}
-                            className="column-droppable-area"
+                            className={`column-droppable-area ${snapshotDroppable.isDraggingOver ? 'bg-zinc-800/70' : ''}`}
+                            style={{
+                                transition: 'background-color 0.2s ease',
+                            }}
                         >
                             <AutoSizer>
                                 {({ height, width }) => (
-                                    <FixedSizeList
+                                    <VirtualizedTaskList
                                         height={height}
                                         width={width}
-                                        itemCount={tasks.length}
-                                        itemSize={TASK_CARD_HEIGHT}
-                                        itemData={{ tasks, focusedTaskId }}
-                                        className="actual-list-scroller"
-                                    >
-                                        {TaskListItem}
-                                    </FixedSizeList>
+                                        tasks={tasks}
+                                        focusedTaskId={focusedTaskId}
+                                    />
                                 )}
                             </AutoSizer>
                             {providedDroppable.placeholder}

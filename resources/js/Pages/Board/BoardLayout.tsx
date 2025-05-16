@@ -47,7 +47,6 @@ function getOpenTaskParam(): string | null {
 export function BoardLayout() {
     const pageProps = usePage().props as any;
 
-    // Memoize assignees from pageProps to stabilize the reference
     const memoizedAssignees = useMemo(() => {
         return Array.isArray(pageProps.assignees) ? pageProps.assignees : [];
     }, [pageProps.assignees]);
@@ -67,6 +66,7 @@ export function BoardLayout() {
             dateFrom={pageProps.dateFrom}
             dateTo={pageProps.dateTo}
             dateField={pageProps.dateField}
+            statuses={pageProps.statuses}
         >
             <InnerBoardLayout />
             <BoardEventsBridge />
@@ -172,12 +172,11 @@ function InnerBoardLayout() {
         setAiIntegrationOpen(true)
     }
 
-    // Define a basic Task type based on usage in filter/sort
     interface FilterableTask {
         id: string;
         title: string;
         desc: string;
-        assignee_id: string; // Assuming ID is string, adjust if number
+        assignee_id: string;
         post_author: string;
         priority: string;
         pinned?: number;
@@ -185,7 +184,6 @@ function InnerBoardLayout() {
     }
 
     const handlePinToggle = () => {
-        // Clear any pending close timer if toggling pin
         if (sidebarLeaveTimeoutRef.current) {
             clearTimeout(sidebarLeaveTimeoutRef.current);
             sidebarLeaveTimeoutRef.current = null;
@@ -194,37 +192,29 @@ function InnerBoardLayout() {
         const newPinState = !isSidebarPinned
         setIsSidebarPinned(newPinState)
         if (newPinState) {
-            // If pinning, force it open
             setIsSidebarOpen(true)
-        } else {
-            // If unpinning, start closed if mouse isn't already over it (edge case)
-            // We might rely on handleMouseLeave instead for simplicity here.
         }
     }
 
     const handleMouseEnterSidebar = () => {
-        // Clear any pending close timer
         if (sidebarLeaveTimeoutRef.current) {
             clearTimeout(sidebarLeaveTimeoutRef.current);
             sidebarLeaveTimeoutRef.current = null;
         }
-        // Open if not pinned
         if (!isSidebarPinned) {
             setIsSidebarOpen(true)
         }
     }
 
     const handleMouseLeaveSidebar = () => {
-        // Start timer to close only if not pinned
         if (!isSidebarPinned) {
-            // Clear any existing timer before starting new one
             if (sidebarLeaveTimeoutRef.current) {
                 clearTimeout(sidebarLeaveTimeoutRef.current);
             }
             sidebarLeaveTimeoutRef.current = setTimeout(() => {
                 setIsSidebarOpen(false)
-                sidebarLeaveTimeoutRef.current = null; // Clear ref after execution
-            }, 200) // 200ms delay before closing
+                sidebarLeaveTimeoutRef.current = null;
+            }, 200)
         }
     }
 
@@ -273,11 +263,11 @@ function InnerBoardLayout() {
                 onMouseEnter={handleMouseEnterSidebar}
                 onMouseLeave={handleMouseLeaveSidebar}
                 className={`
-                    fixed top-0 left-0 h-full z-30 flex-shrink-0
+                    h-full z-30 flex-shrink-0
                     bg-gradient-to-b from-zinc-900 to-zinc-950 border-r border-white/10
-                    transition-all duration-300 ease-out flex flex-col
-                    ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-                    w-60 // Consistent width
+                    flex flex-col duration-300 ease-out
+                    ${isSidebarOpen ? "w-60" : "w-0"}
+                    transition-all overflow-hidden
                 `}
             >
                 {/* Sidebar Header */}
@@ -375,13 +365,8 @@ function InnerBoardLayout() {
                 </div>
             </div>
 
-            {/* Main Content Area - Updated padding logic */}
-            <div
-                className={`
-                    flex-1 flex flex-col overflow-x-auto transition-all duration-300 ease-out
-                    ${isSidebarOpen ? "pl-60" : "pl-0"} // Padding whenever sidebar is open
-                `}
-            >
+            {/* Main Content Area - No transforms, just straight layout */}
+            <div className="flex-1 flex flex-col overflow-x-auto">
                 {/* Header/Toolbar */}
                 <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-br from-zinc-850 to-zinc-950 h-16 px-6 flex-shrink-0">
                     {/* Left Side: Title & Delete */}
@@ -584,7 +569,10 @@ function InnerBoardLayout() {
                 </div>
 
                 <DragDropContext onDragEnd={onDragEnd}>
-                    <div className="flex flex-1 p-4 space-x-4 h-full">
+                    <div 
+                        className="flex flex-1 p-4 space-x-4 h-full"
+                        style={{ willChange: 'width' }}
+                    >
                         {processedColumns.map((columnWithTasks: any) => {
                             return (
                                 <div key={columnWithTasks.id} className="flex-1 min-w-[250px] max-w-screen">

@@ -361,7 +361,7 @@ export function BoardProvider({
                 pinned: newPostData.pinned,
                 had_branch: newPostData.had_branch,
                 deadline_color: newPostData.deadline_color,
-                post_author: newPostData.post_author,
+                post_author: newPostData.post_author ?? taskData.post_author,
                 assignee: { name: assigneeName },
                 priority: taskPriority,
                 watchers: newPostData.watchers || [],
