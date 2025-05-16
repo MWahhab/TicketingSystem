@@ -19,7 +19,7 @@ window.Echo = new Echo({
     wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
     wsPort: parseInt(import.meta.env.VITE_REVERB_PORT || '6001', 10),
     wssPort: parseInt(import.meta.env.VITE_REVERB_PORT || '6001', 10),
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'http') === 'https',
+    forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'http').startsWith('wss'),
     enabledTransports: ['ws', 'wss'],
 });
 
