@@ -22,3 +22,6 @@ parameters:
   checkMissingVarTagTypehint: true
   checkExplicitMixed: true
   checkUninitializedProperties: true
+
+  ignoreErrors:
+    - '#Method .*::.*\(\) return type has no value type specified in iterable type array.#'

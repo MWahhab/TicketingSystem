@@ -105,4 +105,16 @@ class Post extends Model implements NotificationServiceInterface
     {
         return $this->hasMany(PostWatcher::class, 'post_fid');
     }
+
+    /**
+     * @return array<int, true> A user_id-indexed map of all watchers
+     */
+    public function getWatcherIds(): array
+    {
+        $map = [];
+        foreach ($this->watchers as $watcher) {
+            $map[$watcher->user_fid] = true;
+        }
+        return $map;
+    }
 }
