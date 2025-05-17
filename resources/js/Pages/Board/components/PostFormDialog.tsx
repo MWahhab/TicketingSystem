@@ -196,7 +196,7 @@ export function PostFormDialog({
     const [generationCount, setGenerationCount] = useState<number | null>(null)
     const [generationCap, setGenerationCap] = useState<number | null>(null)
 
-    const dialogContentRef = useRef<HTMLDivElement>(null); // Ref for DialogContent
+    const dialogContentRef = useRef<HTMLDivElement>(null);
 
     const handleDialogInteraction = useCallback(() => {
         if (dialogContentRef.current) {
@@ -288,7 +288,6 @@ export function PostFormDialog({
     }, [isDialogOpen]);
 
     async function onSubmit(values: FormData) {
-        const metaTokenOnSubmit = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
 
         setIsDescriptionModified(false)
 
@@ -379,7 +378,6 @@ export function PostFormDialog({
     useEffect(() => {
         const fetchGenerationCount = async () => {
             try {
-                const metaTokenBeforeFetchGenCount = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
                 const { data } = await axios.post("/premium/generation/count")
                 if (data) {
                     setGenerationCount(data.generation_count)
@@ -408,7 +406,6 @@ export function PostFormDialog({
     const checkQueueStatus = useCallback(async () => {
         if (!task?.id || !hasPremiumAccess(isPremium)) return
         try {
-            const metaTokenBeforeQueueStatus = document.head.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
             const { data } = await axios.post("/premium/queue/status", {
                 post_id: task.id,
             })
@@ -1024,7 +1021,7 @@ export function PostFormDialog({
                                                                         <Button
                                                                             variant="outline"
                                                                             className={cn(
-                                                                                "w-full pl-3 text-left font-normal bg-zinc-800 border-zinc-700 text-white focus:outline-none focus:ring-0 focus:border-zinc-500",
+                                                                                "w-full pl-3 text-left font-normal bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-800 hover:text-white focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500",
                                                                                 !field.value && "text-muted-foreground",
                                                                             )}
                                                                         >
@@ -1053,6 +1050,13 @@ export function PostFormDialog({
                                                                                 disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) || date < new Date("1900-01-01")}
                                                                                 initialFocus
                                                                                 className="bg-zinc-800 border-zinc-700 text-white"
+                                                                                classNames={{
+                                                                                    day: "h-9 w-9 p-0 font-normal rounded-md relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-800 hover:bg-zinc-500 hover:text-white aria-selected:opacity-100",
+                                                                                    day_selected: "bg-zinc-600 text-white rounded-md hover:bg-zinc-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-800 aria-selected:bg-zinc-600",
+                                                                                    day_today: "aria-selected:opacity-100 rounded-md", // Keep today noticeable but ensure selected/hover overrides
+                                                                                    head_cell: "text-zinc-400 rounded-md w-9 font-normal text-[0.8rem]",
+                                                                                    nav_button: "h-6 w-6 hover:bg-zinc-700 rounded-md",
+                                                                                }}
                                                                             />
                                                                         </div>
                                                                     </PopoverContent>

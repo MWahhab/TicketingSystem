@@ -72,7 +72,8 @@ export function Watcher({ postId, userId, watchers = [], onWatcherUpdate }: Watc
             } else {
                 await axios.post("/post-watchers", requestData)
 
-                const currentUser     = assignees.find((a) => a.id === userId)
+                const userIdNumForLookup = Number.parseInt(userId)
+                const currentUser     = assignees.find((a) => a.id === userIdNumForLookup)
                 const currentUserName = currentUser ? currentUser.name : "You"
 
                 const newWatcher: Watcher = {
@@ -128,11 +129,11 @@ export function Watcher({ postId, userId, watchers = [], onWatcherUpdate }: Watc
                 {localWatchers.length > 0 && (
                     <div className="p-2 border-b border-white/10 max-h-48 overflow-y-auto">
                         {localWatchers.map((watcher) => (
-                            <div key={watcher.watcher_id} className="flex items-center gap-2 p-2">
+                            <div key={watcher.id} className="flex items-center gap-2 p-2">
                                 <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-700 text-xs font-medium text-zinc-300">
-                                    {watcher.name.charAt(0).toUpperCase()}
+                                    {(watcher.name || '?').charAt(0).toUpperCase()}
                                 </div>
-                                <span className="text-sm text-zinc-300">{watcher.name}</span>
+                                <span className="text-sm text-zinc-300">{watcher.name || 'Unknown Watcher'}</span>
                             </div>
                         ))}
                     </div>

@@ -117,11 +117,9 @@ interface BoardContextValue {
     updateTaskWatchers: (taskId: string, watchers: Watcher[]) => void
     pinTask: (taskId: string, isPinned: boolean) => void
 
-    // New context values for focus/dimming
     focusedTaskId: string | null
     setFocusedTaskId: (id: string | null) => void
 
-    // Functions for creating and updating tasks
     createTask: (taskData: Omit<Task, "id" | "watchers" | "comments" | "history" | "linked_issues" | "created_at" | "updated_at" | "assignee" | "pinned" | "had_branch" | "deadline_color"> & { fid_board: string | number }) => Promise<Task | null>
     updateTask: (taskId: string, taskData: Partial<Omit<Task, "id" | "watchers" | "comments" | "history" | "linked_issues" | "created_at" | "updated_at" | "assignee" | "pinned" | "had_branch" | "deadline_color"> & { fid_board: string | number }>) => Promise<Task | null>
     deleteTask: (taskId: string) => Promise<{deleted_post_id: string; board_id: string} | null >
@@ -151,11 +149,9 @@ const BoardContext = createContext<BoardContextValue>({
     pinTask: () => {},
     defaultAssignee: undefined,
 
-    // Default values for new context fields
     focusedTaskId: null,
     setFocusedTaskId: () => {},
 
-    // Default values for task creation/update
     createTask: async () => null,
     updateTask: async () => null,
     deleteTask: async () => null,
@@ -193,9 +189,8 @@ export function BoardProvider({
     const [selectedTask, setSelectedTask] = useState<Task | null>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [isPremium, setIsPremium] = useState("standard")
-    const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null) // State for focused task
+    const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
 
-    // Memoize the assignees prop to stabilize its reference for the context consumers
     const memoizedAssignees = useMemo(() => assignees, [assignees]);
 
     useEffect(() => {
@@ -252,19 +247,18 @@ export function BoardProvider({
     useEffect(() => {
         const unsubscribe = StateMachine.define("CardMoved", ({ post_id, new_column_id, title, desc, deadline, pinned, priority, assignee_id, assignee_name }) => {
             const taskId = String(post_id);
-            const eventTargetColumnId = String(new_column_id); // Column ID from the event
+            const eventTargetColumnId = String(new_column_id);
 
-            // First, update the task's own data, including its intended column
             setTasks(prevTasks => {
                 const task = prevTasks[taskId];
-                if (!task) return prevTasks; // Task not found, do nothing
+                if (!task) return prevTasks;
                 return {
                     ...prevTasks,
                     [taskId]: {
                         ...task,
-                        column: eventTargetColumnId, // Update task's own column property
+                        column: eventTargetColumnId,
                         title: title,
-                        desc: desc, // Update description
+                        desc: desc,
                         deadline: deadline,
                         pinned: pinned,
                         priority: priority as Task["priority"],
@@ -274,8 +268,6 @@ export function BoardProvider({
                 };
             });
 
-            // Then, update the columns structure if the task actually moved
-            // or needs to be placed correctly if it was somehow not in any column list.
             setColumns(prevColumns => {
                 let currentColumnIdOfTaskInStructure: string | null = null;
                 for (const colId in prevColumns) {
@@ -317,7 +309,6 @@ export function BoardProvider({
             });
         });
 
-        // Cleanup: unregister only this "CardMoved" handler
         return () => {
             unsubscribe();
         };
@@ -326,15 +317,13 @@ export function BoardProvider({
     useEffect(() => {
         window.axios.get("/premium/status")
             .then((response) => {
-                const data = response.data; // Axios wraps response in .data
+                const data = response.data;
                 if (typeof data?.data?.isPremium === "string") {
                     setIsPremium(data.data.isPremium);
                 }
             })
             .catch(error => {
-                console.error("Error fetching premium status:", error);
-                // Optionally set a default or handle the error in the UI
-                // setIsPremium("standard"); // Example: default to standard on error
+                // console.error("Error fetching premium status:", error);
             });
     }, [])
 
@@ -342,7 +331,7 @@ export function BoardProvider({
         try {
             const response = await window.axios.post("/posts", taskData);
 
-            const { post: newPostData, message } = response.data;
+            const { post: newPostData } = response.data;
 
             const assigneeIdNum = parseInt(newPostData.assignee_id, 10)
             const assigneeName = memoizedAssignees.find(a => a.id === assigneeIdNum)?.name || 'Unassigned'
@@ -387,11 +376,11 @@ export function BoardProvider({
                         [targetColumnId]: updatedColumn,
                     }
                 }
-                return prevColumns // Should not happen if column exists
+                return prevColumns
             })
             
-            setSelectedTask(newTask);      // Select the newly created task
-            setIsEditDialogOpen(true);   // Open the dialog for this task
+            setSelectedTask(newTask);
+            setIsEditDialogOpen(true);
 
             return newTask
         } catch (error) {
@@ -412,13 +401,10 @@ export function BoardProvider({
             const response = await window.axios.put(`/posts/${taskId}`, taskData);
 
             const { post: updatedPostData } = response.data;
-            // console.log(message); // Optional: for toast notification or debugging
 
-            // Get the task's state *before* this update operation from the existing state.
             const taskAsItWasInState = tasks[taskId];
             if (!taskAsItWasInState) {
                 console.error("Task to update not found in current state:", taskId);
-                // Potentially alert the user or handle this more gracefully
                 alert("Error: The task you tried to update was not found. Please refresh.");
                 return null;
             }
@@ -427,14 +413,37 @@ export function BoardProvider({
             const assigneeName = memoizedAssignees.find(a => a.id === assigneeIdNum)?.name || 'Unassigned';
             const taskPriority = updatedPostData.priority === 'med' ? 'medium' : updatedPostData.priority;
 
-            // Construct the fully updated task object
+            let finalWatchers: Watcher[] = [];
+            if (updatedPostData.watchers && Array.isArray(updatedPostData.watchers)) {
+                const processedWatchers = updatedPostData.watchers.map((w: any) => {
+                    const watcherUserId = typeof w.id === 'string' ? parseInt(w.id, 10) : w.id;
+                    const assignee = memoizedAssignees.find(a => a.id === watcherUserId);
+                    return {
+                        ...w,
+                        id: watcherUserId,
+                        name: assignee ? assignee.name : (w.name || 'Unknown Watcher'),
+                        watcher_id: typeof w.watcher_id === 'string' ? parseInt(w.watcher_id, 10) : w.watcher_id,
+                    };
+                }).filter((w: any) => w.id != null && w.watcher_id != null);
+
+                if (processedWatchers.length > 0 || updatedPostData.watchers.length === 0) {
+                    finalWatchers = processedWatchers;
+                } else {
+                    finalWatchers = taskAsItWasInState.watchers || [];
+                }
+            } else if (taskAsItWasInState.watchers && Array.isArray(taskAsItWasInState.watchers)) {
+                finalWatchers = taskAsItWasInState.watchers;
+            } else {
+                finalWatchers = [];
+            }
+
             const taskWithServerUpdates: Task = {
-                ...taskAsItWasInState, // Start with the task's current client-side state (has all fields)
-                ...updatedPostData,    // Override with fields from the server response
-                id: updatedPostData.id.toString(), // Ensure ID is a string from server data
-                assignee: { name: assigneeName },  // Add resolved assignee name
-                priority: taskPriority,           // Add normalized priority
-                watchers: updatedPostData.watchers || taskAsItWasInState.watchers || [],
+                ...taskAsItWasInState, 
+                ...updatedPostData,    
+                id: updatedPostData.id.toString(), 
+                assignee: { name: assigneeName },  
+                priority: taskPriority,           
+                watchers: finalWatchers,
                 comments: updatedPostData.comments || taskAsItWasInState.comments || [],
                 history: updatedPostData.history || taskAsItWasInState.history || {},
                 linked_issues: updatedPostData.linked_issues || taskAsItWasInState.linked_issues || [],
@@ -450,34 +459,26 @@ export function BoardProvider({
             const originalColumnId = taskAsItWasInState.column?.toString();
             const newColumnId = taskWithServerUpdates.column?.toString();
 
-            // Update columns state if board or column has changed
-            if (originalBoardId && newBoardId && originalColumnId && newColumnId && 
+            if (originalBoardId && newBoardId && originalColumnId && newColumnId &&
                 (originalBoardId !== newBoardId || originalColumnId !== newColumnId)) {
                 setColumns(prevColumns => {
                     const newCols = { ...prevColumns };
 
-                    // If the board ID has changed
                     if (originalBoardId !== newBoardId) {
-                        // Remove the task from its original column in the original board's state
                         if (newCols[originalColumnId] && newCols[originalColumnId].taskIds.includes(taskWithServerUpdates.id)) {
                             newCols[originalColumnId] = {
                                 ...newCols[originalColumnId],
                                 taskIds: newCols[originalColumnId].taskIds.filter(id => id !== taskWithServerUpdates.id)
                             };
                         }
-                        // The task will appear on the new board when that board data is loaded.
-                        // No need to add it to a column here if the board context itself will change (e.g., user navigates to new board).
                     }
-                    // Else, if the board is the same BUT the column ID has changed
                     else if (originalColumnId !== newColumnId) {
-                        // Remove from old column
                         if (newCols[originalColumnId]) {
                             newCols[originalColumnId] = {
                                 ...newCols[originalColumnId],
                                 taskIds: newCols[originalColumnId].taskIds.filter(id => id !== taskWithServerUpdates.id)
                             };
                         }
-                        // Add to new column
                         if (newCols[newColumnId]) {
                             const taskIdsSet = new Set(newCols[newColumnId].taskIds);
                             taskIdsSet.add(taskWithServerUpdates.id);
@@ -486,9 +487,7 @@ export function BoardProvider({
                                 taskIds: Array.from(taskIdsSet)
                             };
                         } else {
-                            // This case implies the newColumnId isn't part of the current board's known columns.
-                            // This should ideally not happen if data is consistent.
-                            console.warn(`New column ${newColumnId} not found for current board. Creating it locally.`);
+                            // console.warn(`New column ${newColumnId} not found for current board. Creating it locally.`);
                             newCols[newColumnId] = { id: newColumnId, title: newColumnId /* Consider fetching actual title if necessary */, taskIds: [taskWithServerUpdates.id] };
                         }
                     }
@@ -518,7 +517,6 @@ export function BoardProvider({
         try {
             const response = await window.axios.delete(`/posts/${taskId}`);
             const { deleted_post_id, board_id, message } = response.data; // Axios puts data in response.data
-            // console.log(message); // Optional: for toast notification or debugging
 
             setTasks(prevTasks => {
                 const newTasks = { ...prevTasks };
@@ -537,15 +535,14 @@ export function BoardProvider({
                 return newColumns;
             });
 
-            // If the deleted task was selected, clear it
             if (selectedTask && selectedTask.id === deleted_post_id) {
                 setSelectedTask(null);
-                setIsEditDialogOpen(false); // Ensure this is called
+                setIsEditDialogOpen(false);
             }
 
             return { deleted_post_id, board_id };
         } catch (error) {
-            console.error("Error deleting task:", error); // Changed from "Network error deleting task:"
+            console.error("Error deleting task:", error);
             let errorMessage = "Error deleting task. Please try again.";
             if (isAxiosError(error) && error.response && error.response.data && typeof error.response.data.message === 'string') {
                 errorMessage = `Error deleting task: ${error.response.data.message}`;
@@ -592,7 +589,6 @@ export function BoardProvider({
             return
         }
 
-        // Optimistically update local state
         setTasks((prevTasks) => ({
             ...prevTasks,
             [draggableId]: {
@@ -602,15 +598,13 @@ export function BoardProvider({
         }))
 
         setColumns((prevColumns) => {
-            const currentTasks = tasks; // Use tasks from the closure of onDragEnd
+            const currentTasks = tasks;
 
             const sourceColumn = prevColumns[source.droppableId];
             const finishColumn = prevColumns[destination.droppableId];
 
-            // Ensure columns exist
             if (!sourceColumn || !finishColumn) {
                 console.error("Source or destination column not found in onDragEnd");
-                // Optionally, revert optimistic update here or handle error appropriately
                 return prevColumns;
             }
 
@@ -622,21 +616,19 @@ export function BoardProvider({
 
             const removalIndex = sourceStateTaskIds.findIndex((id) => id === draggableId);
             if (removalIndex === -1) {
-                // console.error("Dragged item not found in source column state");
                 return prevColumns;
             }
 
             sourceStateTaskIds.splice(removalIndex, 1);
 
-            // Correctly map task objects for sorting, ensuring tasks exist
             const destTaskObjects = prevColumns[destination.droppableId].taskIds
-                 .map(tid => currentTasks[tid]) // Use tasks from closure
-                 .filter(task => !!task); // Filter out undefined tasks if any
+                 .map(tid => currentTasks[tid])
+                 .filter(task => !!task);
 
             const sortedDestTaskObjects = [...destTaskObjects].sort((a, b) => {
                 if (a.pinned === 1 && b.pinned !== 1) return -1;
                 if (a.pinned !== 1 && b.pinned === 1) return 1;
-                return 0; // Keep original order for same pinned status or if neither is pinned
+                return 0;
             });
 
             const sortedDestTaskIds = sortedDestTaskObjects.map(t => t.id);
@@ -647,14 +639,12 @@ export function BoardProvider({
             if (targetItemId) {
                 insertionIndex = destStateTaskIds.findIndex(id => id === targetItemId);
                 if (insertionIndex === -1) {
-                    // console.warn("Target item for insertion not found in destination state, adding to end.");
-                    insertionIndex = destStateTaskIds.length; // Fallback: Add to the end
+                    insertionIndex = destStateTaskIds.length;
                 }
             } else {
-                insertionIndex = destStateTaskIds.length; // No target item, add to the end
+                insertionIndex = destStateTaskIds.length;
             }
 
-            // Use a fresh array for splicing if it's a different column
             const finalDestTaskIds = (source.droppableId === destination.droppableId) ? sourceStateTaskIds : [...destStateTaskIds];
             finalDestTaskIds.splice(insertionIndex, 0, draggableId);
 
@@ -682,7 +672,6 @@ export function BoardProvider({
             }
         })
 
-        // API call to update the backend
         window.axios.post(`/move/${draggableId}`, {
             column: destination.droppableId,
         })
@@ -691,7 +680,7 @@ export function BoardProvider({
             // console.log("Move successful:", response.data);
         })
         .catch((error) => {
-            console.error("Error during task move:", error);
+            // console.error("Error during task move:", error);
             // Revert optimistic update on error
             // This part can be complex and depends on how you want to handle rollback
             // For simplicity, we're logging the error. A more robust solution
@@ -699,7 +688,7 @@ export function BoardProvider({
             // Consider fetching fresh data or implementing a more detailed rollback.
             alert("Failed to move task. Please refresh the page.");
         });
-    }, [tasks]) // Added tasks to dependency array as it's used in setColumns updater
+    }, [tasks])
 
     /**
      * Close the PostFormDialog
@@ -717,7 +706,6 @@ export function BoardProvider({
             const defaultPriorityObj = priorities.find(p => p.is_default);
             const defaultPriorityName = defaultPriorityObj ? defaultPriorityObj.name.toLowerCase() : "medium";
             
-            // Removed defaultStatusObj logic as it was causing issues and fid_status is not on Task template
             const firstColumnKey = Object.keys(columns).length > 0 ? Object.keys(columns)[0] : null;
             const firstColumn = firstColumnKey ? columns[firstColumnKey] : null;
 
@@ -734,8 +722,7 @@ export function BoardProvider({
                 watchers: [],
                 linked_issues: [],
             };
-            // @ts-ignore 
-            setSelectedTask(newPostTemplate as Task); 
+            setSelectedTask(newPostTemplate as Task);
             setIsEditDialogOpen(true); 
             return;
         }
@@ -783,7 +770,6 @@ export function BoardProvider({
     }, [])
 
     const pinTask = useCallback((taskId: string, isPinned: boolean) => {
-        // Optimistic UI update
         setTasks((prevTasks) => {
             const task = prevTasks[taskId]
             if (!task) return prevTasks
@@ -797,7 +783,6 @@ export function BoardProvider({
             }
         })
 
-        // API call
         window.axios.post(`/pin/${taskId}`, {
             pinned: isPinned ? 1 : 0,
         })
@@ -810,14 +795,13 @@ export function BoardProvider({
             // Revert optimistic update on error
             setTasks((prevTasks) => {
                 const task = prevTasks[taskId]
-                if (!task) return prevTasks // Should ideally not happen if task existed before
+                if (!task) return prevTasks
 
-                // Revert to the opposite pinned state
                 return {
                     ...prevTasks,
                     [taskId]: {
                         ...task,
-                        pinned: isPinned ? 0 : 1, // Revert the change
+                        pinned: isPinned ? 0 : 1,
                     },
                 }
             })
