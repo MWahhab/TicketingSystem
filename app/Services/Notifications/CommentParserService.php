@@ -18,7 +18,7 @@ readonly class CommentParserService implements NotificationParserInterface
 
     public function parse(object $entity): array
     {
-        if (! $entity instanceof Comment) {
+        if (!$entity instanceof Comment) {
             throw new \InvalidArgumentException(
                 'Expected Comment, got ' . $entity::class
             );
@@ -36,29 +36,28 @@ readonly class CommentParserService implements NotificationParserInterface
             '#' . $comment->fid_post . ': ' . Str::limit($post->title, 5, '…')
         );
 
-        $notifications = $mentionResult['notifications'];
+        return $this->filterNotifications($mentionResult['notifications'], $post, $authId);
+    }
 
-        $participants = array_unique(array_merge(
-            [$post->assignee_id, $comment->fid_user],
-            array_keys($post->getWatcherIds())
-        ));
-
-        foreach ($participants as $uid) {
-            if ($uid === $authId) {
+    /**
+     * @param array<int, array<string, mixed>> $notifications
+     * @return array <int, array<string, mixed>>
+     */
+    private function filterNotifications(array $notifications, Post $post, int $authId): array
+    {
+        $seenParticipants = [];
+        foreach ($notifications as $index => $notification) {
+            $targetUserId = $notification['fid_user'];
+            if ($targetUserId === $authId || isset($seenParticipants[$targetUserId])) {
+                unset($notifications[$index]);
                 continue;
             }
 
-            $notifications[] = [
-                'created_by' => $authId,
-                'type'       => NotificationTypeEnums::COMMENT->value,
-                'content'    => "{$comment->creator->name} commented on post #{$comment->fid_post}",
-                'fid_post'   => $comment->fid_post,
-                'fid_board'  => $post->fid_board,
-                'fid_user'   => $uid,
-                'created_at' => now()->toIso8601String(),
-                'updated_at' => now()->toIso8601String(),
-                'is_mention' => false,
-            ];
+            $seenParticipants[$targetUserId]     = true;
+            $notifications[$index]['fid_post']   = $post->id;
+            $notifications[$index]['created_at'] = now()->toIso8601String();
+            $notifications[$index]['updated_at'] = now()->toIso8601String();
+            unset($notifications[$index]['fid_comment']);
         }
 
         return $notifications;
