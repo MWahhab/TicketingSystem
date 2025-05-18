@@ -171,14 +171,12 @@ readonly class PostParserService implements NotificationParserInterface
                     );
                     break;
                 case 'assignee_id':
-                    $oldName    = optional($post->assignee)->getOriginal('name') ?? 'Unassigned';
-                    $newName    = optional($post->assignee)->name                ?? 'Unassigned';
                     $messages[] = sprintf(
                         'Post #%d (%s) was reassigned from %s to %s',
                         $post->id,
                         $boardName,
-                        $oldName,
-                        $newName
+                        $post->assignee->getOriginal('name'),
+                        $post->loadMissing('assignee:id,name')->assignee->name
                     );
                     break;
             }
