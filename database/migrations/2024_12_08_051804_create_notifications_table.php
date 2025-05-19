@@ -36,7 +36,7 @@ return new class () extends Migration implements HasMigrationDefinition {
             $table->dateTime('seen_at')->nullable();
             $table->foreignId('fid_user')->constrained('users');
             $table->foreignId('created_by')->constrained('users');
-            $table->boolean('is_mention')->default(null);
+            $table->boolean('is_mention')->nullable()->default(false);
             $table->timestamps();
             $table->index('created_at');
             $table->index('updated_at');

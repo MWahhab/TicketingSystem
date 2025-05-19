@@ -31,7 +31,7 @@ readonly class PRQueueParserService implements NotificationParserInterface
          * @var Post $post
          */
         $post        = $queue->post()->with(['board', 'creator'])->firstOrFail();
-        $title       = Str::limit($post->title, 5, '…');
+        $title       = Str::limit($post->title, config('formatting.titleLength'), '…');
         $changes     = $queue->getChanges();
         $maxRetries  = PRQueueService::MAX_RETRIES;
         $event       = $this->classifyQueueEvent($queue, $changes, $maxRetries);

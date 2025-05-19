@@ -15,7 +15,7 @@ use InvalidArgumentException;
 readonly class PostParserService implements NotificationParserInterface
 {
     public function __construct(
-        private MentionParserService $mentionsParser,
+        private MentionParserService $mentionsParser = new MentionParserService(),
     ) {
     }
 
@@ -44,7 +44,7 @@ readonly class PostParserService implements NotificationParserInterface
 
         $userIds    = $this->collectNotifiableUserIds($post);
         $boardName  = BoardConfig::find($post->fid_board)->title ?? 'Unknown';
-        $shortTitle = Str::limit((string) $post->title, 10, '...');
+        $shortTitle = Str::limit((string) $post->title, config('formatting.titleLength'), '...');
         $scope      = "#{$post->id}:{$shortTitle} ({$boardName})";
 
         $desc = $this->extractRelevantDescription($post, $changes);
@@ -83,7 +83,7 @@ readonly class PostParserService implements NotificationParserInterface
     }
 
     /** @return array<int,true> */
-    private function collectNotifiableUserIds(Post $post): array
+    public function collectNotifiableUserIds(Post $post): array
     {
         $ids = [];
         if ($post->assignee_id) {
