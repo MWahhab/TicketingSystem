@@ -84,13 +84,11 @@ readonly class MentionParserService
 
     /**
      * Returns modified HTML where matched mentions are flagged with data-notified="1"
-     *
-     * @param int[] $notifiedUserIds
      */
-    public function markMentionsAsNotified(string $html, array $notifiedUserIds): string
+    public function markMentionsAsNotified(string $html): string
     {
-        if ($notifiedUserIds === []) {
-            return $html;
+        if ($html === '' || $html === '0') {
+            return '';
         }
 
         $doc = new DOMDocument();
@@ -113,11 +111,7 @@ readonly class MentionParserService
                     continue;
                 }
 
-                $userId = (int) $idAttr;
-
-                if (in_array($userId, $notifiedUserIds, true)) {
-                    $span->setAttribute('data-notified', '1');
-                }
+                $span->setAttribute('data-notified', '1');
             }
         }
 

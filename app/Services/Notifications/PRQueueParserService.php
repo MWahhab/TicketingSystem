@@ -66,21 +66,6 @@ readonly class PRQueueParserService implements NotificationParserInterface
     }
 
     /**
-     * @throws InvalidArgumentException
-     * @return list<int>
-     */
-    public function getNewlyNotifiedUserIds(object $entity): array
-    {
-        if (! $entity instanceof PRQueue) {
-            throw new InvalidArgumentException(
-                sprintf('PRQueueParserService expects %s, %s given', PRQueue::class, $entity::class)
-            );
-        }
-
-        return [];
-    }
-
-    /**
      * @param 'submitted'|'max_retries_failed'|'outcome_success'|'outcome_failed' $event
      * @throws \RuntimeException
      */

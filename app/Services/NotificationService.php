@@ -48,12 +48,10 @@ class NotificationService
             ?? throw new \InvalidArgumentException('Unsupported object type.');
 
         $notifications = $parser->parse($object);
-        $newlyIds      = $parser->getNewlyNotifiedUserIds($object);
 
         $this->dispatchAndCacheNotifications(
             $notifications,
-            $object,
-            $newlyIds
+            $object
         );
     }
 
@@ -61,9 +59,8 @@ class NotificationService
      * Dispatch notifications and cache them.
      *
      * @param list<array<string, mixed>> $notifications
-     * @param list<int> $notifiedUserIds
      */
-    public function dispatchAndCacheNotifications(array $notifications, object $object, array $notifiedUserIds = []): void
+    public function dispatchAndCacheNotifications(array $notifications, object $object): void
     {
         if ($notifications === []) {
             return;
@@ -97,8 +94,13 @@ class NotificationService
             };
         }
 
-        if ($object instanceof Post && $notifiedUserIds !== []) {
-            $object->desc = $this->mentionsParser->markMentionsAsNotified($object->desc, $notifiedUserIds);
+        if ($object instanceof Post) {
+            $object->desc = $this->mentionsParser->markMentionsAsNotified($object->desc);
+            $object->saveQuietly();
+        }
+
+        if ($object instanceof Comment) {
+            $object->content = $this->mentionsParser->markMentionsAsNotified($object->content);
             $object->saveQuietly();
         }
     }

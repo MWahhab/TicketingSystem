@@ -88,9 +88,4 @@ readonly class LinkedIssueParserService implements NotificationParserInterface
 
         return $notifications;
     }
-
-    public function getNewlyNotifiedUserIds(object $entity): array
-    {
-        return [];
-    }
 }

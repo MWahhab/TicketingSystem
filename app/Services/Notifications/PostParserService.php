@@ -6,7 +6,9 @@ use App\Enums\NotificationTypeEnums;
 use App\Interfaces\NotificationParserInterface;
 use App\Models\BoardConfig;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -23,7 +25,7 @@ readonly class PostParserService implements NotificationParserInterface
      */
     public function parse(object $entity): array
     {
-        if (! $entity instanceof Post) {
+        if (!$entity instanceof Post) {
             throw new InvalidArgumentException(
                 sprintf('PostParserService expects %s, %s given', Post::class, $entity::class)
             );
@@ -42,7 +44,7 @@ readonly class PostParserService implements NotificationParserInterface
 
         $userIds    = $this->collectNotifiableUserIds($post);
         $boardName  = BoardConfig::find($post->fid_board)->title ?? 'Unknown';
-        $shortTitle = Str::limit((string) $post->title, 5, '...');
+        $shortTitle = Str::limit((string) $post->title, 10, '...');
         $scope      = "#{$post->id}:{$shortTitle} ({$boardName})";
 
         $desc = $this->extractRelevantDescription($post, $changes);
@@ -90,6 +92,12 @@ readonly class PostParserService implements NotificationParserInterface
         if ($post->fid_user) {
             $ids[$post->fid_user]    = true;
         }
+
+        $changes = $post->getChanges();
+        if (isset($changes['assignee_id'])) {
+            $ids[$changes['assignee_id']] = true;
+        }
+
         return $ids + $post->getWatcherIds();
     }
 
@@ -171,12 +179,25 @@ readonly class PostParserService implements NotificationParserInterface
                     );
                     break;
                 case 'assignee_id':
+                    $ids           = [$post->assignee_id, $new];
+                    $existingUsers = User::whereIn('id', $ids)
+                        ->orderByRaw('FIELD(id, ?, ?)', $ids)
+                        ->pluck('name');
+
+                    // this handling is supposed to not alert a tampering user
+                    // just silently log the attempt so we can remedy carefully
+                    if (count($existingUsers) < 2) {
+                        $messages = [];
+                        Log::error('Tampered code. Unsafe for execution');
+                        break;
+                    }
+
                     $messages[] = sprintf(
                         'Post #%d (%s) was reassigned from %s to %s',
                         $post->id,
                         $boardName,
-                        $post->assignee->getOriginal('name'),
-                        $post->loadMissing('assignee:id,name')->assignee->name
+                        $existingUsers[0],
+                        $existingUsers[1]
                     );
                     break;
             }
@@ -211,7 +232,7 @@ readonly class PostParserService implements NotificationParserInterface
             $isSelf           = $uid                                                 === Auth::id();
             $isAssigneeChange = isset($changes['assignee_id']) && $post->assignee_id === Auth::id();
 
-            if ($isSelf && ! $post->wasRecentlyCreated && ! $isAssigneeChange) {
+            if ($isSelf && !$post->wasRecentlyCreated && !$isAssigneeChange) {
                 continue;
             }
 
@@ -231,16 +252,5 @@ readonly class PostParserService implements NotificationParserInterface
         }
 
         return $out;
-    }
-
-    public function getNewlyNotifiedUserIds(object $entity): array
-    {
-        if (! $entity instanceof Post) {
-            throw new InvalidArgumentException(
-                sprintf('PostParserService expects %s, %s given', Post::class, $entity::class)
-            );
-        }
-
-        return $this->build($entity)[1];
     }
 }
