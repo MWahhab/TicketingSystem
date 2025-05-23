@@ -39,15 +39,22 @@ readonly class PostParserService implements NotificationParserInterface
      */
     public function build(Post $post): array
     {
-        $changes = $post->getChanges();
-        $nowIso  = now()->toIso8601String();
+        $changes    = $post->getChanges();
+        $nowIso     = now()->toIso8601String();
+        $notifySelf = false;
+
+        if (in_array('fid_board', array_keys($changes)) && is_numeric($changes['fid_board'])) {
+            $post->fid_board = (int) $changes['fid_board'];
+            $notifySelf      = true;
+        }
 
         $userIds    = $this->collectNotifiableUserIds($post);
+
         $boardName  = BoardConfig::find($post->fid_board)->title ?? 'Unknown';
         $shortTitle = Str::limit((string) $post->title, config('formatting.titleLength'), '...');
         $scope      = "#{$post->id}:{$shortTitle} ({$boardName})";
 
-        $desc = $this->extractRelevantDescription($post, $changes);
+        $desc       = $this->extractRelevantDescription($post, $changes);
 
         $mentionResult = $this->mentionsParser->parse(
             $desc,
@@ -72,7 +79,7 @@ readonly class PostParserService implements NotificationParserInterface
         if ($changeMessages !== []) {
             $finalNotifications = array_merge(
                 $finalNotifications,
-                $this->fanOutToUsers($post, $userIds, $changes, $changeMessages, $nowIso)
+                $this->fanOutToUsers($post, $userIds, $changes, $changeMessages, $nowIso, $notifySelf)
             );
         }
 
@@ -230,14 +237,14 @@ readonly class PostParserService implements NotificationParserInterface
      * @param list<string> $messages
      * @return list<array<string,mixed>>
      */
-    private function fanOutToUsers(Post $post, array $userIds, array $changes, array $messages, string $nowIso): array
+    private function fanOutToUsers(Post $post, array $userIds, array $changes, array $messages, string $nowIso, bool $includeSelf = false): array
     {
         $out = [];
         foreach (array_keys($userIds) as $uid) {
             $isSelf           = $uid                                                 === Auth::id();
             $isAssigneeChange = isset($changes['assignee_id']) && $post->assignee_id === Auth::id();
 
-            if ($isSelf && !$post->wasRecentlyCreated && !$isAssigneeChange) {
+            if ($isSelf && !$post->wasRecentlyCreated && !$isAssigneeChange && !$includeSelf) {
                 continue;
             }
 
