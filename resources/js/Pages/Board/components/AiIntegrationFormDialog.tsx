@@ -59,16 +59,14 @@ interface AISettingsDialogProps {
     boardId: string;
     boardTitle: string;
     boards: Board[];
-    isPremium: string; // Consider using 'standard' | 'premium' if those are the only options
+    isPremium: string;
 }
 
 interface ApiResponseItem {
     json: {
         integration: string;
         statusCode: number;
-        // Add other potential properties if known
     };
-    // Add other potential properties if known
 }
 
 export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards, isPremium }: AISettingsDialogProps) {
@@ -403,6 +401,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                             <div className="relative">
                                                 <FormControl>
                                                     <Input
+                                                        autoComplete="off"
                                                         type={revealGithub ? "text" : "password"}
                                                         {...field}
                                                         className={`h-10 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md pr-10 focus:outline-none focus:ring-2 focus:ring-white/40 ${
@@ -504,6 +503,7 @@ export function AISettingsDialog({ isOpen, onClose, boardId, boardTitle, boards,
                                             <div className="relative">
                                                 <FormControl>
                                                     <Input
+                                                        autoComplete="off"
                                                         type={revealAI ? "text" : "password"}
                                                         {...field}
                                                         className={`h-10 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md pr-10 focus:outline-none focus:ring-2 focus:ring-white/40 ${

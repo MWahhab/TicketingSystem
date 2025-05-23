@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, memo, useMemo, useCallback } from "react"
 import { UserIcon, Pin, PinOff, CalendarIcon, MessageSquare, GitCommit, Link2, History, Edit3, CheckCircle, Paperclip, MoreHorizontal, ChevronDown, Dot, FileText, GitBranch } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -21,11 +20,6 @@ const deadlineBgColors: { [key: string]: string } = {
     gray: "bg-zinc-700",
     yellow: "bg-yellow-600/30",
     red: "bg-red-600/30",
-}
-
-function getInitials(name: string) {
-    const names = name.split(" ")
-    return names.map((n) => n.charAt(0).toUpperCase()).join("")
 }
 
 const BranchIcon = () => (
@@ -83,11 +77,6 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
     const loadingStartTimerRef = useRef<NodeJS.Timeout | null>(null)
     const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const moreFiltersButtonRef = useRef<HTMLButtonElement>(null);
-
-    const taskVersion = useMemo(() => {
-        const { title, priority, deadline, pinned, assignee } = task;
-        return `${title}-${priority}-${deadline || 'none'}-${pinned || 0}-${assignee?.name || 'unassigned'}`;
-    }, [task.title, task.priority, task.deadline, task.pinned, task.assignee?.name]);
 
     const [selectedActivityFilter, setSelectedActivityFilter] = useState<string | null>(null);
     const [isMoreFiltersDropdownOpen, setIsMoreFiltersDropdownOpen] = useState(false);

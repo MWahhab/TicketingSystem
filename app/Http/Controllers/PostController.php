@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use App\Services\ImageService;
+use App\Utils\PostFormatterUtil;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -98,7 +99,12 @@ class PostController extends Controller
 
         return response()->json([
             'message' => 'Post has been updated!',
-            'post'    => $post,
+            'post'    => array_merge(
+                $post->toArray(),
+                [
+                    'deadline_color' => PostFormatterUtil::getDeadlineColor($post->deadline),
+                ]
+            ),
         ]);
     }
 
@@ -135,7 +141,9 @@ class PostController extends Controller
         $imageService->deleteAllImagesInDesc($post->desc);
         $boardFid = $post->fid_board;
         $postId   = $post->id;
+
         $post->delete();
+        $post->notify();
 
         return response()->json([
             'message'         => 'Post has been deleted successfully!',

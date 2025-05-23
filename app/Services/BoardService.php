@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataTransferObjects\BoardFilterDataTransferObject;
 use App\Enums\NotificationTypeEnums;
 use App\Models\BoardConfig;
+use App\Utils\PostFormatterUtil;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -128,31 +129,24 @@ class BoardService
         return $board;
     }
 
-
     /**
      * Format posts into array structure for frontend.
      */
     private function formatPosts(?Collection $posts): array
     {
         return $posts instanceof \Illuminate\Support\Collection ? $posts->map(fn ($post) => [
-            'id'                   => $post->id,
-            'title'                => $post->title,
-            'desc'                 => $post->desc,
-            'priority'             => $post->priority,
-            'pinned'               => $post->pinned,
-            'column'               => $post->column,
-            'assignee_id'          => $post->assignee_id,
-            'deadline'             => $post->deadline,
-            'deadline_color'       => match (true) {
-                !$post->deadline => null,
-                $post->deadline->isPast(),
-                now()->diffInDays($post->deadline, false) <= 3 => 'red',
-                now()->diffInDays($post->deadline, false) <= 7 => 'yellow',
-                default                                        => 'gray',
-            },
-            'had_branch'  => $post->had_branch,
-            'fid_board'   => $post->fid_board,
-            'assignee'    => $post->assignee ? [
+            'id'             => $post->id,
+            'title'          => $post->title,
+            'desc'           => $post->desc,
+            'priority'       => $post->priority,
+            'pinned'         => $post->pinned,
+            'column'         => $post->column,
+            'assignee_id'    => $post->assignee_id,
+            'deadline'       => $post->deadline,
+            'deadline_color' => PostFormatterUtil::getDeadlineColor($post->deadline),
+            'had_branch'     => $post->had_branch,
+            'fid_board'      => $post->fid_board,
+            'assignee'       => $post->assignee ? [
                 'id'   => $post->assignee->id,
                 'name' => $post->assignee->name,
             ] : null,

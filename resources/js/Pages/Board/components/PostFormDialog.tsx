@@ -28,12 +28,12 @@ import ActivityHistory from "@/Pages/Board/components/ActivityHistory"
 import LinkedIssuesSection from "@/Pages/Board/components/LinkedIssues"
 import axios from "axios"
 import { useBoardContext, type Assignee, type Task, type Board } from "../BoardContext"
+import {router} from "@inertiajs/react";
 
 interface FileItem {
     path: string
     content: string
 }
-
 const Portal = ({ children }: { children: React.ReactNode }) => {
     return createPortal(children, document.body)
 }
@@ -394,14 +394,29 @@ export function PostFormDialog({
 
     const handleDialogOpenChange = (open: boolean) => {
         if (!open) {
-            if (onClose) {
-                onClose()
+            if (onClose) onClose();
+            setIsDialogOpen(false);
+
+            const params = new URLSearchParams(window.location.search);
+            const keysToRemove = ['post_id', 'openTask'];
+
+            let changed = false;
+            for (const key of keysToRemove) {
+                if (params.has(key)) {
+                    params.delete(key);
+                    changed = true;
+                }
             }
-            setIsDialogOpen(false)
+
+            if (changed) {
+                const query = params.toString();
+                const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+                router.replace(newUrl, { scroll: false });
+            }
         } else {
-            setIsDialogOpen(true)
+            setIsDialogOpen(true);
         }
-    }
+    };
 
     const checkQueueStatus = useCallback(async () => {
         if (!task?.id || !hasPremiumAccess(isPremium)) return

@@ -66,7 +66,9 @@ class NotificationService
             return;
         }
 
-        Notification::insert($notifications);
+        if ($object->exists) {
+            Notification::insert($notifications);
+        }
 
         foreach ($notifications as $data) {
             if (!isset($data['fid_user'], $data['fid_post'])) {
@@ -78,11 +80,19 @@ class NotificationService
             if (!is_numeric($data['fid_post'])) {
                 continue;
             }
+            if (!$object->exists) {
+                $data['is_deleted'] = 1;
+            }
+
             $userId = $data['fid_user'];
             $postId = $data['fid_post'];
 
             $this->cacheService->pushNotification($userId, $postId, $data);
             event(new UserNotificationReceived($userId, $data));
+
+            if (!$object->exists) {
+                return;
+            }
 
             $type = $data['type'] ?? null;
 

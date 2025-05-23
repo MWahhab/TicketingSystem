@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\Post;
+use App\Utils\PostFormatterUtil;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Queue\SerializesModels;
@@ -20,6 +21,7 @@ class CardMoved implements ShouldBroadcastNow
     public int $assigneeId;
     public string $assigneeName;
     public string $desc;
+    public bool $isDeleted;
 
     public function __construct(Post $post, public string $newColumnId)
     {
@@ -32,6 +34,7 @@ class CardMoved implements ShouldBroadcastNow
         $this->priority     = $post->priority;
         $this->assigneeId   = $post->assignee_id;
         $this->assigneeName = $post->assignee->name ?? 'Unassigned';
+        $this->isDeleted    = !$post->exists;
     }
 
     public function broadcastOn(): Channel
@@ -47,15 +50,17 @@ class CardMoved implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'post_id'       => $this->postId,
-            'new_column_id' => $this->newColumnId,
-            'title'         => $this->title,
-            'desc'          => $this->desc,
-            'deadline'      => $this->deadline,
-            'pinned'        => $this->pinned,
-            'priority'      => $this->priority,
-            'assignee_id'   => $this->assigneeId,
-            'assignee_name' => $this->assigneeName,
+            'post_id'        => $this->postId,
+            'new_column_id'  => $this->newColumnId,
+            'title'          => $this->title,
+            'desc'           => $this->desc,
+            'deadline'       => $this->deadline,
+            'pinned'         => $this->pinned,
+            'priority'       => $this->priority,
+            'assignee_id'    => $this->assigneeId,
+            'assignee_name'  => $this->assigneeName,
+            'is_deleted'     => $this->isDeleted,
+            'deadline_color' => PostFormatterUtil::getDeadlineColor($this->deadline),
         ];
     }
 }

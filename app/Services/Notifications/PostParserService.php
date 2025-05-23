@@ -65,7 +65,7 @@ readonly class PostParserService implements NotificationParserInterface
 
         $changeMessages = $this->generateChangeMessages($post, $changes, $shortTitle, $boardName);
 
-        if (!empty($changes)) {
+        if (!empty($changes) || !$post->exists) {
             $this->broadcastRealtimeUpdateIfNeeded($post);
         }
 
@@ -207,6 +207,11 @@ readonly class PostParserService implements NotificationParserInterface
 
     private function broadcastRealtimeUpdateIfNeeded(Post $post): void
     {
+        if (!$post->exists) {
+            app(\App\Services\RealTimeSyncService::class)->postMoved($post, $post->column);
+            return;
+        }
+
         foreach (['column','title','desc','assignee_id','deadline','priority','pinned'] as $attr) {
             if ($post->wasChanged($attr)) {
                 $post->refresh();

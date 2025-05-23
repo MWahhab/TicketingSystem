@@ -245,8 +245,33 @@ export function BoardProvider({
     }, [columnsArray, postsArray, memoizedAssignees])
 
     useEffect(() => {
-        const unsubscribe = StateMachine.define("CardMoved", ({ post_id, new_column_id, title, desc, deadline, pinned, priority, assignee_id, assignee_name }) => {
+        const unsubscribe = StateMachine.define("CardMoved", ({ post_id, new_column_id, title, desc, deadline, pinned, priority, assignee_id, assignee_name, is_deleted, deadline_color }) => {
             const taskId = String(post_id);
+
+            if (is_deleted === 1 || is_deleted === true) {
+                setTasks(prev => {
+                    const copy = { ...prev };
+                    delete copy[taskId];
+                    return copy;
+                });
+
+                setColumns(prev => {
+                    const newCols = { ...prev };
+                    for (const colId in newCols) {
+                        const index = newCols[colId].taskIds.indexOf(taskId);
+                        if (index !== -1) {
+                            newCols[colId] = {
+                                ...newCols[colId],
+                                taskIds: newCols[colId].taskIds.filter(id => id !== taskId),
+                            };
+                        }
+                    }
+                    return newCols;
+                });
+
+                return;
+            }
+
             const eventTargetColumnId = String(new_column_id);
 
             setTasks(prevTasks => {
@@ -263,7 +288,8 @@ export function BoardProvider({
                         pinned: pinned,
                         priority: priority as Task["priority"],
                         assignee_id: String(assignee_id),
-                        assignee: { name: assignee_name }
+                        assignee: { name: assignee_name },
+                        deadline_color: deadline_color
                     }
                 };
             });
