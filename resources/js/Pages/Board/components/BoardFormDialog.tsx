@@ -43,8 +43,8 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { v4 as uuidv4 } from 'uuid'
 
-// Schema definitions
 const columnSchema = z.object({
     id: z.string().optional(),
     value: z.string().min(1, { message: "Column name cannot be empty." }),
@@ -74,7 +74,6 @@ const formSchema = z.object({
 })
 type FormData = z.infer<typeof formSchema>
 
-// Types
 interface BoardToEdit {
     id: number | string
     title: string
@@ -87,9 +86,8 @@ interface BoardFormDialogProps {
     onOpenChange?: (open: boolean) => void
 }
 
-// Default constants
 const DONE_COLUMN_NAME = "Done"
-const initialDefaultColumns = [{ value: DONE_COLUMN_NAME, isFixed: true }]
+const initialDefaultColumns = [{ id: uuidv4(), value: DONE_COLUMN_NAME, isFixed: true }]
 const templateColumnNamesBeforeDone = [
     "Planning",
     "Backlog",
@@ -109,6 +107,7 @@ export function BoardFormDialog({
     const [loading, setLoading] = useState(false)
     const [reassignMap, setReassignMap] = useState<Record<string, string>>({})
     const [staleMap, setStaleMap] = useState<Record<string, boolean>>({})
+    const [renameMap, setRenameMap] = useState<Record<string, string>>({})
 
     const isEdit = !!editingBoardId
     const isOpen = externalOpen !== undefined ? externalOpen : internalOpen
@@ -131,6 +130,7 @@ export function BoardFormDialog({
             setBoard(null)
             setReassignMap({})
             setStaleMap({})
+            setRenameMap({})
         }
     }
 
@@ -155,8 +155,8 @@ export function BoardFormDialog({
             form.reset({
                 title: board.title,
                 columns: [
-                    ...cols.map((v) => ({ value: v, isFixed: false })),
-                    { value: DONE_COLUMN_NAME, isFixed: true },
+                    ...cols.map((v) => ({ id: uuidv4(), value: v, isFixed: false })),
+                    { id: uuidv4(), value: DONE_COLUMN_NAME, isFixed: true },
                 ],
             })
         } else {
@@ -164,18 +164,19 @@ export function BoardFormDialog({
         }
         setReassignMap({})
         setStaleMap({})
+        setRenameMap({})
     }, [isOpen, board])
 
     const findDoneIndex = () =>
         fields.findIndex((f) => f.isFixed && f.value === DONE_COLUMN_NAME)
     const addColumn = () => {
         const idx = findDoneIndex()
-        if (idx >= 0) insert(idx, { value: "", isFixed: false })
-        else replace([...form.getValues("columns"), { value: "", isFixed: false }, { value: DONE_COLUMN_NAME, isFixed: true }])
+        if (idx >= 0) insert(idx, { id: uuidv4(), value: "", isFixed: false })
+        else replace([...form.getValues("columns"), { id: uuidv4(), value: "", isFixed: false }, { id: uuidv4(), value: DONE_COLUMN_NAME, isFixed: true }])
     }
     const loadTemplate = () => {
-        const templ = templateColumnNamesBeforeDone.map((v) => ({ value: v, isFixed: false }))
-        replace([...templ, { value: DONE_COLUMN_NAME, isFixed: true }])
+        const templ = templateColumnNamesBeforeDone.map((v) => ({ id: uuidv4(), value: v, isFixed: false }))
+        replace([...templ, { id: uuidv4(), value: DONE_COLUMN_NAME, isFixed: true }])
         toast({ title: "Template Loaded", variant: "success" })
     }
 
@@ -213,16 +214,35 @@ export function BoardFormDialog({
             if (missing.length)
                 return toast({ title: "Please assign replacements.", variant: "destructive" })
         }
-        const cols = vals.columns.map((c) => c.value.trim()).filter((c) => !reassignMap[c])
-        const payload = {
+
+        let renamesArr: { from: string, to: string }[] = [];
+        if (isEdit && board) {
+            const oldColumns = board.columns;
+            const newColumns = vals.columns.map(c => c.value.trim()).filter(c => !reassignMap[c]);
+            oldColumns.forEach((oldCol, idx) => {
+                const newCol = newColumns[idx];
+                if (
+                    newCol &&
+                    newCol !== oldCol &&
+                    !oldColumns.includes(newCol) &&
+                    !newColumns.includes(oldCol)
+                ) {
+                    renamesArr.push({ from: oldCol, to: newCol });
+                }
+            });
+        }
+
+        const cols = vals.columns.map((c) => c.value.trim()).filter((c) => !reassignMap[c]);
+        const payload: any = {
             title: vals.title.trim(),
             columns: cols,
             reassignments: Object.entries(reassignMap).map(([from, to]) => ({ from, to })),
-        }
+        };
+        if (renamesArr.length > 0) payload.renames = renamesArr;
         const opts = {
-            onSuccess: () => { toast({ title: isEdit? "Board Updated!": "Board Created!", variant: "success" }); handleClose(false) },
+            onSuccess: () => { toast({ title: isEdit ? "Board Updated!" : "Board Created!", variant: "success" }); handleClose(false) },
             onError: (e: any) => toast({ title: e.message || "Error", variant: "destructive" }),
-        }
+        };
         if (isEdit && board) Inertia.put(`/boards/${board.id}`, payload, opts)
         else Inertia.post(`/boards`, payload, opts)
     }
@@ -284,6 +304,10 @@ export function BoardFormDialog({
                                             : "bg-zinc-700/30 border border-white/10"
                                         else if (isStale) containerClass = "bg-yellow-900/30 border border-yellow-500/30"
 
+                                        const doneIdx = findDoneIndex()
+                                        const disableMoveDown = isFixedDone || idx === doneIdx - 1
+                                        const disableMoveUp = isFixedDone
+
                                         return (
                                             <div key={item.id} className={`rounded p-2 ${containerClass}`}>
                                                 <div className="flex items-center space-x-2">
@@ -305,7 +329,7 @@ export function BoardFormDialog({
                                                             <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, idx-1)} disabled={idx===0} className="text-zinc-400 hover:text-zinc-100 shrink-0" aria-label="Move up">
                                                                 <ArrowUp className="h-4 w-4" />
                                                             </Button>
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, idx+1)} disabled={idx===fields.length-1} className="text-zinc-400 hover:text-zinc-100 shrink-0" aria-label="Move down">
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, idx+1)} disabled={disableMoveDown} className="text-zinc-400 hover:text-zinc-100 shrink-0" aria-label="Move down">
                                                                 <ArrowDown className="h-4 w-4" />
                                                             </Button>
                                                         </>
@@ -340,6 +364,13 @@ export function BoardFormDialog({
                                 <ScrollBar orientation="vertical" />
                             </ScrollArea>
 
+                            {/* Error message moved below columns list */}
+                            {form.formState.errors.columns?.message && (
+                                <div className="mt-3 p-3 bg-red-900/60 border border-red-500/60 rounded-md">
+                                    <p className="text-red-400 text-sm font-semibold">{form.formState.errors.columns.message}</p>
+                                </div>
+                            )}
+
                             <div className="flex space-x-2 mt-3 flex-shrink-0">
                                 <Button type="button" variant="outline" onClick={addColumn} className="text-sm border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 transition-all">
                                     <PlusCircle className="mr-2 h-4 w-4" /> Add Column
@@ -350,7 +381,6 @@ export function BoardFormDialog({
                                     </Button>
                                 )}
                             </div>
-                            <FormMessage className="text-red-400 mt-2">{form.formState.errors.columns?.message}</FormMessage>
                         </FormItem>
 
                         <div className="mt-auto pt-3 pb-6 flex-shrink-0">

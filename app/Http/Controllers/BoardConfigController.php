@@ -124,9 +124,18 @@ class BoardConfigController extends Controller
             'reassignments'        => ['sometimes','array'],
             'reassignments.*.from' => ['required_with:reassignments','string'],
             'reassignments.*.to'   => ['required_with:reassignments','string'],
+            'renames'              => ['sometimes','array'],
+            'renames.*.from'       => ['required_with:renames','string'],
+            'renames.*.to'         => ['required_with:renames','string'],
         ]);
 
         foreach ($data['reassignments'] ?? [] as $r) {
+            Post::where('fid_board', $board->id)
+                ->where('column', $r['from'])
+                ->update(['column' => $r['to']]);
+        }
+
+        foreach ($data['renames'] ?? [] as $r) {
             Post::where('fid_board', $board->id)
                 ->where('column', $r['from'])
                 ->update(['column' => $r['to']]);
