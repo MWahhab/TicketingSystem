@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\DataTransferObjects\BoardFilterDataTransferObject;
 use App\Enums\PrioritiesEnum;
 use App\Models\BoardConfig;
+use App\Models\Post;
 use App\Models\User;
 use App\Services\BoardService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -101,17 +103,41 @@ class BoardConfigController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(BoardConfig $boardConfig)
+    public function edit(BoardConfig $board): JsonResponse
     {
-        //
+        return response()->json([
+            'id'      => $board->id,
+            'title'   => $board->title,
+            'columns' => $board->columns,
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, BoardConfig $board)
+    public function update(Request $request, BoardConfig $board): \Symfony\Component\HttpFoundation\Response
     {
-        //
+        $data = $request->validate([
+            'title'                => ['required','string','max:255'],
+            'columns'              => ['required','array','min:1'],
+            'columns.*'            => ['string'],
+            'reassignments'        => ['sometimes','array'],
+            'reassignments.*.from' => ['required_with:reassignments','string'],
+            'reassignments.*.to'   => ['required_with:reassignments','string'],
+        ]);
+
+        foreach ($data['reassignments'] ?? [] as $r) {
+            Post::where('fid_board', $board->id)
+                ->where('column', $r['from'])
+                ->update(['column' => $r['to']]);
+        }
+
+        $board->update([
+            'title'   => $data['title'],
+            'columns' => $data['columns'],
+        ]);
+
+        return Inertia::location('/boards?board_id=' . $board->id);
     }
 
     /**

@@ -105,6 +105,9 @@ function InnerBoardLayout() {
     const [aiIntegrationOpen, setAiIntegrationOpen] = useState(false)
     const [selectedBoardForAI, setSelectedBoardForAI] = useState<{ id: string; title: string } | null>(null)
 
+    const [isBoardFormDialogOpenForEdit, setIsBoardFormDialogOpenForEdit] = useState(false);
+    const [editingBoardId, setEditingBoardId] = useState<number | string | null>(null);
+
     const [didAutoOpen, setDidAutoOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedAssignees, setSelectedAssignees] = useState<number[]>([])
@@ -116,6 +119,16 @@ function InnerBoardLayout() {
     const [isSidebarPinned, setIsSidebarPinned] = useState(true)
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
     const sidebarLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+    const handleOpenEditDialog = (idToEdit: number | string) => {
+        setEditingBoardId(idToEdit);
+        setIsBoardFormDialogOpenForEdit(true);
+    };
+
+    const handleCloseEditDialog = () => {
+        setIsBoardFormDialogOpenForEdit(false);
+        setEditingBoardId(null);
+    };
 
     useEffect(() => {
         const openTaskId = getOpenTaskParam()
@@ -188,7 +201,7 @@ function InnerBoardLayout() {
             clearTimeout(sidebarLeaveTimeoutRef.current);
             sidebarLeaveTimeoutRef.current = null;
         }
-        
+
         const newPinState = !isSidebarPinned
         setIsSidebarPinned(newPinState)
         if (newPinState) {
@@ -324,6 +337,7 @@ function InnerBoardLayout() {
                                     <DropdownMenuContent align="end" className="bg-gradient-to-br from-zinc-850 to-zinc-900 rounded-lg border border-white/10 text-zinc-100 shadow-xl w-48">
                                         <DropdownMenuItem
                                             className="text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100 cursor-pointer rounded-sm"
+                                            onClick={() => handleOpenEditDialog(board.id)}
                                         >
                                             Edit
                                         </DropdownMenuItem>
@@ -340,9 +354,16 @@ function InnerBoardLayout() {
                     </div>
                 </ScrollArea>
 
-                {/* Sidebar Footer */}
                 <div className="mt-auto p-4 space-y-2 border-t border-white/10">
-                    <BoardFormDialog />
+                    <BoardFormDialog
+                        isOpen={editingBoardId ? isBoardFormDialogOpenForEdit : undefined}
+                        onOpenChange={editingBoardId ? (open) => {
+                            if (!open) {
+                                handleCloseEditDialog();
+                            }
+                        } : undefined}
+                        editingBoardId={editingBoardId || undefined}
+                    />
 
                     <div className="flex items-center gap-2 mt-3">
                         <Link
@@ -365,11 +386,8 @@ function InnerBoardLayout() {
                 </div>
             </div>
 
-            {/* Main Content Area - No transforms, just straight layout */}
             <div className="flex-1 flex flex-col overflow-x-auto">
-                {/* Header/Toolbar */}
                 <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-br from-zinc-850 to-zinc-950 h-16 px-6 flex-shrink-0">
-                    {/* Left Side: Title & Delete */}
                     <div className="flex items-center space-x-3">
                         <h1 className="text-xl font-semibold text-zinc-100 truncate">{boardTitle}</h1>
                         {boardId &&
@@ -381,12 +399,10 @@ function InnerBoardLayout() {
                         }
                     </div>
 
-                    {/* Middle: Notifications (Optional - Keep or remove for minimalism) */}
                     <InlineNotificationCenter />
 
                     {/* Right Side: Filters & Actions */}
                     <div className="flex items-center gap-2">
-                        {/* Add Task Button - Slightly more prominent? */}
                         <PostFormDialog
                             boards={boardsColumns}
                             assignees={assignees}
@@ -569,7 +585,7 @@ function InnerBoardLayout() {
                 </div>
 
                 <DragDropContext onDragEnd={onDragEnd}>
-                    <div 
+                    <div
                         className="flex flex-1 p-4 space-x-4 h-full"
                         style={{ willChange: 'width' }}
                     >
