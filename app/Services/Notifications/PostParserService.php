@@ -207,8 +207,18 @@ readonly class PostParserService implements NotificationParserInterface
                         $existingUsers[1]
                     );
                     break;
+                case 'fid_board':
+                    $postTitle  = Str::limit($post->title, config('formatting.titleLength'));
+                    $messages[] = sprintf(
+                        'Post #%d.%s was moved to board %s',
+                        $post->id,
+                        $postTitle,
+                        $boardName,
+                    );
+                    break;
             }
         }
+
         return $messages;
     }
 

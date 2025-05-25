@@ -59,6 +59,8 @@ readonly class CommentParserService implements NotificationParserInterface
         PostParserService $postParser = new PostParserService()
     ): array {
         $notifications = [];
+        $userName      = Auth::user()?->name;
+
         foreach (array_keys($postParser->collectNotifiableUserIds($post)) as $userId) {
             if ($authId == $userId) {
                 continue;
@@ -67,7 +69,7 @@ readonly class CommentParserService implements NotificationParserInterface
             $notifications[] = [
                 'created_by'          => Auth::id(),
                 'type'                => NotificationTypeEnums::COMMENT->value,
-                'content'             => sprintf('%s commented in %s', $post->creator->name, $title),
+                'content'             => sprintf('%s commented in %s', $userName, $title),
                 'fid_board'           => $post->fid_board,
                 'fid_user'            => $userId,
                 'is_mention'          => false,
