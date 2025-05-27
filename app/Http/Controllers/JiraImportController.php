@@ -31,7 +31,7 @@ class JiraImportController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'appBoardId'    => 'required|string',
+                'appBoardId'    => 'required|numeric',
                 'jiraProjectId' => 'required|string',
             ]);
         } catch (\Exception $e) {

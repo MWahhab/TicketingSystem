@@ -11,6 +11,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 interface JiraProject {
     id: string;
@@ -33,6 +34,7 @@ export function JiraImportFormDialog({
     const [isLoadingProjects, setIsLoadingProjects] = useState(false)
     const [projectFetchError, setProjectFetchError] = useState<string | null>(null)
     const [isImporting, setIsImporting] = useState(false)
+    const { toast } = useToast()
 
     const checkConnectionStatus = useCallback(() => {
         const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
@@ -71,12 +73,12 @@ export function JiraImportFormDialog({
             const response = await fetch('/jira/projects/list');
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: 'Failed to fetch projects from Jira.' }));
+                const errorMessage = errorData.message || (response.status === 401 ? 'Jira connection invalid or expired. Please log in with Jira.' : `Error fetching projects: ${response.statusText}`);
+                setProjectFetchError(errorMessage);
+                toast({ variant: "destructive", title: "Error Fetching Projects", description: errorMessage });
                 if (response.status === 401) {
-                    setProjectFetchError(errorData.message || 'Jira connection invalid or expired. Please log in with Jira.');
                     setIsConnected(false);
                     localStorage.removeItem('jiraLastAuthTimestamp');
-                } else {
-                    setProjectFetchError(errorData.message || `Error fetching projects: ${response.statusText}`);
                 }
                 setIsLoadingProjects(false);
                 return;
@@ -86,11 +88,13 @@ export function JiraImportFormDialog({
             setIsConnected(true);
         } catch (error) {
             console.error("Error fetching Jira projects:", error);
-            setProjectFetchError("An unexpected error occurred while fetching projects.");
+            const errorMessage = "An unexpected error occurred while fetching projects.";
+            setProjectFetchError(errorMessage);
+            toast({ variant: "destructive", title: "Network Error", description: errorMessage });
             setIsConnected(false);
         }
         setIsLoadingProjects(false);
-    }, []);
+    }, [toast]);
 
     useEffect(() => {
         if (isOpen) {
@@ -128,7 +132,9 @@ export function JiraImportFormDialog({
 
     const handleImportClick = async () => {
         if (!selectedJiraProjectId) {
-            setProjectFetchError("Please select a Jira project to import from.");
+            const errorMsg = "Please select a Jira project to import from.";
+            setProjectFetchError(errorMsg);
+            toast({ variant: "destructive", title: "Selection Required", description: errorMsg });
             return;
         }
         setIsImporting(true);
@@ -152,20 +158,22 @@ export function JiraImportFormDialog({
             const responseData = await response.json().catch(() => ({ message: 'An unexpected error occurred during import.' }));
 
             if (!response.ok) {
+                const errorMessage = responseData.message || (response.status === 401 ? 'Jira connection invalid or expired. Please log in again.' : `Error during import: ${response.statusText}`);
+                setProjectFetchError(errorMessage);
+                toast({ variant: "destructive", title: "Import Failed", description: errorMessage });
                 if (response.status === 401) {
-                    setProjectFetchError(responseData.message || 'Jira connection invalid or expired. Please log in again.');
                     setIsConnected(false);
                     localStorage.removeItem('jiraLastAuthTimestamp');
-                } else {
-                    setProjectFetchError(responseData.message || `Error during import: ${response.statusText}`);
                 }
             } else {
-                alert(responseData.message || "Import process initiated successfully!");
+                toast({ variant: "success", title: "Import Queued", description: responseData.message || "Import process initiated successfully!"});
                 onClose();
             }
         } catch (error) {
             console.error("Error initiating Jira import:", error);
-            setProjectFetchError("An unexpected network error occurred while initiating the import.");
+            const errorMessage = "An unexpected network error occurred while initiating the import.";
+            setProjectFetchError(errorMessage);
+            toast({ variant: "destructive", title: "Network Error", description: errorMessage });
         }
         setIsImporting(false);
     };
@@ -207,13 +215,13 @@ export function JiraImportFormDialog({
                         ) : projectFetchError ? (
                             <div className="mt-4 p-3 bg-red-900/20 border border-red-700/40 rounded-md">
                                 <p className="text-sm text-red-400">{projectFetchError}</p>
-                                {(projectFetchError.includes("log in with Jira") || projectFetchError.includes("expired")) && (
+                                {(projectFetchError.includes("log in with Jira") || projectFetchError.includes("expired") || projectFetchError.includes("reconnect")) && (
                                     <Button
                                         variant="link"
                                         className="p-0 h-auto text-indigo-400 hover:text-indigo-300 mt-1 text-sm"
                                         onClick={handleAuthClick}
                                     >
-                                        {projectFetchError.includes("expired") ? "Reconnect with Jira" : "Log in with Jira again"}
+                                        {projectFetchError.includes("expired") || projectFetchError.includes("reconnect") ? "Reconnect with Jira" : "Log in with Jira again"}
                                     </Button>
                                 )}
                             </div>

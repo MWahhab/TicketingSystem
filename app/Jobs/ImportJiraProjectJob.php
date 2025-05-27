@@ -6,13 +6,16 @@ use App\Enums\LinkTypeEnums;
 use App\Models\BoardConfig;
 use App\Models\Comment;
 use App\Models\LinkedIssue;
+use App\Models\LinkedIssues;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\LinkedIssuesService;
+use App\Traits\ADF2HTML;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
@@ -26,14 +29,23 @@ class ImportJiraProjectJob implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
+    use ADF2HTML;
 
     public int $timeout = 1200;
     public int $tries   = 1;
 
+    /**
+     * Create a new job instance.
+     *
+     * @param array{access_token: string, cloud_id: string} $jiraAuthData
+     */
     public function __construct(public string $jiraProjectId, public array $jiraAuthData, public int $initiatingUserId)
     {
     }
 
+    /**
+     * @throws \Throwable
+     */
     public function handle(LinkedIssuesService $linkedIssuesService): void
     {
         Log::info("Starting Jira import job for Jira Project ID: {$this->jiraProjectId} by User ID: {$this->initiatingUserId}");
@@ -60,7 +72,7 @@ class ImportJiraProjectJob implements ShouldQueue
 
             $boardConfig = BoardConfig::create([
                 'title'    => $jiraProjectName,
-                'columns'  => json_encode($appColumns), // Storing unique names directly
+                'columns'  => $appColumns,
                 'fid_user' => $this->initiatingUserId,
             ]);
             Log::info("Created BoardConfig ID: {$boardConfig->id} for Jira project: {$jiraProjectName}");
@@ -80,11 +92,20 @@ class ImportJiraProjectJob implements ShouldQueue
                 Post::insert($allPostsData);
                 Log::info('Bulk inserted ' . count($allPostsData) . " posts for BoardConfig ID: {$boardConfig->id}");
 
-                $migratedJiraIds = array_column($allPostsData, 'migrated_from');
-                $createdPosts    = Post::whereIn('migrated_from', $migratedJiraIds)
+                $migratedJiraIds    = array_column($allPostsData, 'migrated_from');
+                $createdPostsModels = Post::whereIn('migrated_from', $migratedJiraIds)
                     ->where('fid_board', $boardConfig->id)
                     ->get(['id', 'migrated_from']);
-                $createdPostIdsMap = $createdPosts->pluck('id', 'migrated_from')->mapKeys(fn($appPostId, $migratedFromKey) => Str::after($migratedFromKey, 'jira:'))->toArray();
+
+                $createdPostIdsMap = $createdPostsModels->mapWithKeys(function ($postModel) {
+                    $jiraId = Str::after((string)$postModel->migrated_from, 'jira:');
+
+                    if ($jiraId !== '') {
+                        return [$jiraId => $postModel->id];
+                    }
+
+                    return [];
+                })->all();
             }
 
             $allCommentsData = [];
@@ -126,7 +147,7 @@ class ImportJiraProjectJob implements ShouldQueue
                         $linkedIssuesService
                     );
                     if ($linkedIssueData) {
-                        LinkedIssue::firstOrCreate(
+                        LinkedIssues::firstOrCreate(
                             [
                                 'fid_origin_post'  => $linkedIssueData['fid_origin_post'],
                                 'fid_related_post' => $linkedIssueData['fid_related_post'],
@@ -151,6 +172,19 @@ class ImportJiraProjectJob implements ShouldQueue
             throw $e;
         }
     }
+
+    /**
+     * Make a GET request to the Jira API.
+     *
+     * @param string $cloudId The Jira cloud ID.
+     * @param string $accessToken The Jira access token.
+     * @param string $endpoint The API endpoint path (e.g., 'project/PROJECT_ID').
+     * @param array<string, scalar|array<scalar>> $queryParams Query parameters to append to the URL.
+     *                                                         Values can be string, int, bool, or array of these for multi-value params.
+     * @throws ConnectionException
+     * @return array<string, mixed>|null The JSON decoded response as an associative array, or null on failure.
+     *
+     */
 
     private function makeJiraApiRequest(string $cloudId, string $accessToken, string $endpoint, array $queryParams = []): ?array
     {
@@ -206,6 +240,10 @@ class ImportJiraProjectJob implements ShouldQueue
         return $projectStatusNames === [] ? ['To Do', 'In Progress', 'Done'] : array_values(array_unique($projectStatusNames));
     }
 
+    /**
+     * @param list<string> $jiraStatusNames A list of unique Jira status names.
+     * @return list<string> A list of unique column names for the app.
+     */
     private function mapJiraStatusesToAppColumns(array $jiraStatusNames): array
     {
         $appColumns = [];
@@ -258,33 +296,40 @@ class ImportJiraProjectJob implements ShouldQueue
         return $allIssues;
     }
 
+    /**
+     * @param array<string, mixed> $jiraIssue
+     * @param list<string> $appColumnNames
+     * @return ?array<string, mixed>
+     */
     private function transformJiraIssueToPostData(array $jiraIssue, int $appBoardConfigId, int $appUserId, array $appColumnNames): ?array
     {
-        $fields = $jiraIssue['fields'] ?? [];
-        if (empty($fields) || !isset($jiraIssue['id']) || !is_string($jiraIssue['id'])) {
-            Log::warning('Jira issue data missing fields or valid id.', ['jira_issue_key' => $jiraIssue['key'] ?? 'N/A']);
+        $fields      = $jiraIssue['fields'] ?? [];
+        $jiraIssueId = $jiraIssue['id']     ?? null;
+
+        if (empty($fields) || !is_string($jiraIssueId) || $jiraIssueId === '') {
+            Log::warning('Jira issue data missing fields or valid top-level id.', ['jira_issue_key' => $jiraIssue['key'] ?? 'N/A', 'jira_id_type' => gettype($jiraIssueId)]);
             return null;
         }
 
         $assigneeId     = $appUserId;
-        $jiraStatusName = $fields['status']['name'] ?? null;
-        $appColumnName  = $appColumnNames[0]        ?? 'To Do';
+        $jiraStatusName = isset($fields['status']['name']) && is_string($fields['status']['name']) ? $fields['status']['name'] : null;
+        $appColumnName  = $appColumnNames[0] ?? 'To Do';
 
         if ($jiraStatusName && $appColumnNames !== []) {
             $foundColumn = false;
             foreach ($appColumnNames as $colName) {
-                if (strtolower((string)$colName) === strtolower((string)$jiraStatusName) || stripos((string)$colName, (string)$jiraStatusName) !== false) {
+                if (strtolower((string)$colName) === strtolower($jiraStatusName) || stripos((string)$colName, $jiraStatusName) !== false) {
                     $appColumnName = $colName;
                     $foundColumn   = true;
                     break;
                 }
             }
-            if (!$foundColumn) {
+            if (!$foundColumn && isset($jiraIssue['key'])) {
                 Log::info("Jira status '{$jiraStatusName}' not directly mapped to an app column for issue {$jiraIssue['key']}. Using default '{$appColumnName}'.");
             }
         }
 
-        $jiraPriorityName = strtolower($fields['priority']['name'] ?? 'low');
+        $jiraPriorityName = isset($fields['priority']['name']) && is_string($fields['priority']['name']) ? strtolower($fields['priority']['name']) : 'low';
         $appPriority      = 'low';
         if (in_array($jiraPriorityName, ['highest', 'high'])) {
             $appPriority = 'high';
@@ -292,13 +337,18 @@ class ImportJiraProjectJob implements ShouldQueue
             $appPriority = 'medium';
         }
 
-        $createdAt = isset($fields['created']) ? Carbon::parse($fields['created']) : Carbon::now();
-        $updatedAt = isset($fields['updated']) ? Carbon::parse($fields['updated']) : Carbon::now();
+        $createdAt = isset($fields['created']) && is_string($fields['created']) ? Carbon::parse($fields['created']) : Carbon::now();
+        $updatedAt = isset($fields['updated']) && is_string($fields['updated']) ? Carbon::parse($fields['updated']) : Carbon::now();
         $deadline  = isset($fields['duedate']) && is_string($fields['duedate']) ? Carbon::parse($fields['duedate'])->toDateString() : null;
 
+        $descriptionHtml = '';
+        if (isset($fields['description'])) {
+            $descriptionHtml = $this->adfToHtml($fields['description']);
+        }
+
         return [
-            'title'         => $fields['summary'] ?? ('Untitled Jira Issue - ' . ($jiraIssue['key'] ?? Str::random(4))),
-            'desc'          => isset($fields['description']) ? $this->convertJiraDescriptionToHtml($fields['description']) : '',
+            'title'         => isset($fields['summary']) && is_string($fields['summary']) ? $fields['summary'] : ('Untitled Jira Issue - ' . ($jiraIssue['key'] ?? Str::random(4))),
+            'desc'          => $descriptionHtml,
             'priority'      => $appPriority,
             'pinned'        => ($fields['priority']['name'] ?? '') === 'Highest',
             'column'        => $appColumnName,
@@ -307,58 +357,37 @@ class ImportJiraProjectJob implements ShouldQueue
             'had_branch'    => null,
             'fid_board'     => $appBoardConfigId,
             'fid_user'      => $appUserId,
-            'migrated_from' => 'jira:' . $jiraIssue['id'],
+            'migrated_from' => 'jira:' . $jiraIssueId,
             'created_at'    => $createdAt->toDateTimeString(),
             'updated_at'    => $updatedAt->toDateTimeString(),
         ];
     }
 
-    private function convertJiraDescriptionToHtml(mixed $description): string
-    {
-        if (is_string($description)) {
-            return nl2br(htmlspecialchars($description));
-        }
-
-        if (!is_array($description) || !isset($description['type']) || $description['type'] !== 'doc' || !isset($description['content'])) {
-            return '';
-        }
-
-        $text        = '';
-        $extractText = function ($nodes) use (&$extractText, &$text): void {
-            foreach ($nodes as $node) {
-                if (!is_array($node)) {
-                    continue;
-                }
-
-                if (($node['type'] ?? null) === 'text' && isset($node['text']) && is_string($node['text'])) {
-                    $text .= $node['text'];
-                }
-
-                if (isset($node['content']) && is_array($node['content'])) {
-                    $extractText($node['content']);
-                }
-
-            }
-        };
-        $extractText($description['content']);
-        return nl2br(htmlspecialchars($text));
-    }
-
+    /**
+     * @param array<string, mixed> $jiraComment
+     * @return array<string, mixed>
+     */
     private function transformJiraCommentToCommentData(array $jiraComment, int $appPostId, int $appUserId): array
     {
-        $authorName          = $jiraComment['author']['displayName'] ?? 'Unknown Jira User';
-        $originalCommentBody = $jiraComment['body']                  ?? '';
-        $commentText         = '';
+        $authorName          = isset($jiraComment['author']['displayName']) && is_string($jiraComment['author']['displayName']) ? $jiraComment['author']['displayName'] : 'Unknown Jira User';
+        $originalCommentBody = $jiraComment['body'] ?? '';
+        $commentTextHtml     = '';
 
-        if (is_array($originalCommentBody) && ($originalCommentBody['type'] ?? null) === 'doc') {
-            $commentText = $this->convertJiraDescriptionToHtml($originalCommentBody);
-        } elseif (is_string($originalCommentBody)) {
-            $commentText = nl2br(htmlspecialchars($originalCommentBody));
+        if (is_string($originalCommentBody)) {
+            $commentTextHtml = nl2br(htmlspecialchars($originalCommentBody));
+        } elseif (is_array($originalCommentBody) && ($originalCommentBody['type'] ?? null) === 'doc') {
+            $commentTextHtml = $this->adfToHtml($originalCommentBody);
         }
 
-        $appCommentContent = "Imported from Jira. Original comment by: {$authorName}\n\n" . $commentText;
-        $createdAt         = isset($jiraComment['created']) ? Carbon::parse($jiraComment['created']) : Carbon::now();
-        $updatedAt         = isset($jiraComment['updated']) ? Carbon::parse($jiraComment['updated']) : Carbon::now();
+        $headerHtml        = '<p><em>Imported from Jira. Original comment by: ' . htmlspecialchars($authorName) . '</em></p>';
+        $appCommentContent = $headerHtml . $commentTextHtml;
+
+        if (trim(strip_tags($commentTextHtml)) === '' && !(is_array($originalCommentBody) && !empty($originalCommentBody['content']))) {
+            $appCommentContent = $headerHtml . '<p><em>(Original Jira comment was empty or contained no text content)</em></p><br>';
+        }
+
+        $createdAt = isset($jiraComment['created']) && is_string($jiraComment['created']) ? Carbon::parse($jiraComment['created']) : Carbon::now();
+        $updatedAt = isset($jiraComment['updated']) && is_string($jiraComment['updated']) ? Carbon::parse($jiraComment['updated']) : Carbon::now();
 
         return [
             'content'    => $appCommentContent,
@@ -369,6 +398,11 @@ class ImportJiraProjectJob implements ShouldQueue
         ];
     }
 
+    /**
+     * @param array<string, mixed> $jiraLink The individual issue link object from Jira's API.
+     * @param array<string, int> $createdPostIdsMap A map of [jiraIssueId (string) => appPostId (int)].
+     * @return ?array<string, mixed> Data ready for LinkedIssue creation or null if transformation fails.
+     */
     private function transformJiraLinkToLinkedIssueData(
         array $jiraLink,
         int $currentAppPostId,

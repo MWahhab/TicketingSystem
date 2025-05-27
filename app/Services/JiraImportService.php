@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\DataTransferObjects\JiraSessionDataDTO;
+use App\Jobs\ImportJiraProjectJob;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
@@ -60,7 +62,7 @@ class JiraImportService
             /**
              * @phpstan-ignore-next-line
              */
-            $projects = collect($response->json())->map(fn($project) => [
+            $projects = collect($response->json())->map(fn ($project) => [
                 'id'   => $project['id']   ?? null,
                 'key'  => $project['key']  ?? null,
                 'name' => $project['name'] ?? null,
@@ -84,13 +86,34 @@ class JiraImportService
             return ['error' => 'Jira not connected or session expired. Please log in with Jira first.', 'status' => 401];
         }
 
-        Log::info('Jira import process initiated by service', [
-            'appBoardId'    => $appBoardId,
-            'jiraProjectId' => $jiraProjectId,
-            'jira_cloud_id' => $authDTO->cloudId,
+        $initiatingUserId = Auth::id();
+        if (!$initiatingUserId) {
+            Log::error('Jira import initiation failed: User not authenticated when dispatching job.');
+            return ['error' => 'User not authenticated. Please log in to initiate an import.', 'status' => 401];
+        }
+
+        ImportJiraProjectJob::dispatch(
+            $jiraProjectId,
+            [
+                'access_token' => $authDTO->accessToken,
+                'cloud_id'     => $authDTO->cloudId,
+            ],
+            $initiatingUserId
+        )->onQueue('jira-imports');
+
+        Log::info('Jira import job DISPATCHED by service', [
+            'appBoardIdUsedForContext'    => $appBoardId,
+            'jiraProjectIdToImport'       => $jiraProjectId,
+            'initiatingUserId'            => $initiatingUserId,
+            'jira_cloud_id'               => $authDTO->cloudId,
         ]);
-        // import here. create helper functions if needed.
-        return ['message' => 'Jira import process initiated for project ' . $jiraProjectId . '.', 'status' => 200];
+
+        return [
+            'message' => '
+            Jira import has been queued and will be processed in the background. 
+            Please refresh the page in approximately 5 minutes to see the new board.',
+
+            'status' => 202];
     }
 
     public function storeJiraSession(
