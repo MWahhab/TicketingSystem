@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
-use App\Models\User;
 use App\Services\ImageService;
-use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

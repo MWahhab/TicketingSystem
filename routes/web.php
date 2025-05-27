@@ -3,8 +3,10 @@
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BoardConfigController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\JiraImportController;
 use App\Http\Controllers\LinkedIssuesController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OAuth\JiraOAuthController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\PostWatcherController;
 use App\Http\Controllers\ProfileController;
@@ -54,15 +56,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/activity/{post}', [NotificationController::class, 'getActivityHistory']);
     Route::post('/api/notifications/mark-as-seen', [NotificationController::class, 'markAsSeen']);
 
-    Route::get('/test-broadcast', function () {
-        $event = new \App\Events\TestBroadcast(1);
+    Route::get('/oauth/jira/callback', [JiraOAuthController::class, 'handle']);
 
-        logger('📦 Dispatching TestBroadcast', ['class' => $event::class]);
-
-        broadcast($event); // or: event($event)
-
-        return 'ok';
-    });
+    Route::get('/jira/projects/list', [JiraImportController::class, 'list']);
+    Route::post('/jira/import/tickets', [JiraImportController::class, 'import']);
 
     // PREMIUM ROUTE
     if (is_dir(base_path('PremiumAddons'))) {
