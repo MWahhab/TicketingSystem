@@ -34,8 +34,6 @@ class ImportJiraProjectJob implements ShouldQueue
     public int $tries   = 1;
 
     /**
-     * Create a new job instance.
-     *
      * @param array{access_token: string, cloud_id: string} $jiraAuthData
      */
     public function __construct(public string $jiraProjectId, public array $jiraAuthData, public int $initiatingUserId)
@@ -83,20 +81,17 @@ class ImportJiraProjectJob implements ShouldQueue
 
             $jiraIssues = $this->fetchJiraIssuesForProjectWithDetails($cloudId, $accessToken, $this->jiraProjectId);
 
-            $allPostsData     = [];
-            $defaultAppColumn = 'To Do';
-            foreach ($appColumnsForBoard as $col) {
-                if ($col !== $theActualAppDoneColumnName) {
-                    $defaultAppColumn = $col;
-                    break;
+            $allPostsData = [];
+
+            $defaultAppColumn = $appColumnsForBoard[0] ?? 'To Do';
+            if ($defaultAppColumn === $theActualAppDoneColumnName && count($appColumnsForBoard) > 1) {
+                foreach ($appColumnsForBoard as $colName) {
+                    if ($colName !== $theActualAppDoneColumnName) {
+                        $defaultAppColumn = $colName;
+                        break;
+                    }
                 }
             }
-            if (empty($appColumnsForBoard)) {
-                $defaultAppColumn = 'To Do';
-            } elseif (count($appColumnsForBoard) > 0 && $defaultAppColumn === 'To Do' && !in_array('To Do', $appColumnsForBoard)) {
-                $defaultAppColumn = $appColumnsForBoard[0];
-            }
-
 
             foreach ($jiraIssues as $jiraIssue) {
                 $postData = $this->transformJiraIssueToPostData(
@@ -175,8 +170,8 @@ class ImportJiraProjectJob implements ShouldQueue
                     continue;
                 }
 
-                $originPostId = $createdPostIdsMap[$jiraIssueId] ?? null;
-                if (!$originPostId) {
+                $currentAppOriginPostId = $createdPostIdsMap[$jiraIssueId] ?? null;
+                if (!$currentAppOriginPostId) {
                     continue;
                 }
 
@@ -189,22 +184,48 @@ class ImportJiraProjectJob implements ShouldQueue
                     if (!is_array($jiraLink)) {
                         continue;
                     }
-                    $linkedIssueData = $this->transformJiraLinkToLinkedIssueData(
+
+                    $directLinkDetails = $this->transformJiraLinkToDirectLinkData(
                         $jiraLink,
-                        $originPostId,
+                        $currentAppOriginPostId,
                         $createdPostIdsMap,
-                        $this->initiatingUserId,
-                        $linkedIssuesService
+                        $this->initiatingUserId
                     );
-                    if ($linkedIssueData) {
-                        LinkedIssues::firstOrCreate(
-                            [
-                                'fid_origin_post'  => $linkedIssueData['fid_origin_post'],
-                                'fid_related_post' => $linkedIssueData['fid_related_post'],
-                                'link_type'        => $linkedIssueData['link_type'],
-                            ],
-                            array_merge($linkedIssueData, ['created_at' => Carbon::now(), 'updated_at' => Carbon::now()])
-                        );
+
+                    if ($directLinkDetails) {
+                        $forwardAttrs = [
+                            'fid_origin_post'  => $directLinkDetails['fid_origin_post'],
+                            'fid_related_post' => $directLinkDetails['fid_related_post'],
+                            'link_type'        => $directLinkDetails['link_type'],
+                        ];
+                        $forwardValues = [
+                            'fid_user'   => $directLinkDetails['fid_user'],
+                            'created_at' => Carbon::now(),
+                            'updated_at' => Carbon::now(),
+                        ];
+
+                        Log::debug('ImportJiraProjectJob: creating direct link', [
+                            'attrs'  => $forwardAttrs,
+                            'values' => $forwardValues,
+                        ]);
+                        LinkedIssues::firstOrCreate($forwardAttrs, $forwardValues);
+
+                        $reverseLinkType = $linkedIssuesService->getReverseStatus($directLinkDetails['link_type']);
+
+                        $reverseAttrs = [
+                            'fid_origin_post'  => $directLinkDetails['fid_related_post'],
+                            'fid_related_post' => $directLinkDetails['fid_origin_post'],
+                        ];
+                        $reverseValues = [
+                            'link_type' => $reverseLinkType,
+                            'fid_user'  => $directLinkDetails['fid_user'],
+                        ];
+
+                        Log::debug('ImportJiraProjectJob: creating/updating reverse link', [
+                            'attrs'  => $reverseAttrs,
+                            'values' => $reverseValues,
+                        ]);
+                        LinkedIssues::firstOrCreate($forwardAttrs, $forwardValues);
                     }
                 }
             }
@@ -253,9 +274,7 @@ class ImportJiraProjectJob implements ShouldQueue
     }
 
     /**
-     * Fetches Jira project statuses along with their categories.
-     *
-     * @return array<array{name: string, categoryKey: string}> A list of statuses with their category.
+     * @return array<array{name: string, categoryKey: string}>
      */
     private function fetchJiraProjectStatusesWithCategories(string $cloudId, string $accessToken, string $jiraProjectId): array
     {
@@ -291,7 +310,6 @@ class ImportJiraProjectJob implements ShouldQueue
         }
 
         if (empty($uniqueStatuses)) {
-            Log::info("No project-specific statuses found for project {$jiraProjectId}, trying global statuses.");
             $allStatusesResponse = $this->makeJiraApiRequest($cloudId, $accessToken, 'status');
             if (is_array($allStatusesResponse)) {
                 foreach ($allStatusesResponse as $status) {
@@ -324,71 +342,69 @@ class ImportJiraProjectJob implements ShouldQueue
     }
 
     /**
-     * Prepares board column names and mappings, ensuring a "Done" column.
-     *
      * @param array<array{name: string, categoryKey: string}> $jiraStatusesWithCategories
      * @return array{0: list<string>, 1: array<string, string>, 2: string}
-     *                                                                     Returns: [appColumnNames, jiraToAppStatusMap, finalAppDoneColumnName]
      */
     private function prepareBoardColumnsAndMappings(array $jiraStatusesWithCategories): array
     {
         /** @var array<string, string> $jiraToAppStatusMap */
         $jiraToAppStatusMap = [];
-        /** @var array<string, bool> $takenNames */
+        /** @var array<string, true> $takenNames */
         $takenNames             = [];
         $finalAppDoneColumnName = 'Done';
 
-        $isDoneNameUsedByNonFinal = false;
-        $allJiraNamesLower        = [];
+        $isLiteralDoneNameUsedByNonFinalJiraStatus = false;
+        /** @var array<string, true> $allJiraOriginalNamesLower */
+        $allJiraOriginalNamesLower = [];
         foreach ($jiraStatusesWithCategories as $status) {
-            $allJiraNamesLower[strtolower($status['name'])] = true;
-            if (strtolower($status['name']) === 'done' && $status['categoryKey'] !== 'done') {
-                $isDoneNameUsedByNonFinal = true;
+            $lcName                             = strtolower($status['name']);
+            $allJiraOriginalNamesLower[$lcName] = true;
+            if ($lcName === 'done' && $status['categoryKey'] !== 'done') {
+                $isLiteralDoneNameUsedByNonFinalJiraStatus = true;
             }
         }
 
-        if ($isDoneNameUsedByNonFinal) {
+        if ($isLiteralDoneNameUsedByNonFinalJiraStatus) {
             $counter                = 1;
             $finalAppDoneColumnName = 'Done (Final)';
-            while (isset($allJiraNamesLower[strtolower($finalAppDoneColumnName)])) {
-                $finalAppDoneColumnName = "Done (Final {$counter})";
-                $counter++;
+            while (isset($allJiraOriginalNamesLower[strtolower($finalAppDoneColumnName)])) {
+                $finalAppDoneColumnName = 'Done (Final ' . $counter++ . ')';
             }
         }
         $takenNames[$finalAppDoneColumnName] = true;
 
-        $tempAppNames = [$finalAppDoneColumnName];
+        /** @var list<string> $appColumnNamesList */
+        $appColumnNamesList = [];
+
         foreach ($jiraStatusesWithCategories as $status) {
             $originalJiraName = $status['name'];
             if ($status['categoryKey'] === 'done') {
                 $jiraToAppStatusMap[$originalJiraName] = $finalAppDoneColumnName;
-            } else {
-                $baseName    = $originalJiraName;
-                $currentName = $baseName;
-                $counter     = 1;
-                while (isset($takenNames[$currentName]) || $currentName === $finalAppDoneColumnName) {
-                    $currentName = $baseName . ' (' . $counter++ . ')';
+                if (!in_array($finalAppDoneColumnName, $appColumnNamesList, true)) {
+                    $appColumnNamesList[] = $finalAppDoneColumnName;
                 }
-                $jiraToAppStatusMap[$originalJiraName] = $currentName;
-                $tempAppNames[]                        = $currentName;
-                $takenNames[$currentName]              = true;
+            } else {
+                $baseNameForAppCol = $originalJiraName;
+                $currentAppColName = $baseNameForAppCol;
+                $counter           = 1;
+                while (isset($takenNames[$currentAppColName]) || $currentAppColName === $finalAppDoneColumnName) {
+                    $currentAppColName = $baseNameForAppCol . ' (' . $counter++ . ')';
+                }
+                $jiraToAppStatusMap[$originalJiraName] = $currentAppColName;
+                $appColumnNamesList[]                  = $currentAppColName;
+                $takenNames[$currentAppColName]        = true;
             }
         }
 
-        $nonDoneColumns = [];
-        foreach (array_unique($tempAppNames) as $name) {
-            if ($name !== $finalAppDoneColumnName) {
-                $nonDoneColumns[] = $name;
-            }
+        if (empty($appColumnNamesList)) {
+            $appColumnNamesList = ['To Do', 'In Progress', $finalAppDoneColumnName];
+        } elseif (!in_array($finalAppDoneColumnName, $appColumnNamesList, true)) {
+            $appColumnNamesList[] = $finalAppDoneColumnName;
         }
-        if ($nonDoneColumns === []) {
-            $nonDoneColumns = ['To Do', 'In Progress'];
-        }
-        $appColumnNamesList = array_merge($nonDoneColumns, [$finalAppDoneColumnName]);
-        $appColumnNamesList = array_values(array_unique($appColumnNamesList));
 
         return [$appColumnNamesList, $jiraToAppStatusMap, $finalAppDoneColumnName];
     }
+
 
     /**
      * @return list<array<string, mixed>>
@@ -431,12 +447,8 @@ class ImportJiraProjectJob implements ShouldQueue
     }
 
     /**
-     * Transforms a Jira issue into post data, ensuring correct column mapping.
-     *
      * @param array<string, mixed> $jiraIssue
-     * @param array<string, string> $jiraToAppStatusMap Map from Jira status to App column.
-     * @param string $theAppDoneColumnName The name of the final "Done" column.
-     * @param string $defaultAppColumnName The default column for unmapped/new issues.
+     * @param array<string, string> $jiraToAppStatusMap
      * @return ?array<string, mixed>
      */
     private function transformJiraIssueToPostData(
@@ -467,9 +479,6 @@ class ImportJiraProjectJob implements ShouldQueue
             $appColumnName = $theAppDoneColumnName;
         } elseif ($jiraStatusName !== null && isset($jiraToAppStatusMap[$jiraStatusName])) {
             $appColumnName = $jiraToAppStatusMap[$jiraStatusName];
-        } elseif ($jiraStatusName !== null) {
-            $jiraIssue = $jiraIssue['key'] ?? 'N/A';
-            Log::info("Jira issue {$jiraIssue} (Status: '{$jiraStatusName}', Category: '{$jiraStatusCategoryKey}') mapped to default column '{$appColumnName}'.");
         }
 
         $jiraPriority     = $fields['priority'] ?? null;
@@ -538,7 +547,6 @@ class ImportJiraProjectJob implements ShouldQueue
             } else {
                 $commentTextHtml = nl2br(htmlspecialchars($originalCommentBody));
             }
-
         } elseif (is_array($originalCommentBody) && ($originalCommentBody['type'] ?? null) === 'doc') {
             $commentTextHtml = $this->adfToHtml($originalCommentBody);
         }
@@ -563,60 +571,50 @@ class ImportJiraProjectJob implements ShouldQueue
     }
 
     /**
-     * @param array<string, mixed> $jiraLink The individual issue link object from Jira's API.
-     * @param array<string, int> $createdPostIdsMap A map of [jiraIssueId (string) => appPostId (int)].
-     * @return ?array<string, mixed> Data ready for LinkedIssue creation or null if transformation fails.
+     * @param array<string, mixed> $jiraLink
+     * @param array<string, int> $createdPostIdsMap
+     * @return ?array{fid_origin_post: int, fid_related_post: int, link_type: string, fid_user: int}
      */
-    private function transformJiraLinkToLinkedIssueData(
+    private function transformJiraLinkToDirectLinkData(
         array $jiraLink,
         int $currentAppPostId,
         array $createdPostIdsMap,
-        int $appUserId,
-        LinkedIssuesService $linkedIssuesService
+        int $appUserId
     ): ?array {
         $outwardIssue = $jiraLink['outwardIssue'] ?? null;
         $inwardIssue  = $jiraLink['inwardIssue']  ?? null;
         $type         = $jiraLink['type']         ?? null;
 
-        if (is_array($outwardIssue) && isset($outwardIssue['id']) && is_string($outwardIssue['id']) && is_array($type)) {
-            $linkDirectionTypeField   = 'outwardIssue';
-            $jiraLinkDescriptionField = 'outward';
-            $relatedJiraIssueId       = $outwardIssue['id'];
-        } elseif (is_array($inwardIssue) && isset($inwardIssue['id']) && is_string($inwardIssue['id']) && is_array($type)) {
-            $linkDirectionTypeField   = 'inwardIssue';
-            $jiraLinkDescriptionField = 'inward';
-            $relatedJiraIssueId       = $inwardIssue['id'];
+        $rawJiraLinkDescription = null;
+        $relatedJiraIssueId     = null;
+
+        if (is_array($outwardIssue) && isset($outwardIssue['id']) && is_string($outwardIssue['id']) && is_array($type) && isset($type['outward']) && is_string($type['outward'])) {
+            $rawJiraLinkDescription = $type['outward'];
+            $relatedJiraIssueId     = $outwardIssue['id'];
+        } elseif (is_array($inwardIssue) && isset($inwardIssue['id']) && is_string($inwardIssue['id']) && is_array($type) && isset($type['inward']) && is_string($type['inward'])) {
+            $rawJiraLinkDescription = $type['inward'];
+            $relatedJiraIssueId     = $inwardIssue['id'];
         } else {
-            Log::debug('Jira link structure not recognized or missing target issue.', ['jira_link' => $jiraLink]);
             return null;
         }
 
-        $appLinkTypeString = $this->mapJiraLinkTypeToAppLinkType(
-            (string) ($type[$jiraLinkDescriptionField] ?? '')
-        );
+        $appLinkType = $this->mapJiraDescriptionToAppLinkType($rawJiraLinkDescription);
 
         $relatedAppPostId = $createdPostIdsMap[$relatedJiraIssueId] ?? null;
-
         if (!$relatedAppPostId) {
-            Log::debug('Could not find related app post.', [
-                'related_jira_id'    => $relatedJiraIssueId,
-            ]);
             return null;
         }
 
-        $fidOriginPost    = ($linkDirectionTypeField === 'outwardIssue') ? $currentAppPostId : $relatedAppPostId;
-        $fidRelatedPost   = ($linkDirectionTypeField === 'outwardIssue') ? $relatedAppPostId : $currentAppPostId;
-        $finalAppLinkType = ($linkDirectionTypeField === 'outwardIssue') ? $appLinkTypeString : $linkedIssuesService->getReverseStatus($appLinkTypeString);
-
         return [
-            'link_type'         => $finalAppLinkType,
-            'fid_origin_post'   => $fidOriginPost,
-            'fid_related_post'  => $fidRelatedPost,
-            'fid_user'          => $appUserId,
+            'fid_origin_post'  => $currentAppPostId,
+            'fid_related_post' => $relatedAppPostId,
+            'link_type'        => $appLinkType,
+            'fid_user'         => $appUserId,
         ];
     }
 
-    private function mapJiraLinkTypeToAppLinkType(string $jiraLinkDescription): string
+
+    private function mapJiraDescriptionToAppLinkType(string $jiraLinkDescription): string
     {
         $jiraLinkDescription = strtolower(trim($jiraLinkDescription));
         if ($jiraLinkDescription === '') {
@@ -638,14 +636,11 @@ class ImportJiraProjectJob implements ShouldQueue
             'is duplicated by' => LinkTypeEnums::DUPLICATED_BY->value,
             'causes'           => LinkTypeEnums::CAUSES->value,
             'is caused by'     => LinkTypeEnums::CAUSED_BY->value,
-            'relates to'       => LinkTypeEnums::RELATES_TO->value,
         ];
 
         if (array_key_exists($jiraLinkDescription, $map)) {
             return $map[$jiraLinkDescription];
         }
-
-        Log::warning("Unmapped Jira link type description: {$jiraLinkDescription}. Defaulting to 'relates to'.");
         return LinkTypeEnums::RELATES_TO->value;
     }
 }
