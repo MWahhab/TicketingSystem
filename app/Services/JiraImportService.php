@@ -79,7 +79,7 @@ class JiraImportService
         }
     }
 
-    public function initiateTicketImport(string $appBoardId, string $jiraProjectId): array
+    public function initiateTicketImport(string $jiraProjectId): array
     {
         $authDTO = $this->getJiraAuth();
         if (!$authDTO instanceof \App\DataTransferObjects\JiraSessionDataDTO) {
@@ -102,7 +102,6 @@ class JiraImportService
         )->onQueue('jira-imports');
 
         Log::info('Jira import job DISPATCHED by service', [
-            'appBoardIdUsedForContext'    => $appBoardId,
             'jiraProjectIdToImport'       => $jiraProjectId,
             'initiatingUserId'            => $initiatingUserId,
             'jira_cloud_id'               => $authDTO->cloudId,

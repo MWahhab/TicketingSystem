@@ -18,7 +18,7 @@ import DeleteButton from "@/Pages/Board/components/DeleteButton"
 import InlineNotificationCenter from "@/Pages/Board/components/NotificationBell"
 import { DateFilter } from "./components/DateFilter"
 import { AISettingsDialog } from "@/Pages/Board/components/AiIntegrationFormDialog"
-import { JiraImportFormDialog } from "@/Pages/Board/components//JiraImportFormDialog"
+import { JiraImportFormDialog } from "@/Pages/Board/components/JiraImportFormDialog"
 
 import { BoardProvider, useBoardContext, type Assignee } from "./BoardContext"
 import { clsx } from "clsx"
@@ -152,12 +152,11 @@ function InnerBoardLayout() {
 
         const params = new URLSearchParams(window.location.search);
         const jiraConnected = params.get("jira") === "connected";
-        const boardIdFromUrl = params.get("board_id");
 
-        if (jiraConnected && boardIdFromUrl) {
-            const boardToOpenJiraFor = boards.find((b: any) => b.id.toString() === boardIdFromUrl);
+        if (jiraConnected && boardId) {
+            const boardToOpenJiraFor = boards.find((b: any) => b.id.toString() === boardId.toString());
 
-            if (boardToOpenJiraFor && boardId && boardId.toString() === boardIdFromUrl) {
+            if (boardToOpenJiraFor) {
                 setSelectedBoardForJira({ id: boardToOpenJiraFor.id, title: boardToOpenJiraFor.title });
                 setJiraImportOpen(true);
                 setDidAutoOpenJiraDialog(true);
@@ -175,7 +174,6 @@ function InnerBoardLayout() {
             }
         }
     }, [didAutoOpenJiraDialog, boards, boardId, router]);
-
 
     const uniqueAuthors = Array.from(new Set(Object.values(tasks).map((task: any) => task.post_author)))
 
@@ -383,12 +381,6 @@ function InnerBoardLayout() {
                                             onClick={() => openAIIntegration(board)}
                                         >
                                             AI Integration
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100 cursor-pointer rounded-sm"
-                                            onClick={() => openJiraImport(board)}
-                                        >
-                                            Jira import
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

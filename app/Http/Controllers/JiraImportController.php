@@ -31,7 +31,6 @@ class JiraImportController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'appBoardId'    => 'required|numeric',
                 'jiraProjectId' => 'required|string',
             ]);
         } catch (\Exception $e) {
@@ -42,7 +41,6 @@ class JiraImportController extends Controller
         }
 
         $result = $jiraImportService->initiateTicketImport(
-            $validatedData['appBoardId'],
             $validatedData['jiraProjectId']
         );
 

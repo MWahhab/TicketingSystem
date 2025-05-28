@@ -17,15 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Inertia } from "@inertiajs/inertia"
-import {
-    PlusCircle,
-    Trash2,
-    BookOpen,
-    Loader2,
-    ArrowUp,
-    ArrowDown,
-    Undo2,
-} from "lucide-react"
+import { PlusCircle, Trash2, BookOpen, Loader2, ArrowUp, ArrowDown, Undo2 } from 'lucide-react'
 import {
     Dialog,
     DialogContent,
@@ -44,6 +36,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { v4 as uuidv4 } from 'uuid'
+import { JiraImportFormDialog } from "@/Pages/Board/components/JiraImportFormDialog"
 
 const columnSchema = z.object({
     id: z.string().optional(),
@@ -108,6 +101,9 @@ export function BoardFormDialog({
     const [reassignMap, setReassignMap] = useState<Record<string, string>>({})
     const [staleMap, setStaleMap] = useState<Record<string, boolean>>({})
     const [renameMap, setRenameMap] = useState<Record<string, string>>({})
+
+    const [jiraImportOpen, setJiraImportOpen] = useState(false)
+    const [selectedBoardForJira, setSelectedBoardForJira] = useState<{ id: string; title: string } | null>(null)
 
     const isEdit = !!editingBoardId
     const isOpen = externalOpen !== undefined ? externalOpen : internalOpen
@@ -180,6 +176,12 @@ export function BoardFormDialog({
         toast({ title: "Template Loaded", variant: "success" })
     }
 
+    const openJiraImport = () => {
+        setSelectedBoardForJira({ id: "current", title: "Current Board" })
+        setJiraImportOpen(true)
+        handleClose(false)
+    }
+
     const submitButtonText = isEdit ? "Update Board" : "Save Board"
 
     const handleMarkDelete = (col: string) => {
@@ -249,11 +251,20 @@ export function BoardFormDialog({
 
     if (isEdit && loading) {
         return (
-            <Dialog open={isOpen} onOpenChange={handleClose}>
-                <DialogContent>
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto my-8" />
-                </DialogContent>
-            </Dialog>
+            <>
+                <Dialog open={isOpen} onOpenChange={handleClose}>
+                    <DialogContent>
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto my-8" />
+                    </DialogContent>
+                </Dialog>
+                {jiraImportOpen && selectedBoardForJira && (
+                    <JiraImportFormDialog
+                        isOpen={jiraImportOpen}
+                        onClose={() => setJiraImportOpen(false)}
+                        boardId={selectedBoardForJira.id}
+                    />
+                )}
+            </>
         )
     }
 
@@ -266,131 +277,146 @@ export function BoardFormDialog({
     )
 
     return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-            {!isEdit && externalOpen === undefined && <DialogTrigger asChild>{triggerBtn}</DialogTrigger>}
-            <DialogContent className="sm:max-w-[550px] bg-gradient-to-b from-zinc-800 to-zinc-900 text-zinc-200 border border-white/10 flex flex-col p-0" style={{ maxHeight: "90vh" }}>
-                <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
-                    <DialogTitle className="text-zinc-100 text-2xl">{dialogTitle}</DialogTitle>
-                    <DialogDescription className="text-zinc-400 h-5">
-                        {isEdit ? `Editing board: ${board?.title}` : "Create a new board to organize your tasks."}
-                    </DialogDescription>
-                </DialogHeader>
+        <>
+            <Dialog open={isOpen} onOpenChange={handleClose}>
+                {!isEdit && externalOpen === undefined && <DialogTrigger asChild>{triggerBtn}</DialogTrigger>}
+                <DialogContent className="sm:max-w-[550px] bg-gradient-to-b from-zinc-800 to-zinc-900 text-zinc-200 border border-white/10 flex flex-col p-0" style={{ maxHeight: "90vh" }}>
+                    <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
+                        <DialogTitle className="text-zinc-100 text-2xl">{dialogTitle}</DialogTitle>
+                        <DialogDescription className="text-zinc-400 h-5">
+                            {isEdit ? `Editing board: ${board?.title}` : "Create a new board to organize your tasks."}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-grow overflow-hidden px-6 space-y-5">
-                        <FormField control={form.control} name="title" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-zinc-300">Title</FormLabel>
-                                <FormControl><Input placeholder="Project Name" {...field} className="h-10 mt-1 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-white/40 placeholder-zinc-500" /></FormControl>
-                                <FormMessage className="text-red-400" />
-                            </FormItem>
-                        )} />
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-grow overflow-hidden px-6 space-y-5">
+                            <FormField control={form.control} name="title" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-zinc-300">Title</FormLabel>
+                                    <FormControl><Input placeholder="Project Name" {...field} className="h-10 mt-1 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-white/40 placeholder-zinc-500" /></FormControl>
+                                    <FormMessage className="text-red-400" />
+                                </FormItem>
+                            )} />
 
-                        <FormItem className="flex flex-col flex-grow overflow-hidden min-h-0">
-                            <FormLabel className="text-zinc-300">Columns</FormLabel>
-                            <FormDescription className="text-zinc-400 text-sm mt-1">Define the stages for your board. "{DONE_COLUMN_NAME}" is a required final stage.</FormDescription>
+                            <FormItem className="flex flex-col flex-grow overflow-hidden min-h-0">
+                                <FormLabel className="text-zinc-300">Columns</FormLabel>
+                                <FormDescription className="text-zinc-400 text-sm mt-1">Define the stages for your board. "{DONE_COLUMN_NAME}" is a required final stage.</FormDescription>
 
-                            <ScrollArea className="mt-3 rounded-md max-h-[300px] overflow-y-auto">
-                                <div className="space-y-3 pr-3 pb-1">
-                                    {fields.map((item, idx) => {
-                                        const isFixedDone = item.isFixed && item.value === DONE_COLUMN_NAME
-                                        const marked = reassignMap[item.value] !== undefined
-                                        const isStale = staleMap[item.value]
-                                        const options = fields.filter(f => f.value !== item.value && !(f.value in reassignMap))
+                                <ScrollArea className="mt-3 rounded-md max-h-[300px] overflow-y-auto">
+                                    <div className="space-y-3 pr-3 pb-1">
+                                        {fields.map((item, idx) => {
+                                            const isFixedDone = item.isFixed && item.value === DONE_COLUMN_NAME
+                                            const marked = reassignMap[item.value] !== undefined
+                                            const isStale = staleMap[item.value]
+                                            const options = fields.filter(f => f.value !== item.value && !(f.value in reassignMap))
 
-                                        let containerClass = ""
-                                        if (marked) containerClass = (reassignMap[item.value] === "")
-                                            ? "bg-red-900/30 border border-red-500/30"
-                                            : "bg-zinc-700/30 border border-white/10"
-                                        else if (isStale) containerClass = "bg-yellow-900/30 border border-yellow-500/30"
+                                            let containerClass = ""
+                                            if (marked) containerClass = (reassignMap[item.value] === "")
+                                                ? "bg-red-900/30 border border-red-500/30"
+                                                : "bg-zinc-700/30 border border-white/10"
+                                            else if (isStale) containerClass = "bg-yellow-900/30 border border-yellow-500/30"
 
-                                        const doneIdx = findDoneIndex()
-                                        const disableMoveDown = isFixedDone || idx === doneIdx - 1
-                                        const disableMoveUp = isFixedDone
+                                            const doneIdx = findDoneIndex()
+                                            const disableMoveDown = isFixedDone || idx === doneIdx - 1
+                                            const disableMoveUp = isFixedDone
 
-                                        return (
-                                            <div key={item.id} className={`rounded p-2 ${containerClass}`}>
-                                                <div className="flex items-center space-x-2">
-                                                    <FormControl>
-                                                        <Input
-                                                            {...form.register(`columns.${idx}.value` as const)}
-                                                            placeholder={`Column ${idx+1}`}
-                                                            disabled={isFixedDone || marked}
-                                                            className={`flex-grow h-10 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-white/40 ${isFixedDone||marked?"opacity-70 cursor-not-allowed":""}`}
-                                                        />
-                                                    </FormControl>
+                                            return (
+                                                <div key={item.id} className={`rounded p-2 ${containerClass}`}>
+                                                    <div className="flex items-center space-x-2">
+                                                        <FormControl>
+                                                            <Input
+                                                                {...form.register(`columns.${idx}.value` as const)}
+                                                                placeholder={`Column ${idx+1}`}
+                                                                disabled={isFixedDone || marked}
+                                                                className={`flex-grow h-10 px-3 py-2 text-sm bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-white/40 ${isFixedDone||marked?"opacity-70 cursor-not-allowed":""}`}
+                                                            />
+                                                        </FormControl>
 
-                                                    {/* Delete & Move Controls */}
-                                                    {!isFixedDone && !marked && (
-                                                        <>
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => isEdit ? handleMarkDelete(item.value) : remove(idx)} className="text-zinc-400 hover:text-red-500 shrink-0" aria-label={isEdit?"Remove column (reassign)":"Delete column"}>
-                                                                <Trash2 className="h-4 w-4" />
+                                                        {/* Delete & Move Controls */}
+                                                        {!isFixedDone && !marked && (
+                                                            <>
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => isEdit ? handleMarkDelete(item.value) : remove(idx)} className="text-zinc-400 hover:text-red-500 shrink-0" aria-label={isEdit?"Remove column (reassign)":"Delete column"}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, idx-1)} disabled={idx===0} className="text-zinc-400 hover:text-zinc-100 shrink-0" aria-label="Move up">
+                                                                    <ArrowUp className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, idx+1)} disabled={disableMoveDown} className="text-zinc-400 hover:text-zinc-100 shrink-0" aria-label="Move down">
+                                                                    <ArrowDown className="h-4 w-4" />
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                        {marked && (
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleUndoDelete(item.value)} className="text-zinc-400 hover:text-green-500 shrink-0" aria-label="Undo delete">
+                                                                <Undo2 className="h-4 w-4" />
                                                             </Button>
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, idx-1)} disabled={idx===0} className="text-zinc-400 hover:text-zinc-100 shrink-0" aria-label="Move up">
-                                                                <ArrowUp className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, idx+1)} disabled={disableMoveDown} className="text-zinc-400 hover:text-zinc-100 shrink-0" aria-label="Move down">
-                                                                <ArrowDown className="h-4 w-4" />
-                                                            </Button>
-                                                        </>
+                                                        )}
+                                                    </div>
+
+                                                    {isStale && !marked && (
+                                                        <p className="text-yellow-300 text-sm mt-1">Previous reassignment cleared because its target was deleted.</p>
                                                     )}
+
                                                     {marked && (
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => handleUndoDelete(item.value)} className="text-zinc-400 hover:text-green-500 shrink-0" aria-label="Undo delete">
-                                                            <Undo2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <div className="mt-2">
+                                                            <Label className="text-sm text-zinc-300">Reassign posts from "{item.value}" to:</Label>
+                                                            <Select value={reassignMap[item.value]} onValueChange={v => setReassignMap(m => ({...m, [item.value]: v}))}>
+                                                                <SelectTrigger className="mt-1 bg-zinc-800 text-zinc-200 border border-zinc-700"><SelectValue placeholder="Select column..." /></SelectTrigger>
+                                                                <SelectContent className="bg-zinc-900 text-zinc-200 border border-zinc-700">
+                                                                    {options.map(o => <SelectItem key={o.value} value={o.value}>{o.value}</SelectItem>)}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            {reassignMap[item.value]==="" && <p className="text-red-400 text-sm mt-1">Please select a reassignment target.</p>}
+                                                        </div>
                                                     )}
                                                 </div>
+                                            )
+                                        })}
+                                    </div>
+                                    <ScrollBar orientation="vertical" />
+                                </ScrollArea>
 
-                                                {isStale && !marked && (
-                                                    <p className="text-yellow-300 text-sm mt-1">Previous reassignment cleared because its target was deleted.</p>
-                                                )}
-
-                                                {marked && (
-                                                    <div className="mt-2">
-                                                        <Label className="text-sm text-zinc-300">Reassign posts from "{item.value}" to:</Label>
-                                                        <Select value={reassignMap[item.value]} onValueChange={v => setReassignMap(m => ({...m, [item.value]: v}))}>
-                                                            <SelectTrigger className="mt-1 bg-zinc-800 text-zinc-200 border border-zinc-700"><SelectValue placeholder="Select column..." /></SelectTrigger>
-                                                            <SelectContent className="bg-zinc-900 text-zinc-200 border border-zinc-700">
-                                                                {options.map(o => <SelectItem key={o.value} value={o.value}>{o.value}</SelectItem>)}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        {reassignMap[item.value]==="" && <p className="text-red-400 text-sm mt-1">Please select a reassignment target.</p>}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                                <ScrollBar orientation="vertical" />
-                            </ScrollArea>
-
-                            {/* Error message moved below columns list */}
-                            {form.formState.errors.columns?.message && (
-                                <div className="mt-3 p-3 bg-red-900/60 border border-red-500/60 rounded-md">
-                                    <p className="text-red-400 text-sm font-semibold">{form.formState.errors.columns.message}</p>
-                                </div>
-                            )}
-
-                            <div className="flex space-x-2 mt-3 flex-shrink-0">
-                                <Button type="button" variant="outline" onClick={addColumn} className="text-sm border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 transition-all">
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Column
-                                </Button>
-                                {!isEdit && (
-                                    <Button type="button" variant="outline" onClick={loadTemplate} className="text-sm border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 transition-all">
-                                        <BookOpen className="mr-2 h-4 w-4" /> Load Template
-                                    </Button>
+                                {/* Error message moved below columns list */}
+                                {form.formState.errors.columns?.message && (
+                                    <div className="mt-3 p-3 bg-red-900/60 border border-red-500/60 rounded-md">
+                                        <p className="text-red-400 text-sm font-semibold">{form.formState.errors.columns.message}</p>
+                                    </div>
                                 )}
-                            </div>
-                        </FormItem>
 
-                        <div className="mt-auto pt-3 pb-6 flex-shrink-0">
-                            <Button type="submit" className="w-full bg-white text-zinc-900 hover:bg-zinc-200 focus-visible:ring-white/50 disabled:opacity-70" disabled={form.formState.isSubmitting || !form.formState.isValid}>
-                                {submitButtonText}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
+                                <div className="flex space-x-2 mt-3 flex-shrink-0">
+                                    <Button type="button" variant="outline" onClick={addColumn} className="text-sm border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 transition-all">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Column
+                                    </Button>
+                                    {!isEdit && (
+                                        <>
+                                            <Button type="button" variant="outline" onClick={loadTemplate} className="text-sm border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 transition-all">
+                                                <BookOpen className="mr-2 h-4 w-4" /> Load Template
+                                            </Button>
+                                            <Button type="button" variant="outline" onClick={openJiraImport} className="text-sm border border-white/40 bg-zinc-850 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 transition-all">
+                                                Jira import
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+                            </FormItem>
+
+                            <div className="mt-auto pt-3 pb-6 flex-shrink-0">
+                                <Button type="submit" className="w-full bg-white text-zinc-900 hover:bg-zinc-200 focus-visible:ring-white/50 disabled:opacity-70" disabled={form.formState.isSubmitting || !form.formState.isValid}>
+                                    {submitButtonText}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            {jiraImportOpen && selectedBoardForJira && (
+                <JiraImportFormDialog
+                    isOpen={jiraImportOpen}
+                    onClose={() => setJiraImportOpen(false)}
+                    boardId={selectedBoardForJira.id}
+                />
+            )}
+        </>
     )
 }

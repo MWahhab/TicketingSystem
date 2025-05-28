@@ -25,7 +25,6 @@ class JiraOAuthController extends Controller
         try {
             $inputDTO = JiraOAuthCallbackInputDTO::fromRequest($request);
             $code     = $inputDTO->code;
-            $boardId  = $inputDTO->boardId;
         } catch (ValidationException $e) {
             $errorMessage = 'Invalid request. Please check the details and try again.';
             $firstError   = collect($e->errors())->flatten()->first();
@@ -82,6 +81,6 @@ class JiraOAuthController extends Controller
             $tokenDTO->expiresIn
         );
 
-        return Inertia::location('/boards?board_id=' . $boardId . '&jira=connected');
+        return Inertia::location('/dashboard?jira=connected');
     }
 }
