@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTransferObjects\BoardFilterDataTransferObject;
 use App\Enums\PrioritiesEnum;
 use App\Models\BoardConfig;
+use App\Models\LinkedIssues;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\BoardService;
@@ -154,6 +155,14 @@ class BoardConfigController extends Controller
      */
     public function destroy(BoardConfig $board): RedirectResponse
     {
+        $board->load('posts');
+
+        $postIds = $board->posts->pluck('id');
+
+        LinkedIssues::whereIn('fid_origin_post', $postIds)
+            ->orWhereIn('fid_related_post', $postIds)
+            ->delete();
+
         $board->delete();
 
         return redirect()->route('boards.index', ['board_id' => null])->with('Success! ', 'Board deleted');
