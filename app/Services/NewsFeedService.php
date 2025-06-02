@@ -132,11 +132,8 @@ class NewsFeedService
                 unset($result[$postTitle]);
             }
 
-            if ($isAssignee && !isset($result[$postTitle])) {
-                $result[$postTitle] = [
-                    'notifications' => [],
-                    'id'            => $postId,
-                ];
+            if (!$hasActivity && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
             }
         }
 

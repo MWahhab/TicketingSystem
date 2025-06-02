@@ -496,7 +496,7 @@ export const TaskCard = memo(function TaskCard({ task }: { task: Task }) {
                             {task.linked_issues && task.linked_issues.length > 0 && (
                                 <div className="pb-3 border-b border-zinc-700/60">
                                     <h5 className="text-xs font-medium text-zinc-400 uppercase flex items-center mb-1.5">
-                                        <Paperclip size={13} className="mr-1.5 text-zinc-500" /> Linked Issues
+                                        <Paperclip size={13} className="mr-1.5 text-zinc-500" /> Linked Posts
                                     </h5>
                                     <div className="space-y-1.5">
                                         {task.linked_issues.map(link => {

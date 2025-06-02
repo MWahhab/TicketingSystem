@@ -343,7 +343,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                     <div className="flex items-center justify-between text-zinc-100">
                         <div className="flex items-center gap-2 font-semibold">
                             <LinkIcon className="h-5 w-5" />
-                            <span>Linked Issues</span>
+                            <span>Linked Posts</span>
                             <div className="bg-purple-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                                 {linkedIssues.length}
                             </div>
@@ -506,7 +506,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                         onClick={() => setIsExpanded(true)}
                                     >
                                         <PlusIcon className="h-5 w-5 text-zinc-400 mr-2" />
-                                        <span className="text-zinc-400">Link an issue...</span>
+                                        <span className="text-zinc-400">Link a post...</span>
                                     </div>
                                 )}
                             </form>
@@ -574,7 +574,7 @@ const LinkedIssuesSection: React.FC<LinkedIssuesSectionProps> = ({ taskId, curre
                                     })}
                                 </ul>
                             ) : (
-                                <div className="text-center py-6 text-zinc-400">No linked issues yet</div>
+                                <div className="text-center py-6 text-zinc-400">No linked posts yet</div>
                             )}
                         </ScrollArea>
                     </CardContent>
