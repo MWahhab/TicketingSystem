@@ -5,6 +5,7 @@ use App\Http\Controllers\BoardConfigController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\JiraImportController;
 use App\Http\Controllers\LinkedIssuesController;
+use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OAuth\JiraOAuthController;
 use App\Http\Controllers\PostController;
@@ -42,6 +43,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('posts', PostController::class);
     Route::resource('comments', CommentController::class);
     Route::resource('linkedIssues', LinkedIssuesController::class);
+    Route::resource('newsfeed', NewsFeedController::class);
 
     Route::post('/post-watchers', [PostWatcherController::class, 'store']);
     Route::delete('/post-watchers', [PostWatcherController::class, 'destroy']);

@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * @property int $fid_post
  * @property int $fid_board
  * @property int $fid_user
+ * @property int $is_mention
  * @property int $created_by
  * @property Carbon|null $seen_at
  * @property Carbon $created_at
@@ -55,6 +56,7 @@ class Notification extends Model
         'fid_board',
         'seen_at',
         'fid_user',
+        'is_mention',
         'created_by',
     ];
 
