@@ -20,42 +20,27 @@ class NewsFeedService
      *     dateFrom?: string,
      *     dateTo?: string
      * } $validated
-     * @return array<string, array>
+     * @return array{personal: array<string, array>, overview: array<string, array>}
      */
     public function getFeed(array $validated): array
     {
-        $userId        = auth()->id();
-        $notifications = $this->fetchNotifications($validated);
+        $userId = auth()->id();
+
+        $allNotifications = $this->fetchAllNotifications($validated);
 
         /** @var Collection<int, Collection<int, Notification>> $grouped */
-        $grouped = $notifications->groupBy('fid_post')
-            ->sortByDesc(fn(Collection $group) => $group->max('created_at'));
+        $grouped = $allNotifications->groupBy('fid_post')
+            ->sortByDesc(fn (Collection $group) => $group->max('created_at'));
 
         $posts = $this->hydratePosts($grouped);
 
-        return match ($validated['feed_type']) {
-            NewsFeedEnums::PERSONAL->value => $this->buildPersonalFeed($grouped, $posts, $userId),
-            NewsFeedEnums::OVERVIEW->value => $this->buildOverallFeed($grouped, $posts),
-        };
-    }
+        $personalFeed = $this->buildPersonalFeed($grouped, $posts, $userId);
+        $overviewFeed = $this->buildOverviewFeed($grouped, $posts);
 
-    /**
-     * @param array{
-     *     fid_board: int,
-     *     fid_user?: int,
-     *     feed_type: string,
-     *     dateFrom?: string,
-     *     dateTo?: string
-     * } $validated
-     * @return Collection<int, Notification>
-     */
-    private function fetchNotifications(array $validated): Collection
-    {
-        return match ($validated['feed_type']) {
-            NewsFeedEnums::PERSONAL->value => $this->fetchPersonalNotifications($validated),
-            NewsFeedEnums::OVERVIEW->value => $this->fetchOverallNotifications($validated),
-            default                        => collect(),
-        };
+        return [
+            'personal' => $personalFeed,
+            'overview' => $overviewFeed,
+        ];
     }
 
     /**
@@ -67,32 +52,7 @@ class NewsFeedService
      * } $validated
      * @return Collection<int, Notification>
      */
-    private function fetchPersonalNotifications(array $validated): Collection
-    {
-        /** @var int $userId */
-        $userId = $validated['fid_user'] ?? auth()->id();
-
-        return Notification::query()
-            ->where('fid_board', $validated['fid_board'])
-            ->where(function ($q) use ($userId): void {
-                $q->where('fid_user', $userId)
-                    ->orWhere('created_by', $userId);
-            })
-            ->when(isset($validated['dateFrom']), fn ($q) => $q->whereDate('created_at', '>=', $validated['dateFrom']))
-            ->when(isset($validated['dateTo']), fn ($q) => $q->whereDate('created_at', '<=', $validated['dateTo']))
-            ->orderByDesc('created_at')
-            ->get();
-    }
-
-    /**
-     * @param array{
-     *     fid_board: int,
-     *     dateFrom?: string,
-     *     dateTo?: string
-     * } $validated
-     * @return Collection<int, Notification>
-     */
-    private function fetchOverallNotifications(array $validated): Collection
+    private function fetchAllNotifications(array $validated): Collection
     {
         return Notification::query()
             ->where('fid_board', $validated['fid_board'])
@@ -109,15 +69,13 @@ class NewsFeedService
      */
     private function buildPersonalFeed(Collection $grouped, Collection $posts, int $userId): array
     {
-        [$workedOn, $doneThisWeek] = $this->filterWorkedOn($grouped, $posts, $userId);
-
         return [
-            'Worked on'          => $workedOn,
-            'Tagged in'          => $this->filterTagged($grouped, $posts, $userId),
-            'Commented on'       => $this->filterCommented($grouped, $posts, $userId),
-            'Created'            => $this->filterCreated($grouped, $posts, $userId),
-            'Generated branches' => $this->filterBranches($grouped, $posts, $userId),
-            'Done this week'     => $doneThisWeek,
+            'worked_on'          => $this->filterWorkedOn($grouped, $posts, $userId),
+            'tagged_in'          => $this->filterTagged($grouped, $posts, $userId),
+            'commented_on'       => $this->filterCommented($grouped, $posts, $userId),
+            'created'            => $this->filterCreated($grouped, $posts, $userId),
+            'generated_branches' => $this->filterBranches($grouped, $posts, $userId),
+            'done_this_week'     => $this->filterDoneThisWeek($grouped, $posts, $userId),
         ];
     }
 
@@ -126,34 +84,34 @@ class NewsFeedService
      * @param Collection<int, Post> $posts
      * @return array<string, array>
      */
-    private function buildOverallFeed(Collection $grouped, Collection $posts): array
+    private function buildOverviewFeed(Collection $grouped, Collection $posts): array
     {
         return [
-            'Activity on'        => $this->filterRecent($grouped, $posts),
-            'Upcoming deadlines' => $this->filterUpcoming($grouped, $posts),
-            'Blocked issues'     => $this->filterBlocked($grouped, $posts),
-            'Done this week'     => $this->filterOverviewDone($grouped, $posts),
-            'Generated branches' => $this->filterOverviewBranches($grouped, $posts),
+            'activity_on'        => $this->filterRecent($grouped, $posts),
+            'upcoming_deadlines' => $this->filterUpcoming($grouped, $posts),
+            'blocked_issues'     => $this->filterBlocked($grouped, $posts),
+            'done_this_week'     => $this->filterOverviewDone($grouped, $posts),
+            'generated_branches' => $this->filterOverviewBranches($grouped, $posts),
         ];
     }
 
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array{0: array<string, array<string, array<int, string>|int>>, 1: array<string, int>}
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterWorkedOn(Collection $grouped, Collection $posts, int $userId): array
     {
-        $result       = [];
-        $doneThisWeek = [];
+        $result = [];
 
         foreach ($grouped as $postId => $notifications) {
-            $post = $posts[$postId] ?? null;
+            $post = $posts->get($postId);
             if (!$post) {
                 continue;
             }
 
-            $postTitle = $post->title;
+            $postTitle  = $post->title;
+            $hasContent = false;
 
             foreach ($notifications as $notification) {
                 $type = $notification->type;
@@ -170,40 +128,90 @@ class NewsFeedService
                     continue;
                 }
 
-                $existing = $result[$postTitle][$type] ?? [];
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
                 if (in_array($notification->content, $existing, true)) {
                     continue;
                 }
 
-                $result[$postTitle][$type][] = $notification->content;
-                $result[$postTitle]['id'] ??= $postId;
+                $result[$postTitle]['notifications'][$type][] = $notification->content;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
             }
 
-            if (!isset($result[$postTitle])) {
-                continue;
-            }
-
-            if ($post->column === 'Done') {
-                $doneThisWeek[$postTitle] = $postId;
+            if (!$hasContent && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
             }
         }
 
-        return [$result, $doneThisWeek];
+        return $result;
     }
 
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<int, mixed>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
+     */
+    private function filterDoneThisWeek(Collection $grouped, Collection $posts, int $userId): array
+    {
+        $result = [];
+
+        foreach ($grouped as $postId => $notifications) {
+            $post = $posts->get($postId);
+            if (!$post) {
+                continue;
+            }
+
+            if ($post->column !== 'Done') {
+                continue;
+            }
+
+            $postTitle  = $post->title;
+            $hasContent = false;
+
+            foreach ($notifications as $notification) {
+                if ($notification->created_by !== $userId) {
+                    continue;
+                }
+
+                $type     = $notification->type;
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($notification->content, $existing, true)) {
+                    continue;
+                }
+
+                $result[$postTitle]['notifications'][$type][] = $notification->content;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param Collection<int, Collection<int, Notification>> $grouped
+     * @param Collection<int, Post> $posts
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterTagged(Collection $grouped, Collection $posts, int $userId): array
     {
         $result = [];
-        foreach ($grouped as $index => $notifications) {
-            $postTitle = $posts[$index]->title;
+
+        foreach ($grouped as $postId => $notifications) {
+            $post = $posts->get($postId);
+            if (!$post) {
+                continue;
+            }
+
+            $postTitle  = $post->title;
+            $hasContent = false;
 
             foreach ($notifications as $notification) {
-                $notificationType = $notification->type;
+                $type = $notification->type;
 
                 if (!$notification->is_mention) {
                     continue;
@@ -213,12 +221,18 @@ class NewsFeedService
                     continue;
                 }
 
-                if (in_array($notification->content, $result[$postTitle][$notificationType] ?? [], true)) {
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($notification->content, $existing, true)) {
                     continue;
                 }
 
-                $result[$postTitle][$notificationType][] = $notification->content;
-                $result[$postTitle]['id'] ??= $posts[$index]->id;
+                $result[$postTitle]['notifications'][$type][] = $notification->content;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
             }
         }
 
@@ -228,20 +242,26 @@ class NewsFeedService
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<int, mixed>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterCommented(Collection $grouped, Collection $posts, int $userId): array
     {
         $result   = [];
         $userName = (string) User::where('id', $userId)->value('name');
 
-        foreach ($grouped as $index => $notifications) {
-            $postTitle = $posts[$index]->title;
+        foreach ($grouped as $postId => $notifications) {
+            $post = $posts->get($postId);
+            if (!$post) {
+                continue;
+            }
+
+            $postTitle  = $post->title;
+            $hasContent = false;
 
             foreach ($notifications as $notification) {
-                $notificationType = $notification->type;
+                $type = $notification->type;
 
-                if ($notificationType !== NotificationTypeEnums::COMMENT->value) {
+                if ($type !== NotificationTypeEnums::COMMENT->value) {
                     continue;
                 }
 
@@ -249,17 +269,22 @@ class NewsFeedService
                     continue;
                 }
 
-                $toReplace = 'You were mentioned in';
-                $with      = $userName . ' commented in';
-
+                $toReplace   = 'You were mentioned in';
+                $with        = $userName . ' commented in';
                 $transformed = str_replace($toReplace, $with, $notification->content);
 
-                if (in_array($transformed, $result[$postTitle][$notificationType] ?? [], true)) {
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($transformed, $existing, true)) {
                     continue;
                 }
 
-                $result[$postTitle][$notificationType][] = $transformed;
-                $result[$postTitle]['id'] ??= $posts[$index]->id;
+                $result[$postTitle]['notifications'][$type][] = $transformed;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
             }
         }
 
@@ -269,16 +294,23 @@ class NewsFeedService
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<int, mixed>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterCreated(Collection $grouped, Collection $posts, int $userId): array
     {
         $result = [];
-        foreach ($grouped as $index => $notifications) {
-            $postTitle = $posts[$index]->title;
+
+        foreach ($grouped as $postId => $notifications) {
+            $post = $posts->get($postId);
+            if (!$post) {
+                continue;
+            }
+
+            $postTitle  = $post->title;
+            $hasContent = false;
 
             foreach ($notifications as $notification) {
-                $notificationType = $notification->type;
+                $type = $notification->type;
 
                 $needle = 'created a new post';
                 if (!str_contains($notification->content, $needle)) {
@@ -289,8 +321,18 @@ class NewsFeedService
                     continue;
                 }
 
-                $result[$postTitle][$notificationType][] = $notification->content;
-                $result[$postTitle]['id'] ??= $posts[$index]->id;
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($notification->content, $existing, true)) {
+                    continue;
+                }
+
+                $result[$postTitle]['notifications'][$type][] = $notification->content;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
             }
         }
 
@@ -300,53 +342,69 @@ class NewsFeedService
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<int, mixed>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterBranches(Collection $grouped, Collection $posts, int $userId): array
     {
         $result = [];
-        foreach ($grouped as $index => $notifications) {
-            $postTitle = $posts[$index]->title;
+
+        foreach ($grouped as $postId => $notifications) {
+            $post = $posts->get($postId);
+            if (!$post) {
+                continue;
+            }
+
+            $postTitle  = $post->title;
+            $hasContent = false;
 
             foreach ($notifications as $notification) {
-                $notificationType = $notification->type;
+                $type = $notification->type;
 
-                if ($notificationType !== NotificationTypeEnums::BRANCH->value) {
+                if ($type !== NotificationTypeEnums::BRANCH->value) {
                     continue;
                 }
-
                 if ($notification->created_by !== $userId) {
                     continue;
                 }
-
                 if ($notification->fid_user !== $userId) {
                     continue;
                 }
 
-                $result[$postTitle][$notificationType][] = $notification->content;
-                $result[$postTitle]['id'] ??= $posts[$index]->id;
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($notification->content, $existing, true)) {
+                    continue;
+                }
+
+                $result[$postTitle]['notifications'][$type][] = $notification->content;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
             }
         }
 
         return $result;
     }
 
-
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<string, array<string, mixed>>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterRecent(Collection $grouped, Collection $posts): array
     {
         $result = [];
+
         foreach ($grouped as $postId => $notifications) {
             $post = $posts->get($postId);
-            if (!$post instanceof Post) {
+            if (!$post) {
                 continue;
             }
 
-            $postTitle = $post->title;
+            $postTitle  = $post->title;
+            $hasContent = false;
 
             foreach ($notifications as $notification) {
                 if ($notification->is_mention) {
@@ -355,15 +413,21 @@ class NewsFeedService
                 if ($notification->type === null) {
                     continue;
                 }
-                $content = $notification->content;
                 $type    = $notification->type;
+                $content = $notification->content;
 
-                if (in_array($content, $result[$postTitle][$type] ?? [], true)) {
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($content, $existing, true)) {
                     continue;
                 }
 
-                $result[$postTitle][$type][] = $content;
-                $result[$postTitle]['id'] ??= $postId;
+                $result[$postTitle]['notifications'][$type][] = $content;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
             }
         }
 
@@ -373,7 +437,7 @@ class NewsFeedService
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<int, mixed>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterUpcoming(Collection $grouped, Collection $posts): array
     {
@@ -384,16 +448,14 @@ class NewsFeedService
             if (empty($post->deadline)) {
                 continue;
             }
-
             if ($now->isAfter($post->deadline)) {
                 continue;
             }
-
-            $result[$post->title]['id'] = $postId;
-            $notifications              = $grouped[$postId] ?? collect();
+            $postTitle     = $post->title;
+            $notifications = $grouped->get($postId, collect());
+            $hasContent    = false;
 
             foreach ($notifications as $notification) {
-
                 if ($notification->is_mention) {
                     continue;
                 }
@@ -401,11 +463,21 @@ class NewsFeedService
                 $type    = $notification->type;
                 $content = $notification->content;
 
-                if (in_array($notification->content, $result[$post->title]['notifications'][$type] ?? [], true)) {
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($content, $existing, true)) {
                     continue;
                 }
 
-                $result[$post->title]['notifications'][$type][] = $content;
+                $result[$postTitle]['notifications'][$type][] = $content;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent) {
+                $result[$postTitle] = [
+                    'notifications' => [],
+                    'id'            => $postId,
+                ];
             }
         }
 
@@ -415,25 +487,35 @@ class NewsFeedService
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<int, mixed>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterOverviewDone(Collection $grouped, Collection $posts): array
     {
         $result = [];
+
         foreach ($posts as $postId => $post) {
             if ($post->column !== 'Done') {
                 continue;
             }
 
-            $result[$post->title]['id'] = $postId;
-            $notifications              = $grouped[$postId] ?? collect();
+            $postTitle     = $post->title;
+            $notifications = $grouped->get($postId, collect());
 
             foreach ($notifications as $notification) {
+                if ($notification->is_mention) {
+                    continue;
+                }
+
                 $type    = $notification->type;
                 $content = $notification->content;
 
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($content, $existing, true)) {
+                    continue;
+                }
 
-                $result[$post->title]['notifications'][$type][] = $content;
+                $result[$postTitle]['notifications'][$type][] = $content;
+                $result[$postTitle]['id']                     = $postId;
             }
         }
 
@@ -443,7 +525,7 @@ class NewsFeedService
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<int, mixed>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterBlocked(Collection $grouped, Collection $posts): array
     {
@@ -454,8 +536,9 @@ class NewsFeedService
                 continue;
             }
 
-            $result[$post->title]['id'] = $postId;
-            $notifications              = $grouped[$postId] ?? collect();
+            $postTitle     = $post->title;
+            $notifications = $grouped->get($postId, collect());
+            $hasContent    = false;
 
             foreach ($notifications as $notification) {
                 if ($notification->is_mention) {
@@ -465,11 +548,21 @@ class NewsFeedService
                 $type    = $notification->type;
                 $content = $notification->content;
 
-                if (in_array($content, $result[$post->title]['notifications'][$type] ?? [], true)) {
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($content, $existing, true)) {
                     continue;
                 }
 
-                $result[$post->title]['notifications'][$type][] = $content;
+                $result[$postTitle]['notifications'][$type][] = $content;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent) {
+                $result[$postTitle] = [
+                    'notifications' => [],
+                    'id'            => $postId,
+                ];
             }
         }
 
@@ -479,19 +572,20 @@ class NewsFeedService
     /**
      * @param Collection<int, Collection<int, Notification>> $grouped
      * @param Collection<int, Post> $posts
-     * @return array<string, array{branch: string[], id: int}>
+     * @return array<string, array{notifications: array<string, array<int, string>>, id: int}>
      */
     private function filterOverviewBranches(Collection $grouped, Collection $posts): array
     {
         $result = [];
 
-        foreach ($grouped as $index => $notifications) {
-            $post = $posts->get($index);
+        foreach ($grouped as $postId => $notifications) {
+            $post = $posts->get($postId);
             if (!$post) {
                 continue;
             }
 
-            $postTitle = $post->title;
+            $postTitle  = $post->title;
+            $hasContent = false;
 
             foreach ($notifications as $notification) {
                 $type = $notification->type;
@@ -500,12 +594,22 @@ class NewsFeedService
                     continue;
                 }
 
-                if (in_array($notification->content, $result[$post->title]['notifications'][$type] ?? [], true)) {
+                if ($notification->is_mention) {
+                    continue;
+                }
+
+                $existing = $result[$postTitle]['notifications'][$type] ?? [];
+                if (in_array($notification->content, $existing, true)) {
                     continue;
                 }
 
                 $result[$postTitle]['notifications'][$type][] = $notification->content;
-                $result[$postTitle]['id'] ??= $post->id;
+                $result[$postTitle]['id']                     = $postId;
+                $hasContent                                   = true;
+            }
+
+            if (!$hasContent && isset($result[$postTitle])) {
+                unset($result[$postTitle]);
             }
         }
 

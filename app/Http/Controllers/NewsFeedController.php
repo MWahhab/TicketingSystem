@@ -20,8 +20,11 @@ class NewsFeedController extends Controller
             'dateTo'    => ['nullable', 'date', 'after_or_equal:dateFrom'],
         ]);
 
-        $feed = $newsFeedService->getFeed($validated);
+        $feeds = $newsFeedService->getFeed($validated);
 
-        return response()->json(['feed' => $feed]);
+        return response()->json([
+            'personal_feed' => $feeds['personal'],
+            'overview_feed' => $feeds['overview'],
+        ]);
     }
 }
