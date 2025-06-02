@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\LinkTypeEnums;
-use App\Enums\NewsFeedEnums;
 use App\Enums\NotificationTypeEnums;
 use App\Models\Notification;
 use App\Models\Post;
@@ -16,7 +15,6 @@ class NewsFeedService
      * @param array{
      *     fid_board: int,
      *     fid_user?: int,
-     *     feed_type: string,
      *     dateFrom?: string,
      *     dateTo?: string
      * } $validated

@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\DataTransferObjects\BoardFilterDataTransferObject;
 use App\Enums\PrioritiesEnum;
 use App\Models\BoardConfig;
 use App\Models\LinkedIssues;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\BoardService;
-use Carbon\Carbon;
+use App\Services\DateFilterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,16 +22,16 @@ class BoardConfigController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request, BoardService $boardService): Response
+    public function index(Request $request, BoardService $boardService, DateFilterService $dateFilterService): Response
     {
         try {
-            [$dateFrom, $dateTo] = $this->parseDates($request);
+            [$dateFrom, $dateTo] = $dateFilterService->parseDates($request);
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return $this->emptyResponse();
         }
 
-        $filterDTO  = $this->makeBoardFilterDTO($request, $dateFrom, $dateTo);
+        $filterDTO  = $dateFilterService->makeBoardFilterDTO($request, $dateFrom, $dateTo);
 
         $boardData  = $boardService->getBoardData($filterDTO);
         $boards     = BoardConfig::select('id', 'title', 'columns')->get();
@@ -183,39 +182,6 @@ class BoardConfigController extends Controller
             'authUserId'    => Auth::id(),
             'openPostId'    => null,
             'error'         => 'Invalid date format provided. Please use a valid date format (e.g., YYYY-MM-DD).',
-        ]);
-    }
-
-    public function parseDates(Request $request): array
-    {
-        $dateFrom = null;
-        $dateTo   = null;
-
-        if ($request->has('date_from') && !empty($request->input('date_from'))) {
-            $dateFrom = Carbon::parse($request->input('date_from'))->startOfDay();
-        }
-
-        if ($request->has('date_to') && !empty($request->input('date_to'))) {
-            $dateTo = Carbon::parse($request->input('date_to'))->endOfDay();
-        } elseif ($dateFrom !== null) {
-            $dateTo = $dateFrom->copy()->endOfDay();
-        }
-
-        return [$dateFrom, $dateTo];
-    }
-
-    private function makeBoardFilterDTO(Request $request, ?Carbon $dateFrom, ?Carbon $dateTo): BoardFilterDataTransferObject
-    {
-        $validDateFields = ['created_at', 'updated_at', 'deadline'];
-        $dateField       = $request->input('date_field', 'created_at');
-
-        $dateField = in_array($dateField, $validDateFields, true) ? $dateField : 'created_at';
-
-        return new BoardFilterDataTransferObject([
-            'boardId'      => (int) $request->input('board_id'),
-            'filterColumn' => $dateField,
-            'dateFrom'     => $dateFrom,
-            'dateTo'       => $dateTo,
         ]);
     }
 

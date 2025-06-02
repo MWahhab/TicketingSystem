@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react"
 import { usePage, router, Link } from "@inertiajs/react"
 import { DragDropContext } from "react-beautiful-dnd"
-import { Search, ChevronDown, User, LogOut, Settings, Pin } from "lucide-react"
+import { Search, ChevronDown, User, LogOut, Settings, Pin, Newspaper } from "lucide-react"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
@@ -411,6 +411,13 @@ function InnerBoardLayout() {
                             aria-label="User Profile"
                         >
                             <User className="h-4 w-4" />
+                        </Link>
+                        <Link
+                            href={route("newsfeed.index")}
+                            className="flex-1 flex items-center justify-center h-8 rounded-md border border-white/10 bg-transparent hover:bg-zinc-800 hover:ring-1 hover:ring-white/20 transition-all text-zinc-400 hover:text-zinc-100"
+                            aria-label="News Feed"
+                        >
+                            <Newspaper className="h-4 w-4" />
                         </Link>
                         <Link
                             href={route("logout")}
