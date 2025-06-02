@@ -22,7 +22,7 @@ class NewsFeedService
      */
     public function getFeed(array $validated): array
     {
-        $userId = auth()->id();
+        $userId           = $validated['fid_user'] ?? auth()->id();
 
         $allNotifications = $this->fetchAllNotifications($validated);
 
@@ -108,36 +108,35 @@ class NewsFeedService
                 continue;
             }
 
-            $postTitle  = $post->title;
-            $hasContent = false;
+            $postTitle         = $post->title;
+            $userNotifications = $notifications->filter(
+                fn ($n) => $n->created_by === $userId && !$n->is_mention && $n->type !== NotificationTypeEnums::BRANCH->value
+            );
 
-            foreach ($notifications as $notification) {
-                $type = $notification->type;
+            $hasActivity = false;
 
-                if ($notification->is_mention) {
-                    continue;
-                }
-
-                if ($type === NotificationTypeEnums::BRANCH->value) {
-                    continue;
-                }
-
-                if ($notification->created_by !== $userId) {
-                    continue;
-                }
-
+            foreach ($userNotifications as $notification) {
+                $type     = $notification->type;
                 $existing = $result[$postTitle]['notifications'][$type] ?? [];
-                if (in_array($notification->content, $existing, true)) {
-                    continue;
-                }
 
-                $result[$postTitle]['notifications'][$type][] = $notification->content;
-                $result[$postTitle]['id']                     = $postId;
-                $hasContent                                   = true;
+                if (!in_array($notification->content, $existing, true)) {
+                    $result[$postTitle]['notifications'][$type][] = $notification->content;
+                    $result[$postTitle]['id']                     = $postId;
+                    $hasActivity                                  = true;
+                }
             }
 
-            if (!$hasContent && isset($result[$postTitle])) {
+            $isAssignee = $post->assignee_id === $userId;
+
+            if (!$hasActivity && !$isAssignee) {
                 unset($result[$postTitle]);
+            }
+
+            if ($isAssignee && !isset($result[$postTitle])) {
+                $result[$postTitle] = [
+                    'notifications' => [],
+                    'id'            => $postId,
+                ];
             }
         }
 
@@ -215,7 +214,7 @@ class NewsFeedService
                     continue;
                 }
 
-                if ($notification->created_by === $userId) {
+                if ($notification->fid_user !== $userId) {
                     continue;
                 }
 
@@ -622,7 +621,7 @@ class NewsFeedService
     {
         $postIds = $grouped->keys()->all();
 
-        return Post::with('linkedIssues')
+        return Post::with('linkedIssues', 'watchers')
             ->whereIn('id', $postIds)
             ->get()
             ->keyBy('id');
