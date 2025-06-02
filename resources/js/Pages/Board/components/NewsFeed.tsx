@@ -140,8 +140,8 @@ export default function NewsFeed() {
         "activity_on",
         "upcoming_deadlines",
         "blocked_issues",
-        "done_this_week",
         "generated_branches",
+        "done_this_week",
     ]
 
     const FEED_LABELS = {
@@ -316,13 +316,13 @@ export default function NewsFeed() {
                                                 onClick={() => toggleCategory(cat)}
                                                 className={`relative flex-shrink-0 w-4 h-4 rounded border transition-all duration-200 flex items-center justify-center ${
                                                     isEnabled
-                                                        ? "bg-purple-500 border-purple-500"
+                                                        ? "bg-zinc-50 border-zinc-50"
                                                         : "border-zinc-600 bg-transparent hover:border-zinc-500"
                                                 }`}
                                                 title={isEnabled ? "Hide category" : "Show category"}
                                             >
                                                 {isEnabled && (
-                                                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="black" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                                     </svg>
                                                 )}
@@ -415,7 +415,7 @@ export default function NewsFeed() {
                                         variant="ghost"
                                         className={
                                             datePreset === key
-                                                ? "bg-zinc-800 text-white border-b-2 border-b-purple-500 border-x-0 border-t-0 rounded-md font-medium"
+                                                ? "bg-zinc-800 text-white border-b-2 border-b-zinc-50 border-x-0 border-t-0 rounded-md font-medium"
                                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 border-0"
                                         }
                                         onClick={() => setDatePreset(key as typeof datePreset)}
