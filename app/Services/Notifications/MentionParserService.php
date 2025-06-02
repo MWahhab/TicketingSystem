@@ -19,6 +19,13 @@ readonly class MentionParserService
         $validUserIds       = [];
         $userIdToLabel      = [];
 
+        if ($content === '' || $content === '0') {
+            return [
+                'notifications'      => [],
+                'newlyNotifiedTexts' => [],
+            ];
+        }
+
         $document = new DOMDocument();
         libxml_use_internal_errors(true);
         $document->loadHTML(mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'));
