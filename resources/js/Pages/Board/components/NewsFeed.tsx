@@ -175,8 +175,8 @@ export default function NewsFeed() {
             const params = new URLSearchParams({
                 fid_board: selectedBoard.toString(),
                 ...(selectedUser && activeTab === "personal" && { fid_user: selectedUser.toString() }),
-                ...(dateFrom && { dateFrom: format(dateFrom, "yyyy-MM-dd") }),
-                ...(dateTo && { dateTo: format(dateTo, "yyyy-MM-dd") }),
+                ...(dateFrom && { dateFrom: dateFrom.toISOString() }),
+                ...(dateTo && { dateTo: dateTo.toISOString() }),
             })
 
             const response = await window.axios.get(`/newsfeed?${params.toString()}`)
@@ -233,7 +233,7 @@ export default function NewsFeed() {
                     <div className="space-y-2">
                         {Object.entries(data).map(([postTitle, item]) => {
                             const postKey = `${title}-${item.id}`
-                            const hasNotifications = item.notifications && Object.keys(item.notifications).length > 0
+                            const hasNotifications = item.notifications && item.notifications.length > 0
                             const expanded = expandedPosts[postKey]
                             return (
                                 <div
@@ -245,10 +245,10 @@ export default function NewsFeed() {
                                             href={`/boards?board_id=${selectedBoard}&openTask=${item.id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-base font-semibold text-zinc-100 hover:text-primary transition-colors block text-left"
+                                            className="group text-base font-semibold text-zinc-100 hover:text-primary transition-colors block text-left flex items-center gap-2 border-b border-transparent hover:border-zinc-600"
                                             style={{ textDecoration: "none" }}
                                         >
-                                            {postTitle}
+                                            {"#" + item.id + "." + postTitle}
                                         </a>
                                         {hasNotifications && (
                                             <button
@@ -263,21 +263,17 @@ export default function NewsFeed() {
                                     {hasNotifications && expanded && (
                                         <div className="ml-4 mt-4 relative">
                                             <div className="absolute left-0 top-2 bottom-2 w-px bg-zinc-700"></div>
-                                            {Object.entries(item.notifications!)
-                                                .flatMap(([type, notifications]) =>
-                                                    notifications.map((notification) => ({ type, notification })),
-                                                )
-                                                .map((item, idx, arr) => (
-                                                    <div
-                                                        key={`${item.type}-${idx}`}
-                                                        className={`relative flex items-start ${idx < arr.length - 1 ? "mb-5" : ""}`}
-                                                    >
-                                                        <div className="absolute left-0 w-2 h-2 bg-zinc-200 rounded-full -translate-x-[3.5px] mt-1.5 z-10"></div>
-                                                        <div className="ml-5 text-xs text-zinc-200 leading-relaxed font-sans">
-                                                            {item.notification}
-                                                        </div>
+                                            {(item.notifications ?? []).map((notification, idx, arr) => (
+                                                <div
+                                                    key={idx}
+                                                    className={`relative flex items-start ${idx < arr.length - 1 ? "mb-5" : ""}`}
+                                                >
+                                                    <div className="absolute left-0 w-2 h-2 bg-zinc-200 rounded-full -translate-x-[3.5px] mt-1.5 z-10"></div>
+                                                    <div className="ml-5 text-xs text-zinc-200 leading-relaxed font-sans">
+                                                        {notification}
                                                     </div>
-                                                ))}
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
@@ -288,6 +284,7 @@ export default function NewsFeed() {
             </div>
         )
     }
+
 
     const presets = getPresets()
 

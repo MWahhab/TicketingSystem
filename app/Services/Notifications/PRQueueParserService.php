@@ -2,9 +2,13 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\NewsFeedCategoryEnums;
+use App\Enums\NewsFeedModeEnums;
 use App\Enums\NotificationTypeEnums;
 use App\Interfaces\NotificationParserInterface;
 use App\Models\Post;
+use App\Services\NewsFeedService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use PremiumAddons\enums\PRQueueOutcomeEnum;
@@ -13,13 +17,21 @@ use PremiumAddons\services\PRQueueService;
 
 readonly class PRQueueParserService implements NotificationParserInterface
 {
+    public function __construct(
+        private NewsFeedService $newsFeedService = new NewsFeedService(),
+    ) {
+    }
+
     /**
      * @throws InvalidArgumentException
-     * @return list<array<string,mixed>>
+     * @return array{
+     *     0: list<array<string, mixed>>,
+     *     1: list<array<string, mixed>>
+     * }
      */
     public function parse(object $entity): array
     {
-        if (! $entity instanceof PRQueue) {
+        if (!$entity instanceof PRQueue) {
             throw new InvalidArgumentException(
                 sprintf('PRQueueParserService expects %s, %s given', PRQueue::class, $entity::class)
             );
@@ -49,7 +61,7 @@ readonly class PRQueueParserService implements NotificationParserInterface
 
         $nowIso = now()->toIso8601String();
 
-        return array_map(
+        return [array_map(
             fn (int $userId): array => [
                 'created_by' => $actorId,
                 'type'       => NotificationTypeEnums::BRANCH->value,
@@ -62,7 +74,7 @@ readonly class PRQueueParserService implements NotificationParserInterface
                 'is_mention' => false,
             ],
             $recipientIds
-        );
+        ), $this->newsFeedService->getStoredEntries()];
     }
 
     /**
@@ -71,37 +83,102 @@ readonly class PRQueueParserService implements NotificationParserInterface
      */
     private function renderQueueNotification(string $event, Post $post, string $title): string
     {
-        $board = $post->board->title;
+        $board           = $post->board->title;
+        $authId          = auth()->id();
+        $actorName       = Auth::user()?->name;
 
-        return match ($event) {
-            'submitted' => sprintf(
-                '%s submitted branch generation on post #%d: %s (%s)',
-                $post->creator->name,
-                $post->id,
-                $title,
-                $board
-            ),
-            'max_retries_failed' => sprintf(
-                'Branch generation failed on post #%d: %s (%s). Reached the maximum number of retry attempts. Try splitting the issue into smaller parts and try again.',
-                $post->id,
-                $title,
-                $board
-            ),
-            'outcome_success' => sprintf(
-                'Branch creation successful on post #%d: %s (%s)',
-                $post->id,
-                $title,
-                $board
-            ),
-            'outcome_failed' => sprintf(
-                'Branch creation failed on post #%d: %s (%s)',
-                $post->id,
-                $title,
-                $board
-            ),
-            default => throw new \RuntimeException("Unknown event: {$event}"),
-        };
+        switch ($event) {
+            case 'submitted':
+                $content = sprintf(
+                    '%s submitted branch generation on post #%d: %s (%s)',
+                    $actorName,
+                    $post->id,
+                    $title,
+                    $board
+                );
+                $personalVariant = sprintf(
+                    'You submitted branch generation on post #%d: %s',
+                    $post->id,
+                    $title,
+                );
+                $overviewVariant = sprintf(
+                    '%s submitted branch generation on post #%d: %s',
+                    $actorName,
+                    $post->id,
+                    $title,
+                );
+                break;
+
+            case 'max_retries_failed':
+                $content = sprintf(
+                    'Branch generation failed on post #%d: %s (%s). Reached the maximum number of retry attempts. Try splitting the issue into smaller parts and try again.',
+                    $post->id,
+                    $title,
+                    $board
+                );
+                $personalVariant = sprintf(
+                    'Branch generation failed on post #%d: %s. Reached the maximum number of retry attempts. Try splitting the issue into smaller parts and try again.',
+                    $post->id,
+                    $title,
+                );
+                $overviewVariant = $personalVariant;
+                break;
+
+            case 'outcome_success':
+                $content = sprintf(
+                    'Branch creation successful on post #%d: %s (%s)',
+                    $post->id,
+                    $title,
+                    $board
+                );
+                $personalVariant = sprintf(
+                    'Branch creation successful on post #%d: %s',
+                    $post->id,
+                    $title,
+                );
+                $overviewVariant = $personalVariant;
+                break;
+
+            case 'outcome_failed':
+                $content = sprintf(
+                    'Branch creation failed on post #%d: %s (%s)',
+                    $post->id,
+                    $title,
+                    $board
+                );
+                $personalVariant = sprintf(
+                    'Branch creation failed on post #%d: %s',
+                    $post->id,
+                    $title,
+                );
+                $overviewVariant = $personalVariant;
+                break;
+
+            default:
+                throw new \RuntimeException("Unknown event: {$event}");
+        }
+
+        $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+            NewsFeedModeEnums::PERSONAL,
+            NewsFeedCategoryEnums::GENERATED_BRANCHES,
+            $personalVariant,
+            $post,
+            $authId,
+            $authId
+        ));
+
+        $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+            NewsFeedModeEnums::OVERVIEW,
+            NewsFeedCategoryEnums::GENERATED_BRANCHES,
+            $overviewVariant,
+            $post,
+            $authId,
+            $authId
+        ));
+
+        return $content;
     }
+
 
     /**
      * @param array<string,mixed> $changes

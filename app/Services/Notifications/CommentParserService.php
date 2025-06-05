@@ -2,17 +2,21 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\NewsFeedCategoryEnums;
+use App\Enums\NewsFeedModeEnums;
 use App\Enums\NotificationTypeEnums;
 use App\Interfaces\NotificationParserInterface;
 use App\Models\Comment;
 use App\Models\Post;
+use App\Services\NewsFeedService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 readonly class CommentParserService implements NotificationParserInterface
 {
     public function __construct(
-        private MentionParserService $mentionsParser
+        private MentionParserService $mentionsParser,
+        private NewsFeedService      $newsFeedService = new NewsFeedService()
     ) {
     }
 
@@ -36,9 +40,14 @@ readonly class CommentParserService implements NotificationParserInterface
             $post->fid_board,
             $title
         );
-        $notifications = array_merge($mentionResult['notifications'], $this->getNotifications($post, $title, $authId));
 
-        return $this->filterNotifications($notifications, $post, $authId);
+        $notifications = array_merge($mentionResult['notifications'], $this->getNotifications($post, $authId));
+
+        $notifications = $this->filterNotifications($notifications, $post, $authId);
+
+        $newsFeed      = $this->newsFeedService->getStoredEntries();
+
+        return [$notifications, $newsFeed];
     }
 
     /**
@@ -54,12 +63,31 @@ readonly class CommentParserService implements NotificationParserInterface
      */
     private function getNotifications(
         Post              $post,
-        string            $title,
         int               $authId,
         PostParserService $postParser = new PostParserService()
     ): array {
-        $notifications = [];
-        $userName      = Auth::user()?->name;
+        $notifications   = [];
+        $userName        = Auth::user()?->name;
+        $content         = sprintf('%s commented on post %s', $userName, '#'.$post->id);
+        $personalVariant = sprintf('You commented on post %s', '#'.$post->id);
+
+        $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+            NewsFeedModeEnums::PERSONAL,
+            NewsFeedCategoryEnums::COMMENTED,
+            $personalVariant,
+            $post,
+            $authId,
+            $authId
+        ));
+
+        $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+            NewsFeedModeEnums::OVERVIEW,
+            NewsFeedCategoryEnums::ACTIVITY_ON,
+            $content,
+            $post,
+            $authId,
+            $authId
+        ));
 
         foreach (array_keys($postParser->collectNotifiableUserIds($post)) as $userId) {
             if ($authId == $userId) {
@@ -69,7 +97,7 @@ readonly class CommentParserService implements NotificationParserInterface
             $notifications[] = [
                 'created_by'          => Auth::id(),
                 'type'                => NotificationTypeEnums::COMMENT->value,
-                'content'             => sprintf('%s commented in %s', $userName, $title),
+                'content'             => $content,
                 'fid_board'           => $post->fid_board,
                 'fid_user'            => $userId,
                 'is_mention'          => false,
@@ -127,7 +155,7 @@ readonly class CommentParserService implements NotificationParserInterface
     {
         $targetUserId = $notification['fid_user'];
         $seen         = isset($seenParticipants[$targetUserId]);
-        $isCreator    = $targetUserId                                                     === $authId;
+        $isCreator    = $targetUserId === $authId;
         $isMention    = isset($notification['is_mention']) && $notification['is_mention'];
 
         $seenParticipants[$targetUserId] = true;

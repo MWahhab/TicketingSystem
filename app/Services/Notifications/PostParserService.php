@@ -2,11 +2,15 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\NewsFeedCategoryEnums;
+use App\Enums\NewsFeedModeEnums;
 use App\Enums\NotificationTypeEnums;
 use App\Interfaces\NotificationParserInterface;
 use App\Models\BoardConfig;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\NewsFeedService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -15,13 +19,14 @@ use InvalidArgumentException;
 readonly class PostParserService implements NotificationParserInterface
 {
     public function __construct(
-        private MentionParserService $mentionsParser = new MentionParserService(),
+        private MentionParserService $mentionsParser  = new MentionParserService(),
+        private NewsFeedService      $newsFeedService = new NewsFeedService(),
     ) {
     }
 
     /**
      * @throws InvalidArgumentException
-     * @return list<array<string,mixed>>
+     * @return list<array<array<string,mixed>,array<string,mixed>>>
      */
     public function parse(object $entity): array
     {
@@ -31,7 +36,7 @@ readonly class PostParserService implements NotificationParserInterface
             );
         }
 
-        return $this->build($entity)[0];
+        return [$this->build($entity)[0], $this->newsFeedService->getStoredEntries()];
     }
 
     /**
@@ -48,11 +53,13 @@ readonly class PostParserService implements NotificationParserInterface
             $notifySelf      = true;
         }
 
+        $post->loadMissing('creator');
+
         $userIds    = $this->collectNotifiableUserIds($post);
 
         $boardName  = BoardConfig::find($post->fid_board)->title ?? 'Unknown';
         $shortTitle = Str::limit((string) $post->title, config('formatting.titleLength'), '...');
-        $scope      = "#{$post->id}:{$shortTitle} ({$boardName})";
+        $scope      = "#{$post->id}: {$shortTitle} ({$boardName})";
 
         $desc       = $this->extractRelevantDescription($post, $changes);
 
@@ -135,38 +142,88 @@ readonly class PostParserService implements NotificationParserInterface
             && $post->wasRecentlyCreated
             && now()->diffInMinutes($post->created_at) <= 5
         ) {
-            return [sprintf(
+            $content = sprintf(
                 '%s created a new post #%d: %s (%s)',
                 $post->creator->name,
                 $post->id,
                 $shortTitle,
                 $boardName
-            )];
+            );
+            $personalVariant = sprintf(
+                'You created a new post #%d: %s',
+                $post->id,
+                $shortTitle,
+            );
+            $overviewVariant = sprintf(
+                '%s created a new post #%d: %s',
+                $post->creator->name,
+                $post->id,
+                $shortTitle,
+            );
+
+            $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+                NewsFeedModeEnums::PERSONAL,
+                NewsFeedCategoryEnums::CREATED,
+                $personalVariant,
+                $post,
+                $post->creator->id,
+                $post->creator->id,
+            ));
+
+            $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+                NewsFeedModeEnums::OVERVIEW,
+                NewsFeedCategoryEnums::CREATED,
+                $overviewVariant,
+                $post,
+                $post->creator->id,
+                $post->creator->id,
+            ));
+
+            return [$content];
         }
 
         return $changes !== []
-            ? $this->parsePostChangeNotification($changes, $post, $boardName)
+            ? $this->parsePostChangeNotification($changes, $post, $boardName, Auth::user()?->name)
             : [];
     }
 
-    /** @param array<string,mixed> $changes
+    /**
+     * @param array<string,mixed> $changes
      * @return list<string>
      */
-    private function parsePostChangeNotification(array $changes, Post $post, string $boardName): array
+    private function parsePostChangeNotification(array $changes, Post $post, string $boardName, string $actorName): array
     {
-        $messages = [];
+        $messages    = [];
+        $authUserId  = auth()->id();
+
         foreach ($changes as $field => $change) {
             [$old, $new] = is_array($change) && count($change) === 2
                 ? $change
                 : [null, $change];
 
+            $personalMessage = null;
+            $overviewMessage = null;
+
             switch ($field) {
                 case 'title':
                     $messages[] = sprintf(
-                        'Title of post #%d (%s) was changed from "%s" to "%s"',
+                        'Post #%d (%s) title was changed from "%s" to "%s"',
                         $post->id,
                         $boardName,
-                        $old,
+                        $post->title,
+                        $new
+                    );
+                    $personalMessage = sprintf(
+                        'You changed the title of post #%d from "%s" to "%s"',
+                        $post->id,
+                        $post->title,
+                        $new
+                    );
+                    $overviewMessage = sprintf(
+                        '%s changed the title of post #%d from "%s" to "%s"',
+                        $actorName,
+                        $post->id,
+                        $post->title,
                         $new
                     );
                     break;
@@ -177,45 +234,161 @@ readonly class PostParserService implements NotificationParserInterface
                         $boardName,
                         $new
                     );
+                    $personalMessage = sprintf(
+                        'You moved post #%d to column "%s"',
+                        $post->id,
+                        $new
+                    );
+                    $overviewMessage = sprintf(
+                        '%s moved post #%d to column "%s"',
+                        $actorName,
+                        $post->id,
+                        $new
+                    );
+
+                    if ($new === 'Done') {
+                        $this->newsFeedService->addStoredEntry(
+                            $this->newsFeedService->makeFeedRow(
+                                NewsFeedModeEnums::OVERVIEW,
+                                NewsFeedCategoryEnums::DONE_THIS_WEEK,
+                                $overviewMessage,
+                                $post,
+                                $authUserId,
+                                $authUserId
+                            )
+                        );
+
+                        $this->newsFeedService->addStoredEntry(
+                            $this->newsFeedService->makeFeedRow(
+                                NewsFeedModeEnums::PERSONAL,
+                                NewsFeedCategoryEnums::DONE_THIS_WEEK,
+                                $personalMessage,
+                                $post,
+                                $authUserId,
+                                $authUserId
+                            )
+                        );
+                    }
+
                     break;
                 case 'desc':
                     $messages[] = sprintf(
-                        'Description of post #%d (%s) was updated',
+                        'Post #%d (%s) description was updated',
                         $post->id,
                         $boardName
                     );
+                    $personalMessage = sprintf(
+                        'You updated the description of post #%d',
+                        $post->id
+                    );
+                    $overviewMessage = sprintf(
+                        '%s updated the description of post #%d',
+                        $actorName,
+                        $post->id
+                    );
                     break;
                 case 'assignee_id':
-                    $ids           = [$post->assignee_id, $new];
-                    $existingUsers = User::whereIn('id', $ids)
+                    $ids   = [$post->assignee_id, $new];
+                    $users = User::whereIn('id', $ids)
                         ->orderByRaw('FIELD(id, ?, ?)', $ids)
                         ->pluck('name');
 
-                    // this handling is supposed to not alert a tampering user
-                    // just silently log the attempt so we can remedy carefully
-                    if (count($existingUsers) < 2) {
-                        $messages = [];
+                    if (count($users) < 2) {
                         Log::error('Tampered code. Unsafe for execution');
-                        break;
+                        continue 2;
                     }
-
                     $messages[] = sprintf(
                         'Post #%d (%s) was reassigned from %s to %s',
                         $post->id,
                         $boardName,
-                        $existingUsers[0],
-                        $existingUsers[1]
+                        $users[0],
+                        $users[1]
+                    );
+                    $personalMessage = sprintf(
+                        'You reassigned post #%d from %s to %s',
+                        $post->id,
+                        $users[0],
+                        $users[1]
+                    );
+                    $overviewMessage = sprintf(
+                        '%s reassigned post #%d from %s to %s',
+                        $actorName,
+                        $post->id,
+                        $users[0],
+                        $users[1]
                     );
                     break;
                 case 'fid_board':
-                    $postTitle  = Str::limit($post->title, config('formatting.titleLength'));
                     $messages[] = sprintf(
-                        'Post #%d.%s was moved to board %s',
+                        'Post #%d (%s) was moved to board %s',
                         $post->id,
-                        $postTitle,
                         $boardName,
+                        $new
+                    );
+                    $personalMessage = sprintf(
+                        'You moved post #%d to board %s',
+                        $post->id,
+                        $new
+                    );
+                    $overviewMessage = sprintf(
+                        '%s moved post #%d to board %s',
+                        $actorName,
+                        $post->id,
+                        $new
+                    );
+
+                    break;
+                case 'deadline':
+                    $oldDeadline = $post->deadline ? Carbon::parse($post->deadline)->format('d-m-Y') : null;
+                    $newDeadline = $new ? Carbon::parse($new)->format('d-m-Y') : null;
+
+                    $messages[] = sprintf(
+                        'Post #%d (%s) deadline was changed from "%s" to "%s"',
+                        $post->id,
+                        $boardName,
+                        $oldDeadline,
+                        $newDeadline
+                    );
+                    $personalMessage = sprintf(
+                        'You changed the deadline of post #%d from "%s" to "%s"',
+                        $post->id,
+                        $oldDeadline,
+                        $newDeadline
+                    );
+                    $overviewMessage = sprintf(
+                        '%s changed the deadline of post #%d from "%s" to "%s"',
+                        $actorName,
+                        $post->id,
+                        $oldDeadline,
+                        $newDeadline
                     );
                     break;
+            }
+
+            if ($personalMessage !== null) {
+                $this->newsFeedService->addStoredEntry(
+                    $this->newsFeedService->makeFeedRow(
+                        NewsFeedModeEnums::PERSONAL,
+                        NewsFeedCategoryEnums::WORKED_ON,
+                        $personalMessage,
+                        $post,
+                        $authUserId,
+                        $authUserId
+                    )
+                );
+            }
+
+            if ($overviewMessage !== null) {
+                $this->newsFeedService->addStoredEntry(
+                    $this->newsFeedService->makeFeedRow(
+                        NewsFeedModeEnums::OVERVIEW,
+                        NewsFeedCategoryEnums::ACTIVITY_ON,
+                        $overviewMessage,
+                        $post,
+                        $authUserId,
+                        $authUserId
+                    )
+                );
             }
         }
 

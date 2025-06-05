@@ -2,14 +2,22 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\NewsFeedCategoryEnums;
+use App\Enums\NewsFeedModeEnums;
 use App\Enums\NotificationTypeEnums;
 use App\Interfaces\NotificationParserInterface;
 use App\Models\LinkedIssues;
 use App\Models\Post;
+use App\Services\NewsFeedService;
 use Illuminate\Support\Facades\Auth;
 
 readonly class LinkedIssueParserService implements NotificationParserInterface
 {
+    public function __construct(
+        private NewsFeedService $newsFeedService = new NewsFeedService(),
+    ) {
+    }
+
     /**
      * @inheritdoc
      */
@@ -51,6 +59,7 @@ readonly class LinkedIssueParserService implements NotificationParserInterface
             ],
             array_keys($post->getWatcherIds())
         ));
+        $authId = auth()->id();
 
         $userName = $entity->creator->name ?? 'Unknown User';
 
@@ -59,8 +68,48 @@ readonly class LinkedIssueParserService implements NotificationParserInterface
             'updated' => '%s updated link between post #%s - %s and #%s - %s',
             'deleted' => '%s removed link between post #%s - %s and #%s - %s',
         ];
+        $personalVariantMap = [
+            'created' => 'You linked post #%s - %s to #%s - %s',
+            'updated' => 'You updated link between post #%s - %s and #%s - %s',
+            'deleted' => 'You removed link between post #%s - %s and #%s - %s',
+        ];
 
         $template = $contentMap[$action];
+
+        $content = sprintf(
+            $template,
+            $userName,
+            $relatedPost->id,
+            $relatedPost->title,
+            $post->id,
+            $post->title
+        );
+
+        $personalVariant = sprintf(
+            $personalVariantMap[$action],
+            $relatedPost->id,
+            $relatedPost->title,
+            $post->id,
+            $post->title
+        );
+
+        $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+            NewsFeedModeEnums::PERSONAL,
+            NewsFeedCategoryEnums::WORKED_ON,
+            $personalVariant,
+            $post,
+            $authId,
+            $authId,
+        ));
+
+        $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+            NewsFeedModeEnums::OVERVIEW,
+            NewsFeedCategoryEnums::ACTIVITY_ON,
+            $content,
+            $post,
+            $authId,
+            $authId,
+        ));
 
         $notifications = [];
         foreach ($userIds as $userId) {
@@ -86,6 +135,6 @@ readonly class LinkedIssueParserService implements NotificationParserInterface
             ];
         }
 
-        return $notifications;
+        return [$notifications, $this->newsFeedService->getStoredEntries()];
     }
 }

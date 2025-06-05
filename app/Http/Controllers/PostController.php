@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LinkedIssues;
 use App\Models\Post;
 use App\Services\ImageService;
 use App\Utils\PostFormatterUtil;
@@ -141,6 +142,10 @@ class PostController extends Controller
         $imageService->deleteAllImagesInDesc($post->desc);
         $boardFid = $post->fid_board;
         $postId   = $post->id;
+
+        LinkedIssues::where('fid_origin_post', $postId)
+            ->orWhere('fid_related_post', $postId)
+            ->delete();
 
         $post->delete();
         $post->notify();

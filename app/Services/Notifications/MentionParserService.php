@@ -2,15 +2,24 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\NewsFeedCategoryEnums;
+use App\Enums\NewsFeedModeEnums;
 use App\Enums\NotificationTypeEnums;
+use App\Models\Post;
 use App\Models\User;
+use App\Services\NewsFeedService;
 use DOMDocument;
 use Illuminate\Support\Facades\Auth;
 
 readonly class MentionParserService
 {
+    public function __construct(
+        private NewsFeedService $newsFeedService = new NewsFeedService(),
+    ) {
+    }
+
     /**
-     * @inheritdoc
+     * @return array{notifications: list<array<string, mixed>>, newlyNotifiedTexts: list<string>}
      */
     public function parse(string $content, NotificationTypeEnums $type, int $fid_target, ?int $fid_board = null, ?string $context = null): array
     {
@@ -49,7 +58,7 @@ readonly class MentionParserService
                     continue;
                 }
 
-                $userId = (int) $idAttr;
+                $userId = (int)$idAttr;
                 $label  = trim($span->getAttribute('data-label')) ?: 'Unknown';
 
                 $validUserIds[]         = $userId;
@@ -65,15 +74,22 @@ readonly class MentionParserService
         }
 
         $existingUsers = User::whereIn('id', $validUserIds)->pluck('id')->all();
+        $authId        = Auth::id();
+        $authName      = Auth::user()->name ?? 'Someone';
+        $post          = Post::select(['id', 'fid_board'])->findOrFail($fid_target);
 
         foreach ($existingUsers as $userId) {
             $username             = $userIdToLabel[$userId] ?? 'Unknown';
             $newlyNotifiedTexts[] = $username;
+            $postRef              = sprintf('#%d', $post->id);
+
+            $notifContent = sprintf('You were mentioned in %s', $postRef);
+            $overviewText = sprintf('%s mentioned %s in %s', $authName, $username, $postRef);
 
             $notifications[] = [
-                'created_by'          => Auth::id(),
+                'created_by'          => $authId,
                 'type'                => $type->value,
-                'content'             => sprintf('You were mentioned in %s', $context ?? $type->name),
+                'content'             => $notifContent,
                 'fid_' . $type->value => $fid_target,
                 'fid_board'           => $fid_board,
                 'fid_user'            => $userId,
@@ -81,7 +97,27 @@ readonly class MentionParserService
                 'updated_at'          => now()->toIso8601String(),
                 'is_mention'          => true,
             ];
+
+            $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+                NewsFeedModeEnums::PERSONAL,
+                NewsFeedCategoryEnums::TAGGED_IN,
+                $notifContent,
+                $post,
+                $userId,
+                $authId
+            ));
+
+            $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
+                NewsFeedModeEnums::OVERVIEW,
+                NewsFeedCategoryEnums::ACTIVITY_ON,
+                $overviewText,
+                $post,
+                $userId,
+                $authId
+            ));
         }
+
+        $this->newsFeedService->write($this->newsFeedService->getStoredEntries());
 
         return [
             'notifications'      => $notifications,

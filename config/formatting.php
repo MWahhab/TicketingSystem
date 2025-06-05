@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'titleLength' => 10,
+    'titleLength' => 35,
 ];

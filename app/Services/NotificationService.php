@@ -32,7 +32,8 @@ class NotificationService
         private readonly PostParserService               $postParserService,
         private readonly LinkedIssueParserService        $linkedIssueParserService,
         private readonly PRQueueParserService            $PRQueueParserService,
-        private readonly MentionParserService            $mentionsParser
+        private readonly MentionParserService            $mentionsParser,
+        private readonly NewsFeedService                 $newsFeedService,
     ) {
         $this->parsers = [
             Comment::class      => $this->commentParserService,
@@ -47,12 +48,14 @@ class NotificationService
         $parser = $this->parsers[$object::class]
             ?? throw new \InvalidArgumentException('Unsupported object type.');
 
-        $notifications = $parser->parse($object);
+        [$notifications, $newsFeedEntries] = $parser->parse($object);
 
         $this->dispatchAndCacheNotifications(
             $notifications,
             $object
         );
+
+        $this->newsFeedService->write($newsFeedEntries);
     }
 
     /**
