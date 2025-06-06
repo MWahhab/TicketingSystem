@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\LinkTypeEnums;
 use App\Enums\NewsFeedCategoryEnums;
 use App\Enums\NewsFeedModeEnums;
 use App\Models\NewsFeed;
@@ -23,8 +24,12 @@ class NewsFeedService
      */
     public function getFeed(array $filters): array
     {
-        $dateFrom = Carbon::parse($filters['dateFrom'])->setTimezone('UTC')->startOfDay();
-        $dateTo   = Carbon::parse($filters['dateTo'])->setTimezone('UTC')->endOfDay();
+        $dateFrom = Carbon::parse($filters['dateFrom'])
+            ->setTimezone('UTC')
+            ->startOfDay();
+        $dateTo = Carbon::parse($filters['dateTo'])
+            ->setTimezone('UTC')
+            ->endOfDay();
 
         $baseQuery = NewsFeed::query()
             ->where('fid_board', $filters['fid_board'])
@@ -32,12 +37,17 @@ class NewsFeedService
             ->orderByDesc('created_at');
 
         /** @var Collection<int, NewsFeed> $personalFeedRaw */
-        $personalFeedRaw = $baseQuery->clone()->where('mode', NewsFeedModeEnums::PERSONAL->value)
-            ->when($filters['fid_user'] ?? auth()->id(), fn ($q, $fidUser) => $q->where('fid_user', $fidUser))
+        $personalFeedRaw = $baseQuery->clone()
+            ->where('mode', NewsFeedModeEnums::PERSONAL->value)
+            ->when(
+                $filters['fid_user'] ?? auth()->id(),
+                fn ($q, $fidUser) => $q->where('fid_user', $fidUser)
+            )
             ->get();
 
         /** @var Collection<int, NewsFeed> $overviewFeedRaw */
-        $overviewFeedRaw = $baseQuery->clone()->where('mode', NewsFeedModeEnums::OVERVIEW->value)
+        $overviewFeedRaw = $baseQuery->clone()
+            ->where('mode', NewsFeedModeEnums::OVERVIEW->value)
             ->get();
 
         /** @var list<int> $postIds */
@@ -59,22 +69,78 @@ class NewsFeedService
         /** @var array<string, array<string, mixed>> $overviewFeed */
         $overviewFeed = $this->groupFeedRows($overviewFeedRaw, $hydratedPosts);
 
+        $upcomingKey = NewsFeedCategoryEnums::UPCOMING_DEADLINES->value;
+
+        /** @var array<string, array<string, mixed>> $upcomingArray */
+        $upcomingArray = collect($hydratedPosts)
+            ->filter(fn (Post $post) => $post->deadline !== null)
+            ->sortBy(fn (Post $post) => $post->deadline)
+            ->mapWithKeys(fn (Post $post) => [
+                $post->title => [
+                    'id'            => $post->id,
+                    'notifications' => [],
+                    'deadline'      => $post->deadline->format('d-m-Y'),
+                    'created_at'    => $post->created_at->format('H:i d-m-Y'),
+                ],
+            ])
+            ->toArray();
+
+        $overviewFeed[$upcomingKey] = $upcomingArray;
+
+        $blockedKey = NewsFeedCategoryEnums::BLOCKED->value;
+
+        /** @var Collection<int, Post> $blockedPosts */
+        $blockedPosts = Post::with(['linkedIssues'])
+            ->where('fid_board', $filters['fid_board'])
+            ->whereHas(
+                'linkedIssues',
+                fn ($q) =>
+            $q->where('link_type', LinkTypeEnums::BLOCKED_BY->value)
+            )
+            ->get();
+
+        /** @var array<string, array<string, mixed>> $blockedArray */
+        $blockedArray = $blockedPosts
+            ->sortBy(fn (Post $post) => $post->title)
+            ->mapWithKeys(fn (Post $post) => [
+                $post->title => [
+                    'id'            => $post->id,
+                    'notifications' => [],
+                    'deadline'      => $post->deadline ? $post->deadline->format('d-m-Y') : null,
+                    'created_at'    => $post->created_at->format('H:i d-m-Y'),
+                ],
+            ])
+            ->toArray();
+
+        if (isset($overviewFeed[$blockedKey])) {
+            $overviewFeed[$blockedKey] = array_merge(
+                $overviewFeed[$blockedKey],
+                $blockedArray
+            );
+        } else {
+            $overviewFeed[$blockedKey] = $blockedArray;
+        }
+
+        $normalizedPersonal = $this->normalizeFeed($personalFeed, [
+            NewsFeedCategoryEnums::WORKED_ON->value,
+            NewsFeedCategoryEnums::TAGGED_IN->value,
+            NewsFeedCategoryEnums::COMMENTED->value,
+            NewsFeedCategoryEnums::CREATED->value,
+            NewsFeedCategoryEnums::GENERATED_BRANCHES->value,
+            NewsFeedCategoryEnums::DONE_THIS_WEEK->value,
+        ]);
+
+        $normalizedOverview = $this->normalizeFeed($overviewFeed, [
+            NewsFeedCategoryEnums::ACTIVITY_ON->value,
+            NewsFeedCategoryEnums::UPCOMING_DEADLINES->value,
+            NewsFeedCategoryEnums::BLOCKED->value,
+            NewsFeedCategoryEnums::GENERATED_BRANCHES->value,
+            NewsFeedCategoryEnums::DONE_THIS_WEEK->value,
+        ]);
+
         return [
-            NewsFeedModeEnums::PERSONAL->value => $this->normalizeFeed($personalFeed, [
-                NewsFeedCategoryEnums::WORKED_ON->value,
-                NewsFeedCategoryEnums::TAGGED_IN->value,
-                NewsFeedCategoryEnums::COMMENTED->value,
-                NewsFeedCategoryEnums::CREATED->value,
-                NewsFeedCategoryEnums::GENERATED_BRANCHES->value,
-                NewsFeedCategoryEnums::DONE_THIS_WEEK->value,
-            ]),
-            NewsFeedModeEnums::OVERVIEW->value => $this->normalizeFeed($overviewFeed, [
-                NewsFeedCategoryEnums::ACTIVITY_ON->value,
-                NewsFeedCategoryEnums::UPCOMING_DEADLINES->value,
-                NewsFeedCategoryEnums::BLOCKED->value,
-                NewsFeedCategoryEnums::GENERATED_BRANCHES->value,
-                NewsFeedCategoryEnums::DONE_THIS_WEEK->value,
-            ]),
+            NewsFeedModeEnums::PERSONAL->value => $normalizedPersonal,
+            NewsFeedModeEnums::OVERVIEW->value => $normalizedOverview,
         ];
     }
 
@@ -92,13 +158,30 @@ class NewsFeedService
             /** @var array<string, mixed> $postsGroup */
             $postsGroup = [];
             foreach ($categoryGroup->groupBy('fid_post') as $postId => $posts) {
-                $post               = $hydratedPosts->get((int)$postId);
-                $title              = $post ? $post->title : 'Untitled';
-                $notifications      = $posts->pluck('content')->toArray();
+                $post          = $hydratedPosts->get((int)$postId);
+                $title         = $post ? $post->title : 'Untitled';
+                $notifications = [];
+
+                foreach ($posts as $feedRow) {
+                    $notifications[] = [
+                        'text'       => $feedRow->content,
+                        'created_at' => Carbon::parse($feedRow->created_at)
+                            ->setTimezone('UTC')
+                            ->format('H:i:s d-m-Y'),
+                    ];
+                }
+
+                $latestTimestamp = $posts
+                    ->map(fn ($feedRow) => Carbon::parse($feedRow->created_at))
+                    ->max()
+                    ->setTimezone('UTC')
+                    ->format('H:i d-m-Y');
+
                 $postsGroup[$title] = [
                     'id'            => (int)$postId,
                     'notifications' => $notifications,
-                    'deadline'      => $post && $post->deadline ? (string)$post->deadline : null,
+                    'deadline'      => $post && $post->deadline ? $post->deadline->format('d-m-Y') : null,
+                    'created_at'    => $latestTimestamp,
                 ];
             }
             $result[$category] = $postsGroup;

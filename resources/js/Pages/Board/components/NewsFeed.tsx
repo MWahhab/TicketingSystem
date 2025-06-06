@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { usePage, Head, Link } from "@inertiajs/react"
-import { format } from "date-fns"
 import {
     ChevronDown,
     Activity,
@@ -16,6 +15,7 @@ import {
     MessageSquare,
     Plus,
     AlertTriangle,
+    Calendar,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -23,12 +23,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface Notification {
-    [key: string]: string[]
+    text?: string
+    created_at?: string
 }
 
 interface FeedItem {
     id: number
-    notifications?: Record<string, string[]>
+    notifications?: (string | Notification)[]
+    deadline?: string
 }
 
 interface FeedSection {
@@ -188,6 +190,21 @@ export default function NewsFeed() {
         }
     }
 
+    const formatDeadline = (deadline: string) => {
+        try {
+            const date = new Date(deadline)
+            if (isNaN(date.getTime())) return deadline
+
+            const day = date.getDate().toString().padStart(2, "0")
+            const month = (date.getMonth() + 1).toString().padStart(2, "0")
+            const year = date.getFullYear()
+
+            return `${day}-${month}-${year}`
+        } catch (error) {
+            return deadline
+        }
+    }
+
     useEffect(() => {
         fetchFeedData()
     }, [selectedBoard, selectedUser, activeTab, datePreset])
@@ -241,15 +258,25 @@ export default function NewsFeed() {
                                     className="bg-zinc-900 border border-white/10 rounded-lg p-3 hover:bg-zinc-800/70 transition-colors"
                                 >
                                     <div className="flex items-center justify-between mb-2">
-                                        <a
-                                            href={`/boards?board_id=${selectedBoard}&openTask=${item.id}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="group text-base font-semibold text-zinc-100 hover:text-primary transition-colors block text-left flex items-center gap-2 border-b border-transparent hover:border-zinc-600"
-                                            style={{ textDecoration: "none" }}
-                                        >
-                                            {"#" + item.id + "." + postTitle}
-                                        </a>
+                                        <div className="flex flex-col gap-1">
+                                            <a
+                                                href={`/boards?board_id=${selectedBoard}&openTask=${item.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="group text-base font-semibold text-zinc-100 hover:text-primary transition-colors inline-block border-b border-transparent hover:border-zinc-600 w-fit"
+                                                style={{ textDecoration: "none" }}
+                                            >
+                                                {"#" + item.id + ". " + postTitle}
+                                            </a>
+                                            {title === "upcoming_deadlines" && item.deadline && (
+                                                <div className="flex items-center gap-1 text-sm">
+                                                    <Clock className="h-3 w-3 text-zinc-500" />
+                                                    <span className="text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
+                            Due: {formatDeadline(item.deadline)}
+                          </span>
+                                                </div>
+                                            )}
+                                        </div>
                                         {hasNotifications && (
                                             <button
                                                 onClick={() => toggleNotifications(postKey)}
@@ -263,17 +290,29 @@ export default function NewsFeed() {
                                     {hasNotifications && expanded && (
                                         <div className="ml-4 mt-4 relative">
                                             <div className="absolute left-0 top-2 bottom-2 w-px bg-zinc-700"></div>
-                                            {(item.notifications ?? []).map((notification, idx, arr) => (
-                                                <div
-                                                    key={idx}
-                                                    className={`relative flex items-start ${idx < arr.length - 1 ? "mb-5" : ""}`}
-                                                >
-                                                    <div className="absolute left-0 w-2 h-2 bg-zinc-200 rounded-full -translate-x-[3.5px] mt-1.5 z-10"></div>
-                                                    <div className="ml-5 text-xs text-zinc-200 leading-relaxed font-sans">
-                                                        {notification}
+                                            {item.notifications?.map((notification, idx, arr) => {
+                                                const notificationText = typeof notification === "string" ? notification : notification.text
+                                                const createdAt = typeof notification === "object" ? notification.created_at : null
+
+                                                return (
+                                                    <div key={idx} className={`relative flex flex-col ${idx < arr.length - 1 ? "mb-5" : ""}`}>
+                                                        <div className="flex items-start">
+                                                            <div className="absolute left-0 w-2 h-2 bg-zinc-200 rounded-full -translate-x-[3.5px] mt-1.5 z-10"></div>
+                                                            <div className="ml-5 text-sm text-zinc-200 leading-relaxed font-sans">
+                                                                {notificationText}
+                                                            </div>
+                                                        </div>
+                                                        {createdAt && (
+                                                            <div className="flex items-center gap-1 ml-5 mt-1">
+                                                                <Calendar className="h-3 w-3 text-zinc-400" />
+                                                                <span className="text-xs text-zinc-400 font-mono bg-zinc-800/50 px-1.5 py-0.5 rounded tracking-tight">
+                                                                  {createdAt}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            ))}
+                                                )
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -284,7 +323,6 @@ export default function NewsFeed() {
             </div>
         )
     }
-
 
     const presets = getPresets()
 

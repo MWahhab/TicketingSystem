@@ -150,15 +150,13 @@ readonly class PostParserService implements NotificationParserInterface
                 $boardName
             );
             $personalVariant = sprintf(
-                'You created a new post #%d: %s',
+                'You created a new post #%d',
                 $post->id,
-                $shortTitle,
             );
             $overviewVariant = sprintf(
-                '%s created a new post #%d: %s',
+                '%s created a new post #%d',
                 $post->creator->name,
                 $post->id,
-                $shortTitle,
             );
 
             $this->newsFeedService->addStoredEntry($this->newsFeedService->makeFeedRow(
@@ -271,6 +269,29 @@ readonly class PostParserService implements NotificationParserInterface
                     }
 
                     break;
+                case 'priority':
+                    $messages[] = sprintf(
+                        'Post #%d (%s) priority was changed from "%s" to "%s"',
+                        $post->id,
+                        $boardName,
+                        $post->priority,
+                        $new
+                    );
+
+                    $personalMessage = sprintf(
+                        'You changed the priority of post #%d from "%s" to "%s"',
+                        $post->id,
+                        $post->priority,
+                        $new
+                    );
+                    $overviewMessage = sprintf(
+                        '%s changed the priority of post #%d from "%s" to "%s"',
+                        $actorName,
+                        $post->id,
+                        $post->priority,
+                        $new
+                    );
+                    break;
                 case 'desc':
                     $messages[] = sprintf(
                         'Post #%d (%s) description was updated',
@@ -342,21 +363,43 @@ readonly class PostParserService implements NotificationParserInterface
                     $oldDeadline = $post->deadline ? Carbon::parse($post->deadline)->format('d-m-Y') : null;
                     $newDeadline = $new ? Carbon::parse($new)->format('d-m-Y') : null;
 
+                    if (!$oldDeadline) {
+                        $messages[] = sprintf(
+                            'Post #%d (%s) deadline was set to %s',
+                            $post->id,
+                            $boardName,
+                            $newDeadline
+                        );
+                        $personalMessage = sprintf(
+                            'You set the deadline of post #%d to %s',
+                            $post->id,
+                            $newDeadline
+                        );
+                        $overviewMessage = sprintf(
+                            '%s set the deadline of post #%d to %s',
+                            $actorName,
+                            $post->id,
+                            $newDeadline
+                        );
+
+                        break;
+                    }
+
                     $messages[] = sprintf(
-                        'Post #%d (%s) deadline was changed from "%s" to "%s"',
+                        'Post #%d (%s) deadline was changed from %s to %s',
                         $post->id,
                         $boardName,
                         $oldDeadline,
                         $newDeadline
                     );
                     $personalMessage = sprintf(
-                        'You changed the deadline of post #%d from "%s" to "%s"',
+                        'You changed the deadline of post #%d from %s to %s',
                         $post->id,
                         $oldDeadline,
                         $newDeadline
                     );
                     $overviewMessage = sprintf(
-                        '%s changed the deadline of post #%d from "%s" to "%s"',
+                        '%s changed the deadline of post #%d from %s to %s',
                         $actorName,
                         $post->id,
                         $oldDeadline,
