@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DOCKER_REPO="mrnaga619"
+DOCKER_REPO="deampuleadd"
 
 read -p "Enter image tag: " IMAGE_TAG
 
