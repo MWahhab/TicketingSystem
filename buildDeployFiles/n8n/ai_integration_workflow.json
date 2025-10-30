@@ -1,0 +1,210 @@
+{
+  "name": "Ai Integration validator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "integration-checker",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        -165
+      ],
+      "id": "3fafa852-0a9f-410b-a53b-57c837a6fe85",
+      "name": "Webhook",
+      "webhookId": "3e295ad1-c305-436a-8cc9-04eb85ca6c22",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "HhiRidg8ePIgkaDr",
+          "name": "N8N user credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.repository.repository_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$json.body.repository.repository_token}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -220,
+        -165
+      ],
+      "id": "0d75be6d-d68b-4775-afa5-fa1b1e73ae1e",
+      "name": "HTTP Request",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const error = $node[\"HTTP Request\"].json?.error;\nlet statusCode = error?.status || 200;\nlet message = '';\nlet integration = 'repository';\n\nif (error?.code == 'ENOTFOUND') {\n   statusCode = 404;\n}\n\nif (statusCode >= 200 && statusCode < 300) {\n  message = 'Request was successful.';\n} else if (statusCode === 401) {\n  message = 'Authentication failed. Please check your credentials.';\n} else if (statusCode === 404) {\n  message = `Repository url was not found. Is your address correct?`\n} else {\n  message = `Received unexpected status code: ${statusCode}`;\n}\n\nreturn [{ json: { message, statusCode, integration } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -165
+      ],
+      "id": "0839af5a-8a4b-4acf-b7e4-7d95105e0d7b",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $items() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        -165
+      ],
+      "id": "9728f931-33b4-44a1-9011-b554fa74f4f8",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Webhook').item.json.body.ai_agent.ai_api }}{{ $('Webhook').item.json.body.ai_agent.ai_token }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"contents\": [{\n    \"parts\":[{\"text\": \"Hi, if you can read this, return a raw json object with success:true\"}]\n    }]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        -240
+      ],
+      "id": "61f7d2fe-1ea2-4668-a89c-ee5b1cb128f5",
+      "name": "HTTP Request1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const error = $json.error;\nconst statusCode = error?.status || 200;\nlet message = '';\nlet integration = 'ai_integration';\n\nif (statusCode >= 200 && statusCode < 300) {\n  message = 'Request was successful.';\n} else if (statusCode === 401) {\n  message = 'Authentication failed. Please check your credentials.';\n} else {\n  message = `Received unexpected status code: ${statusCode}`;\n}\n\nreturn [{ json: { message, statusCode, integration } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        -240
+      ],
+      "id": "8b54991a-d1a1-4993-9451-8b89f4daed1f",
+      "name": "Code1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        660,
+        -165
+      ],
+      "id": "9af79185-7def-4009-bb40-cdc86119ef2c",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d379defb-4a22-4744-8928-bec20e2bb497",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e55136c41b321881235e642b73bccbe4ee5b98d45d5fc8fad7b0e3a9f413d7ca"
+  },
+  "id": "m0uTFkdPUBnGmoRv",
+  "tags": []
+}
