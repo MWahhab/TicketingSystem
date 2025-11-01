@@ -21,9 +21,7 @@ cleanup_resources() {
     kubectl delete -f configMaps/ --ignore-not-found=true
     echo "--- Deleting SealedSecrets ---"
     kubectl delete -f sealedSecrets/ --ignore-not-found=true
-    echo "--- Deleting Secrets ---"
     kubectl delete secret sealed-env-secret --ignore-not-found=true
-    kubectl delete -f secrets/ --ignore-not-found=true
     echo "--- Deleting PersistentVolumeClaims ---"
     kubectl delete -f persistentVolumeClaims/ --ignore-not-found=true
     
@@ -61,7 +59,6 @@ echo "🚀 Starting Kubernetes deployment..."
 apply_files_in_dir "persistentVolumes"
 apply_files_in_dir "persistentVolumeClaims"
 
-apply_files_in_dir "secrets"
 apply_files_in_dir "sealedSecrets"
 apply_files_in_dir "configMaps"
 
