@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: n8n
+spec:
+  serviceName: "n8n"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+      - name: n8n
+        image: deampuleadd/custom-n8n:k8s
+        imagePullPolicy: Always
+        env:
+        - name: N8N_SKIP_USER_MANAGEMENT
+          value: "true"
+        ports:
+        - containerPort: 5678
+        volumeMounts:
+        - name: nfs-storage
+          mountPath: /home/node/.n8n
+          subPath: n8n
+      volumes:
+      - name: nfs-storage
+        persistentVolumeClaim:
+          claimName: nfs-main-pvc

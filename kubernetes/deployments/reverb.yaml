@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reverb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reverb
+  template:
+    metadata:
+      labels:
+        app: reverb
+    spec:
+      containers:
+      - name: reverb
+        image: deampuleadd/premium-app:k8s
+        imagePullPolicy: Always
+        command: ["php", "artisan", "reverb:start", "--host=0.0.0.0"]
+        ports:
+        - containerPort: 6001
+        volumeMounts:
+        - name: env-secret-volume
+          mountPath: "/var/www/html/.env"
+          subPath: ".env"
+
+      volumes:
+      - name: env-secret-volume
+        secret:
+          secretName: sealed-env-secret

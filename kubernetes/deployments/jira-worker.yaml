@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: jira-worker
+  name: jira-worker
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jira-worker
+  template:
+    metadata:
+      labels:
+        app: jira-worker
+    spec:
+      containers:
+      - command:
+        - php
+        - artisan
+        - queue:work
+        - redis
+        - --queue=jira-imports
+        - --sleep=3
+        - --tries=1
+        - --timeout=1200
+        image: deampuleadd/premium-app:k8s
+        imagePullPolicy: Always
+        name: worker
+        resources: {}
+        volumeMounts:
+        - mountPath: /var/www/html/.env
+          name: env-secret-volume
+          subPath: .env
+        - mountPath: /var/www/html/public/images
+          name: nfs-storage
+          subPath: images
+      volumes:
+      - name: env-secret-volume
+        secret:
+          secretName: sealed-env-secret
+      - name: nfs-storage
+        persistentVolumeClaim:
+          claimName: nfs-main-pvc

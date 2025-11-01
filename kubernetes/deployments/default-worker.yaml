@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: default-worker
+  name: default-worker
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: default-worker
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: default-worker
+    spec:
+      containers:
+      - command:
+        - php
+        - artisan
+        - queue:work
+        - redis
+        - --sleep=1
+        - --tries=3
+        image: deampuleadd/premium-app:k8s
+        imagePullPolicy: Always
+        name: worker
+        resources: {}
+        volumeMounts:
+        - mountPath: /var/www/html/.env
+          name: env-secret-volume
+          subPath: .env
+        - mountPath: /var/www/html/public/images
+          name: nfs-storage
+          subPath: images
+      restartPolicy: Always
+      volumes:
+      - name: env-secret-volume
+        secret:
+          secretName: sealed-env-secret
+      - name: nfs-storage
+        persistentVolumeClaim:
+          claimName: nfs-main-pvc

@@ -1,0 +1,157 @@
+{
+  "name": "Description optimizer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/premium/description/optimise",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        -80
+      ],
+      "id": "468e42bd-4903-4d2e-bf16-ed24d3b5dcee",
+      "name": "Webhook",
+      "webhookId": "837056da-b98d-4aba-8847-99bb8a09f7c6",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "HhiRidg8ePIgkaDr",
+          "name": "N8N user credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Webhook').item.json.body.ai_agent.ai_api }}{{ $('Webhook').item.json.body.ai_agent.ai_token }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({   contents: [     {       parts: [         {           text: $json.contents         }       ]     }   ] }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -920,
+        -80
+      ],
+      "id": "d3f78f18-cf15-455f-b02c-34ee39202a2e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = items[0].json.candidates?.[0]?.content?.parts?.[0]?.text || '';\nconst cleaned = raw\n  .replace(/^```json\\s*/, '')\n  .replace(/```$/, '')\n  .trim();\n\nlet parsed = {};\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { error: 'Invalid JSON returned from Gemini', raw };\n}\n\nreturn [{ json: parsed }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        -80
+      ],
+      "id": "a17b1d5e-d9e4-40a2-a6e5-4c0631c07373",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "22630b15-d5cf-45ea-9e92-dccc65143eb7",
+              "name": "contents",
+              "value": "={{ $json.body.ai_prompt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1180,
+        -80
+      ],
+      "id": "0d675e6c-97b6-4ce6-8d47-adfe197af31a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        -80
+      ],
+      "id": "97a4b409-5774-48b7-8818-3649908c99e2",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3b774b04-81c7-4185-8697-69b012318e81",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e55136c41b321881235e642b73bccbe4ee5b98d45d5fc8fad7b0e3a9f413d7ca"
+  },
+  "id": "TVYkwyIkZDSqGck9",
+  "tags": []
+}

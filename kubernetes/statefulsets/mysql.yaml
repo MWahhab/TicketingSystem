@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  serviceName: "mysql"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+          name: mysql
+        envFrom:
+        - secretRef:
+            name: mysql-secrets
+        volumeMounts:
+        - name: nfs-storage
+          mountPath: /var/lib/mysql
+          subPath: mysql
+      volumes:
+      - name: nfs-storage
+        persistentVolumeClaim:
+          claimName: nfs-main-pvc

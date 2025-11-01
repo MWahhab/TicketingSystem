@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: default
+data:
+  redis.conf: |
+    appendfsync everysec
+    save 900 1
+    save 300 10
+    save 60 10000
