@@ -32,25 +32,50 @@ build_and_push() {
     local image_name=$1
     local is_critical=$2
     local build_flag=""
-
-    read -p "Do you want to build and push the '$image_name' image? (y/n): " build_choice
-    if [ "$build_choice" != "y" ]; then
-        echo "Skipping '$image_name' image."
-        return
-    fi
-
-    read -p "Build '$image_name' with --no-cache? (y/n): " cache_choice
-    if [ "$cache_choice" == "y" ]; then
-        build_flag="--no-cache"
-    fi
-
+    local push_image=false
     local full_tag="$DOCKER_REPO/$image_name:$IMAGE_TAG"
     local dockerfile_path="buildDeployFiles/$image_name/Dockerfile"
 
     echo "----------------------------------------------------"
-    echo "Building $image_name..."
-    echo "Command: docker build $build_flag -t \"$full_tag\" --platform linux/arm64 -f \"$dockerfile_path\" ."
+    echo "Processing image: '$image_name'"
     echo "----------------------------------------------------"
+    echo "Please choose an option:"
+    echo "  1) Build with cache and PUSH to repository"
+    echo "  2) Build with NO cache and PUSH to repository"
+    echo "  3) Build with cache LOCALLY only"
+    echo "  4) Build with NO cache LOCALLY only"
+    echo "  5) Skip this image"
+    read -p "Enter your choice (1-5): " choice
+
+    case "$choice" in
+        1)
+            build_flag=""
+            push_image=true
+            ;;
+        2)
+            build_flag="--no-cache"
+            push_image=true
+            ;;
+        3)
+            build_flag=""
+            push_image=false
+            ;;
+        4)
+            build_flag="--no-cache"
+            push_image=false
+            ;;
+        5)
+            echo "Skipping '$image_name' image."
+            return
+            ;;
+        *)
+            echo "Invalid option. Skipping '$image_name'."
+            return
+            ;;
+    esac
+
+    echo "Building '$image_name'..."
+    echo "Command: docker build $build_flag -t \"$full_tag\" --platform linux/arm64 -f \"$dockerfile_path\" ."
 
     if ! docker build $build_flag -t "$full_tag" --platform linux/arm64 -f "$dockerfile_path" .; then
         echo "ERROR: Failed to build the '$image_name' image."
@@ -59,17 +84,21 @@ build_and_push() {
         fi
         return
     fi
+    echo "'$image_name' image built successfully."
 
-    echo "Pushing $image_name..."
-    if ! docker push "$full_tag"; then
-        echo "ERROR: Failed to push the '$image_name' image."
-        if [ "$is_critical" = true ]; then
-            exit 1
+    if [ "$push_image" = true ]; then
+        echo "Pushing '$image_name'..."
+        if ! docker push "$full_tag"; then
+            echo "ERROR: Failed to push the '$image_name' image."
+            if [ "$is_critical" = true ]; then
+                exit 1
+            fi
+            return
         fi
-        return
+        echo "'$image_name' image pushed successfully as $full_tag."
+    else
+        echo "'$image_name' was built locally and NOT pushed."
     fi
-
-    echo "'$image_name' image pushed successfully as $full_tag."
 }
 
 build_and_push "base" true
