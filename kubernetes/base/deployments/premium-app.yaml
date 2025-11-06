@@ -1,37 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: default-worker
-  name: default-worker
+  name: premium-app
   namespace: default
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: default-worker
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
+      app: premium-app
   template:
     metadata:
       labels:
-        app: default-worker
+        app: premium-app
     spec:
       containers:
-      - command:
-        - php
-        - artisan
-        - queue:work
-        - redis
-        - --sleep=1
-        - --tries=3
-        image: deampuleadd/premium-app:k8s
+      - image: deampuleadd/premium-app
         imagePullPolicy: Always
-        name: worker
-        resources: {}
+        name: php-fpm
         volumeMounts:
         - mountPath: /var/www/html/.env
           name: env-secret-volume
@@ -39,7 +24,15 @@ spec:
         - mountPath: /var/www/html/public/images
           name: nfs-storage
           subPath: images
-      restartPolicy: Always
+      - image: deampuleadd/custom-nginx
+        imagePullPolicy: Always
+        name: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: /var/www/html/public/images
+          name: nfs-storage
+          subPath: images
       volumes:
       - name: env-secret-volume
         secret:

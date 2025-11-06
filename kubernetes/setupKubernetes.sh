@@ -1,83 +1,57 @@
 set -e
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+BASE_PATH="$SCRIPT_DIR/base"
+OVERLAY_PATH="$SCRIPT_DIR/overlays/prod"
+
+RECREATE=false
+if [[ "$1" == "--recreate" ]]; then
+    RECREATE=true
+elif [[ -n "$1" ]]; then
+    echo "❌ Error: Unknown argument '$1'."
+    echo "Usage: $0 [--recreate]"
+    exit 1
+fi
+
+if [ ! -d "$OVERLAY_PATH" ]; then
+    echo "❌ Error: The production overlay directory '$OVERLAY_PATH' was not found."
+    exit 1
+fi
+
 cleanup_resources() {
     echo "======================================================="
     echo "🔥 --recreate flag detected. Deleting existing resources..."
-    echo "🔥 WARNING: This will delete any data in the volumes."
+    echo "🔥 WARNING: This will delete any data in the volumes if their reclaim policy is 'Delete'."
     echo "======================================================="
     echo ""
 
-    echo "--- Deleting CronJobs ---"
-    kubectl delete -f cronjobs/ --ignore-not-found=true
-    echo "--- Deleting Ingress ---"
-    kubectl delete -f ingress.yaml --ignore-not-found=true
-    echo "--- Deleting Services ---"
-    kubectl delete -f services/ --ignore-not-found=true
-    echo "--- Deleting Deployments ---"
-    kubectl delete -f deployments/ --ignore-not-found=true
-    echo "--- Deleting StatefulSets ---"
-    kubectl delete -f statefulsets/ --ignore-not-found=true
-    echo "--- Deleting ConfigMaps ---"
-    kubectl delete -f configMaps/ --ignore-not-found=true
-    echo "--- Deleting SealedSecrets ---"
-    kubectl delete -f sealedSecrets/ --ignore-not-found=true
-    kubectl delete secret sealed-env-secret --ignore-not-found=true
-    echo "--- Deleting PersistentVolumeClaims ---"
-    kubectl delete -f persistentVolumeClaims/ --ignore-not-found=true
-    
-    echo "Waiting 5 seconds for volumes to detach..."
-    sleep 5
+    echo "--- Deleting all resources from '$OVERLAY_PATH' in the default namespace (will not wait) ---"
+    kubectl kustomize "$OVERLAY_PATH" | kubectl delete --wait=false -f - --ignore-not-found=true
 
-    echo "--- Deleting PersistentVolumes ---"
-    kubectl delete -f persistentVolumes/ --ignore-not-found=true
+    echo "Waiting 10 seconds for resources to begin termination..."
+    sleep 10
+
+    echo "--- Deleting PersistentVolumes defined in base ---"
+    if [ -d "$BASE_PATH/persistentVolumes" ]; then
+        kubectl kustomize "$BASE_PATH/persistentVolumes" | kubectl delete --wait=false -f - --ignore-not-found=true
+    fi
 
     echo ""
-    echo "✅ Cleanup complete. Proceeding with deployment."
+    echo "✅ Cleanup commands sent. Proceeding with deployment."
     echo "-------------------------------------------------------"
     echo ""
 }
 
-
-apply_files_in_dir() {
-    local dir_path="$1"
-    if [ ! -d "$dir_path" ]; then
-        echo "Directory '$dir_path' not found, skipping."
-        return
-    fi
-
-    echo "--- Applying files in $dir_path ---"
-    kubectl apply -f "$dir_path"
-    echo ""
-}
-
-if [[ "$1" == "--recreate" ]]; then
+if [[ "$RECREATE" == true ]]; then
     cleanup_resources
 fi
 
-echo "🚀 Starting Kubernetes deployment..."
+echo "🚀 Starting Kubernetes deployment using the '$OVERLAY_PATH' overlay..."
 
-apply_files_in_dir "persistentVolumes"
-apply_files_in_dir "persistentVolumeClaims"
-
-apply_files_in_dir "sealedSecrets"
-apply_files_in_dir "configMaps"
-
-apply_files_in_dir "statefulsets"
-apply_files_in_dir "deployments"
-
-apply_files_in_dir "services"
-
-echo "--- Applying Ingress ---"
-if [ -f "ingress.yaml" ]; then
-    kubectl apply -f "ingress.yaml"
-    echo ""
-else
-    echo "ingress.yaml not found, skipping."
-    echo ""
-fi
-
-apply_files_in_dir "cronjobs"
-
+echo "--- Applying Kustomize overlay to the default namespace ---"
+kubectl kustomize "$OVERLAY_PATH" | kubectl apply -f -
+echo ""
 
 echo "-------------------------------------------------------"
-echo "✅ All Kubernetes YAML files have been applied successfully."
+echo "✅ Deployment complete."
