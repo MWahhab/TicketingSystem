@@ -47,7 +47,11 @@ if [[ "$RECREATE" == true ]]; then
     cleanup_resources
 fi
 
-echo "🚀 Starting Kubernetes deployment using the '$OVERLAY_PATH' overlay..."
+echo "🚀 Starting Kubernetes deployment..."
+
+echo "--- Applying Persistent Volumes and Claims from base ---"
+kubectl apply -k "$BASE_PATH/persistentVolumes"
+echo ""
 
 echo "--- Applying Kustomize overlay to the default namespace ---"
 kubectl kustomize "$OVERLAY_PATH" | kubectl apply -f -
