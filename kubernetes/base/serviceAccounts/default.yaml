@@ -1,0 +1,7 @@
+apiVersion: v1
+imagePullSecrets:
+  - name: dockerhub-creds
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: default

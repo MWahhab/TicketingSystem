@@ -1,0 +1,13 @@
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: dockerhub-creds
+  namespace: default
+spec:
+  encryptedData:
+    .dockerconfigjson: AgBtpUVvlmSOTpEgBbnVUOJFF7vD964dhNdu4olac0edZmILOLKyYYxcWpWKpXwkpnSHFf+Xthg1mPHZQ3awKMMgzy8eSyvC>
+  template:
+    metadata:
+      name: dockerhub-creds
+      namespace: default
+    type: kubernetes.io/dockerconfigjson
