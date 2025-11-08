@@ -1,4 +1,4 @@
-FROM deampuleadd/premium-app:k8s AS app-source
+FROM deampuleadd/app:k8s AS app-source
 
 FROM nginx:alpine
 

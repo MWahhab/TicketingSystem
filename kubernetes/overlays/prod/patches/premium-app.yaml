@@ -1,6 +1,6 @@
 - op: replace
   path: /spec/template/spec/containers/0/image
-  value: deampuleadd/premium-app:k8s
+  value: deampuleadd/app:k8s
 - op: replace
   path: /spec/template/spec/containers/1/image
   value: deampuleadd/custom-nginx:k8s

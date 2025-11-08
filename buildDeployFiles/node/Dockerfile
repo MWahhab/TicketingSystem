@@ -6,9 +6,9 @@ COPY . ./
 COPY prod-files/vite.config.js vite.config.js
 RUN npm run build
 
-FROM deampuleadd/premium-base:k8s
+FROM deampuleadd/base:k8s
 
-COPY --chown=appuser:appuser ./src/laravel/ ./
+COPY --chown=appuser:appuser ./ ./
 COPY --from=node-build --chown=appuser:appuser /app/public/build ./public/build
 
 RUN rm -f public/hot && rm -rf storage/framework/views/*

@@ -11,7 +11,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: scheduler
-            image: deampuleadd/premium-app:k8s
+            image: deampuleadd/app:k8s
             imagePullPolicy: Always
             command: ["php", "artisan", "schedule:run"]
             volumeMounts:

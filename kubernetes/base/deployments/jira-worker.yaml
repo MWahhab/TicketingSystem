@@ -25,7 +25,7 @@ spec:
         - --sleep=3
         - --tries=1
         - --timeout=1200
-        image: deampuleadd/premium-app
+        image: deampuleadd/app
         imagePullPolicy: Always
         name: worker
         resources: {}

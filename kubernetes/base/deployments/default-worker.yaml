@@ -28,7 +28,7 @@ spec:
         - redis
         - --sleep=1
         - --tries=3
-        image: deampuleadd/premium-app
+        image: deampuleadd/app
         imagePullPolicy: Always
         name: worker
         resources: {}
