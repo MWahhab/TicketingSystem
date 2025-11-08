@@ -34,7 +34,10 @@ build_and_push() {
     local build_flag=""
     local push_image=false
     local full_tag="$DOCKER_REPO/$image_name:$IMAGE_TAG"
-    local dockerfile_path="buildDeployFiles/$image_name/Dockerfile"
+    local SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+    local PROJECT_ROOT=$(realpath "$SCRIPT_DIR/..")
+    local dockerfile_path="$SCRIPT_DIR/$image_name/Dockerfile"
+
 
     echo "----------------------------------------------------"
     echo "Processing image: '$image_name'"
@@ -48,36 +51,15 @@ build_and_push() {
     read -p "Enter your choice (1-5): " choice
 
     case "$choice" in
-        1)
-            build_flag=""
-            push_image=true
-            ;;
-        2)
-            build_flag="--no-cache"
-            push_image=true
-            ;;
-        3)
-            build_flag=""
-            push_image=false
-            ;;
-        4)
-            build_flag="--no-cache"
-            push_image=false
-            ;;
-        5)
-            echo "Skipping '$image_name' image."
-            return
-            ;;
-        *)
-            echo "Invalid option. Skipping '$image_name'."
-            return
-            ;;
+        1) build_flag=""; push_image=true;;
+        2) build_flag="--no-cache"; push_image=true;;
+        3) build_flag=""; push_image=false;;
+        4) build_flag="--no-cache"; push_image=false;;
+        5) echo "Skipping '$image_name' image."; return;;
+        *) echo "Invalid option. Skipping '$image_name'."; return;;
     esac
 
-    echo "Building '$image_name'..."
-    echo "Command: docker build $build_flag -t \"$full_tag\" --platform linux/arm64 -f \"$dockerfile_path\" ."
-
-    if ! docker build $build_flag -t "$full_tag" --platform linux/arm64 -f "$dockerfile_path" .; then
+    if ! docker build $build_flag -t "$full_tag" --platform linux/arm64 -f "$dockerfile_path" "$PROJECT_ROOT"; then
         echo "ERROR: Failed to build the '$image_name' image."
         if [ "$is_critical" = true ]; then
             exit 1
@@ -103,7 +85,7 @@ build_and_push() {
 
 build_and_push "base" true
 
-declare -a images=("app" "node" "n8n")
+declare -a images=("app" "nginx" "n8n")
 for image in "${images[@]}"; do
     build_and_push "$image" false
 done

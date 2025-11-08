@@ -1,37 +1,19 @@
-FROM deampuleadd/app:k8s AS app-source
+#app.dockerfile
 
-FROM nginx:alpine
+FROM node:20-alpine AS node-build
+WORKDIR /app
 
-COPY --from=app-source /var/www/html/laravel/public /var/www/html/laravel/public
+COPY package*.json ./
+RUN npm ci
 
-RUN mkdir -p /etc/nginx/conf.d && \
-    cat > /etc/nginx/conf.d/default.conf <<EOF
-server {
-    listen 80;
-    index index.php index.html;
-    server_name ticketingsystem.uk;
-    error_log  /var/log/nginx/error.log;
-    access_log /var/log/nginx/access.log;
-    root /var/www/html/laravel/public;
+COPY . ./
 
-    location ^~ /app/ {
-        proxy_pass http://reverb:6001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host \$host;
-    }
+COPY prod-files/vite.config.js vite.config.js
+RUN npm run build
 
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
+FROM deampuleadd/base:k8s
 
-    location ~ \.php\$ {
-        include fastcgi_params;
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    }
-}
-EOF
+COPY --chown=appuser:appuser . ./
+COPY --from=node-build --chown=appuser:appuser /app/public/build ./public/build
 
-CMD ["nginx", "-g", "daemon off;"]
+RUN rm -f public/hot && rm -rf storage/framework/views/*

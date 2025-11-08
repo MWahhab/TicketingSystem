@@ -24,7 +24,7 @@ spec:
         - mountPath: /var/www/html/public/images
           name: nfs-storage
           subPath: images
-      - image: deampuleadd/custom-nginx
+      - image: deampuleadd/nginx
         imagePullPolicy: Always
         name: nginx
         ports:
