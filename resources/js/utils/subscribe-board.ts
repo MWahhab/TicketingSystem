@@ -1,3 +1,5 @@
+//utils/subscribe-board.ts
+
 import StateMachine from '@/utils/state-machine';
 
 let currentBoardId: string | null = null;
@@ -16,7 +18,7 @@ export function subscribeToBoard(boardId: string | null) {
     }
 
     const connectToChannel = () => {
-        if (typeof window.Echo === 'undefined') {
+        if (!window.Echo) {
             return;
         }
 
@@ -26,11 +28,12 @@ export function subscribeToBoard(boardId: string | null) {
         }
 
         if (currentBoardChannel && currentBoardId) {
-            window.Echo.leave(`board.${currentBoardId}`);
+            window.Echo?.leave(`board.${currentBoardId}`);
             currentBoardChannel = null;
         }
 
         currentBoardId = boardId;
+
         currentBoardChannel = window.Echo.channel(`board.${boardId}`);
 
         currentBoardChannel.listen('.CardMoved', (data: any) => {

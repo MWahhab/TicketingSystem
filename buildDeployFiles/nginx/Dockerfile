@@ -8,6 +8,17 @@ COPY --from=app-source /var/www/html/laravel/public /var/www/html/laravel/public
 
 RUN mkdir -p /etc/nginx/conf.d && \
     cat > /etc/nginx/conf.d/default.conf <<EOF
+
+map \$http_x_forwarded_proto \$fastcgi_https {
+    default off;
+    https on;
+}
+
+map \$http_x_forwarded_proto \$corrected_port {
+    https 443;
+    default 80;
+}
+
 server {
     listen 80;
     index index.php index.html;
@@ -30,8 +41,13 @@ server {
 
     location ~ \.php\$ {
         include fastcgi_params;
-        fastcgi_pass 127.0.0.1:9000;
+
+        fastcgi_param HTTPS \$fastcgi_https;
+
+        fastcgi_param SERVER_PORT \$corrected_port;
+
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_pass 127.0.0.1:9000;
     }
 }
 EOF

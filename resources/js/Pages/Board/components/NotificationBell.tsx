@@ -1,3 +1,5 @@
+//Board/components/NotificationBell.tsx
+
 "use client"
 
 import { useState, useEffect, useRef, useMemo } from "react"
@@ -283,8 +285,8 @@ export default function InlineNotificationCenter() {
         return (
             <div
                 key={rawNotif.unique_render_key}
-                onClick={() => onIndividualNotificationClick({ 
-                    fid_post: rawNotif.group_fid_post, 
+                onClick={() => onIndividualNotificationClick({
+                    fid_post: rawNotif.group_fid_post,
                     fid_board: rawNotif.group_fid_board,
                     original_group_id: rawNotif.original_group_id,
                     individual_notif_id: rawNotif.id
@@ -373,28 +375,28 @@ export default function InlineNotificationCenter() {
                         </TabsList>
                         <div className="overflow-y-auto flex-grow">
                             <TabsContent value="all" className="h-full">
-                                {categorizedNotifications.allGroupSummaries.length > 0 ? 
-                                 renderNotificationsInner(categorizedNotifications.allGroupSummaries) : 
+                                {categorizedNotifications.allGroupSummaries.length > 0 ?
+                                 renderNotificationsInner(categorizedNotifications.allGroupSummaries) :
                                  <p className="text-sm text-zinc-400 text-center p-4">No notifications yet.</p>}
                             </TabsContent>
                             <TabsContent value="comment" className="h-full">
-                                {categorizedNotifications.comments.length > 0 ? 
-                                 categorizedNotifications.comments.map(notif => renderIndividualNotification(notif)) : 
+                                {categorizedNotifications.comments.length > 0 ?
+                                 categorizedNotifications.comments.map(notif => renderIndividualNotification(notif)) :
                                  <p className="text-sm text-zinc-400 text-center p-4">No comment notifications.</p>}
                             </TabsContent>
                             <TabsContent value="post" className="h-full">
-                                {categorizedNotifications.posts.length > 0 ? 
-                                 categorizedNotifications.posts.map(notif => renderIndividualNotification(notif)) : 
+                                {categorizedNotifications.posts.length > 0 ?
+                                 categorizedNotifications.posts.map(notif => renderIndividualNotification(notif)) :
                                  <p className="text-sm text-zinc-400 text-center p-4">No post notifications.</p>}
                             </TabsContent>
                             <TabsContent value="linked_issue" className="h-full">
-                                {categorizedNotifications.linked_issues.length > 0 ? 
-                                 categorizedNotifications.linked_issues.map(notif => renderIndividualNotification(notif)) : 
+                                {categorizedNotifications.linked_issues.length > 0 ?
+                                 categorizedNotifications.linked_issues.map(notif => renderIndividualNotification(notif)) :
                                  <p className="text-sm text-zinc-400 text-center p-4">No linked issue notifications.</p>}
                             </TabsContent>
                             <TabsContent value="branch" className="h-full">
-                                {categorizedNotifications.branches.length > 0 ? 
-                                 categorizedNotifications.branches.map(notif => renderIndividualNotification(notif)) : 
+                                {categorizedNotifications.branches.length > 0 ?
+                                 categorizedNotifications.branches.map(notif => renderIndividualNotification(notif)) :
                                  <p className="text-sm text-zinc-400 text-center p-4">No branch notifications.</p>}
                             </TabsContent>
                         </div>
@@ -406,9 +408,9 @@ export default function InlineNotificationCenter() {
                         title="Resize"
                     >
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M0 10L10 0" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */} 
-                            <path d="M3 10L10 3" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */} 
-                            <path d="M6 10L10 6" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */} 
+                            <path d="M0 10L10 0" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */}
+                            <path d="M3 10L10 3" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */}
+                            <path d="M6 10L10 6" stroke="#a1a1aa" strokeWidth="1"/> {/* zinc-400 */}
                         </svg>
                     </div>
                 </div>

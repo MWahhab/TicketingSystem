@@ -1,3 +1,5 @@
+//utils/state-machine.ts
+
 import type { EventHandler, EventPayloads, EventName } from "@/types/events";
 
 const handlers = new Map<string, EventHandler>();

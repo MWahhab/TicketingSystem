@@ -1,3 +1,5 @@
+//bootstrap.ts
+
 import axios from 'axios';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
@@ -34,7 +36,6 @@ declare global {
     }
 }
 
-// 👤 Private notification channel
 const userId = window.Laravel?.user?.id;
 if (userId) {
     const channel = window.Echo.private(`notifications.${userId}`);
@@ -56,7 +57,6 @@ if (userId) {
     }
 }
 
-// 🧠 Dynamic board channel subscription
 const initialBoardId = new URLSearchParams(window.location.search).get('board_id');
 subscribeToBoard(initialBoardId);
 

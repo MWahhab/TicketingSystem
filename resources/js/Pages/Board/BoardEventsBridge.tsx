@@ -1,3 +1,5 @@
+//\resources\js\Pages\Board\BoardEventsBridge.tsx
+
 "use client";
 
 import { useEffect } from "react";

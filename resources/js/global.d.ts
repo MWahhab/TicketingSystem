@@ -1,3 +1,5 @@
+//global.d.ts
+
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
@@ -23,4 +25,4 @@ declare global {
 }
 
 // Export something to make it a module, if necessary, though for .d.ts it's usually not.
-export {}; 
+export {};
