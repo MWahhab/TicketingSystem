@@ -4,6 +4,6 @@ FROM nginx:alpine
 
 COPY --from=app-source /var/www/html/laravel/public /var/www/html/laravel/public
 
-COPY default.conf /etc/nginx/conf.d/default.conf
+COPY buildDeployFiles/nginx/default.conf /etc/nginx/conf.d/default.conf
 
 CMD ["nginx", "-g", "daemon off;"]
