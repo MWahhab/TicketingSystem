@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jenkins
+  namespace: default
+spec:
+  serviceName: "jenkins"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: jenkins
+        image: jenkins/jenkins:jdk21
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        - containerPort: 50000
+        volumeMounts:
+        - name: nfs-storage
+          mountPath: /var/jenkins_home
+          subPath: jenkins
+      volumes:
+      - name: nfs-storage
+        persistentVolumeClaim:
+          claimName: nfs-main-pvc
