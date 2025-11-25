@@ -7,3 +7,4 @@ resources:
   - nginx.yaml
   - redis.yaml
   - reverb.yaml
+  - jenkins.yaml
