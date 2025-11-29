@@ -45,13 +45,13 @@ abstract class DuskTestCase extends BaseTestCase
 
             return RemoteWebDriver::create(
                 env('DUSK_DRIVER_URL'),
-                $options
+                $options->toCapabilities()
             );
         }
 
         return RemoteWebDriver::create(
             'http://localhost:9515',
-            $options
+            $options->toCapabilities()
         );
     }
 }
