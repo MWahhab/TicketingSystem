@@ -16,6 +16,10 @@ abstract class DuskTestCase extends BaseTestCase
     #[BeforeClass]
     public static function prepare(): void
     {
+        if (env('DUSK_DRIVER_URL')) {
+            return;
+        }
+
         if (! static::runningInSail()) {
             static::startChromeDriver(['--port=9515']);
         }
