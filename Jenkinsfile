@@ -7,7 +7,7 @@ metadata:
 spec:
   containers:
   - name: dependency-installer
-    image: lorisleiva/laravel-docker:8.2
+    image: lorisleiva/laravel-docker:8.4
     command: ["cat"]
     tty: true
     env:
@@ -84,10 +84,10 @@ spec:
 
 pipeline {
     agent none
-    
+
     environment {
         DOCKER_USER = 'deampuleadd'
-        IMAGE_TAG = "${BUILD_NUMBER}" 
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -97,22 +97,27 @@ pipeline {
             }
             steps {
                 git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
-                
+
                 container('dependency-installer') {
+                    // FIX: Git permissions issue
+                    sh 'git config --global --add safe.directory "*"'
+
                     sh 'cp .env.example .env'
+
+                    // FIX: Native install on PHP 8.4 image
                     sh 'composer install --no-interaction --prefer-dist'
-                    
+
                     sh 'npm install'
                     sh 'npm run build'
-                    
+
                     sh 'php artisan key:generate'
                     sh 'sleep 10'
                     sh 'php artisan migrate --force'
-                    
+
                     sh 'php artisan test'
-                    
+
                     sh 'php artisan serve --host=0.0.0.0 --port=8000 & > /dev/null 2>&1'
-                    sh 'sleep 5' 
+                    sh 'sleep 5'
                     sh 'php artisan dusk'
                 }
             }
@@ -124,7 +129,7 @@ pipeline {
             }
             steps {
                 git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
-                
+
                 container('kaniko') {
                     echo "Building Base..."
                     sh """
@@ -151,7 +156,13 @@ pipeline {
                         sh 'cp $ENV_FILE .env'
                     }
                     echo "Compiling Assets..."
+
+                    // FIX: Git permissions issue
+                    sh 'git config --global --add safe.directory "*"'
+
+                    // FIX: Native install on PHP 8.4 image
                     sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
+
                     sh 'npm install'
                     sh 'npm run build'
                 }
@@ -176,7 +187,7 @@ pipeline {
             }
             steps {
                 git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
-                
+
                 container('kaniko') {
                     echo "Building Nginx..."
                     sh """
@@ -196,7 +207,7 @@ pipeline {
             }
             steps {
                 git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
-                
+
                 container('kaniko') {
                     echo "Building n8n..."
                     sh """

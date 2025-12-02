@@ -1,3 +1,5 @@
+#nginx.dockerfile
+
 FROM deampuleadd/app:k8s AS app-source
 
 FROM nginx:alpine
