@@ -35,11 +35,14 @@ abstract class DuskTestCase extends BaseTestCase
             '--ignore-certificate-errors'
         ]);
 
+        $capabilities = DesiredCapabilities::chrome();
+        $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
+
+        $capabilities->setCapability('goog:loggingPrefs', ['browser' => 'ALL']);
+
         return RemoteWebDriver::create(
             env('DUSK_DRIVER_URL') ?? 'http://localhost:9515',
-            DesiredCapabilities::chrome()->setCapability(
-                ChromeOptions::CAPABILITY, $options
-            ),
+            $capabilities,
             60000,
             60000
         );
