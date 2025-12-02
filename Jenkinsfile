@@ -10,6 +10,13 @@ spec:
     image: lorisleiva/laravel-docker:8.4
     command: ["cat"]
     tty: true
+    resources:
+      limits:
+        memory: "2Gi"
+        cpu: "2000m"
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
     env:
       - name: DB_CONNECTION
         value: mysql
@@ -25,7 +32,6 @@ spec:
         value: root
       - name: APP_URL
         value: http://127.0.0.1:8000
-      # THIS TELLS LARAVEL TO USE THE SELENIUM CONTAINER
       - name: DUSK_DRIVER_URL
         value: http://127.0.0.1:4444/wd/hub
   - name: kaniko
@@ -56,6 +62,19 @@ spec:
         memory: "256Mi"
     ports:
       - containerPort: 3306
+
+  - name: redis
+    image: redis:alpine
+    ports:
+      - containerPort: 6379
+    resources:
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+  # ----------------------------------
   - name: selenium
     image: selenium/standalone-chromium:latest
     ports:
@@ -65,10 +84,10 @@ spec:
         mountPath: /dev/shm
     resources:
       limits:
-        memory: "1Gi"
-        cpu: "1000m"
+        memory: "2Gi"
+        cpu: "2000m"
       requests:
-        memory: "512Mi"
+        memory: "1Gi"
         cpu: "500m"
   volumes:
   - name: docker-config
@@ -99,26 +118,61 @@ pipeline {
                 git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
 
                 container('dependency-installer') {
-                    // FIX: Git permissions issue
                     sh 'git config --global --add safe.directory "*"'
 
                     sh 'cp .env.example .env'
 
-                    // FIX: Native install on PHP 8.4 image
+                    sh 'sed -i "s|^APP_URL=.*|APP_URL=http://127.0.0.1:8000|g" .env'
+                    sh 'sed -i "s|^ASSET_URL=.*|ASSET_URL=http://127.0.0.1:8000|g" .env'
+                    sh 'sed -i "s|^VITE_APP_URL=.*|VITE_APP_URL=http://127.0.0.1:8000|g" .env'
+
+                    sh 'echo "APP_NAME=Laravel" >> .env'
+                    sh 'echo "VITE_APP_NAME=Laravel" >> .env'
+                    sh 'echo "REVERB_APP_KEY=dusk-test-key" >> .env'
+                    sh 'echo "REVERB_HOST=127.0.0.1" >> .env'
+                    sh 'echo "REVERB_PORT=8080" >> .env'
+                    sh 'echo "REVERB_SCHEME=http" >> .env'
+                    sh 'echo "VITE_REVERB_APP_KEY=dusk-test-key" >> .env'
+                    sh 'echo "VITE_REVERB_HOST=127.0.0.1" >> .env'
+                    sh 'echo "VITE_REVERB_PORT=8080" >> .env'
+                    sh 'echo "VITE_REVERB_SCHEME=http" >> .env'
+
+                    sh 'sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" .env'
+                    sh 'sed -i "s/^# DB_HOST=.*/DB_HOST=127.0.0.1/" .env'
+                    sh 'sed -i "s/^# DB_PORT=.*/DB_PORT=3306/" .env'
+                    sh 'sed -i "s/^# DB_DATABASE=.*/DB_DATABASE=laravel_testing/" .env'
+                    sh 'sed -i "s/^# DB_USERNAME=.*/DB_USERNAME=root/" .env'
+                    sh 'sed -i "s/^# DB_PASSWORD=.*/DB_PASSWORD=root/" .env'
+
+                    sh 'sed -i "s|^REDIS_HOST=.*|REDIS_HOST=127.0.0.1|g" .env'
+                    sh 'sed -i "s|^REDIS_PORT=.*|REDIS_PORT=6379|g" .env'
+                    sh 'sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=null|g" .env'
+                    // --------------------------
+
+                    sh 'echo "DEBUGBAR_ENABLED=false" >> .env'
+                    sh 'echo "APP_DEBUG=false" >> .env'
+                    sh 'echo "LOG_CHANNEL=single" >> .env'
+
+                    sh 'chmod -R 777 public'
+                    sh 'chmod -R 777 storage bootstrap/cache'
+                    sh 'touch storage/logs/laravel.log && chmod 777 storage/logs/laravel.log'
+
                     sh 'composer install --no-interaction --prefer-dist'
+                    sh 'php artisan config:clear'
 
                     sh 'npm install'
                     sh 'npm run build'
 
+                    sh 'chmod -R 777 public/build'
+
                     sh 'php artisan key:generate'
-                    sh 'sleep 10'
                     sh 'php artisan migrate --force'
 
                     sh 'php artisan test'
 
-                    sh 'php artisan serve --host=0.0.0.0 --port=8000 & > /dev/null 2>&1'
-                    sh 'sleep 5'
-                    sh 'php artisan dusk'
+                    sh 'APP_URL=http://127.0.0.1:8000 php artisan serve --host=0.0.0.0 --port=8000 > serve.log 2>&1 &'
+
+                    sh 'sleep 10'
                 }
             }
         }
@@ -138,7 +192,8 @@ pipeline {
                         --cache=false \
                         --single-snapshot \
                         --destination ${DOCKER_USER}/base:${IMAGE_TAG} \
-                        --destination ${DOCKER_USER}/base:latest
+                        --destination ${DOCKER_USER}/base:latest \
+                        --destination ${DOCKER_USER}/base:k8s
                     """
                 }
             }
@@ -157,10 +212,8 @@ pipeline {
                     }
                     echo "Compiling Assets..."
 
-                    // FIX: Git permissions issue
                     sh 'git config --global --add safe.directory "*"'
 
-                    // FIX: Native install on PHP 8.4 image
                     sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
 
                     sh 'npm install'
@@ -169,9 +222,11 @@ pipeline {
 
                 container('kaniko') {
                     echo "Building App..."
+                    // IMPORTANT: We pass build-arg BASE_IMAGE here to link to the base we just built
                     sh """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/app/Dockerfile \
+                        --build-arg BASE_IMAGE=${DOCKER_USER}/base:${IMAGE_TAG} \
                         --cache=false \
                         --single-snapshot \
                         --destination ${DOCKER_USER}/app:${IMAGE_TAG} \
