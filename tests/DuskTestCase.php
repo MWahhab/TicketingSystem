@@ -57,7 +57,7 @@ abstract class DuskTestCase extends BaseTestCase
             $source = $browser->driver->getPageSource();
             if ($source) {
                 echo "\n--- PAGE SOURCE START ({$key}) ---\n";
-                echo substr($source, 0, 500);
+                echo $source;
                 echo "\n... (truncated) ...\n";
                 echo "--- PAGE SOURCE END ---\n";
             }
