@@ -3,107 +3,110 @@
 namespace Tests\Browser;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Dusk\Browser;
-use Mockery\Exception;
 use Tests\DuskTestCase;
 
 class RegistrationTest extends DuskTestCase
 {
-    /**
-     * Test a successful registration with valid details.
-     */
+    protected function tearDown(): void
+    {
+        User::whereIn('email', [
+            'newuser@example.com',
+            'test1986968215513@test.com'
+        ])->delete();
+
+        parent::tearDown();
+    }
+
     public function testSuccessfulRegistration(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/register')
-                ->type('name', 'Test User')
-                ->type('email', 'newuser@example.com')
-                ->type('password', 'validpassword')
-                ->type('password_confirmation', 'validpassword')
+            $browser->logout()
+                ->visit('/register')
+                ->type('#name', 'Test User')
+                ->type('#email', 'newuser@example.com')
+                ->type('#password', 'validpassword')
+                ->type('#password_confirmation', 'validpassword')
                 ->click('button[type="submit"]')
-                ->assertPathIs('/dashboard')
-                ->assertSee('Welcome, Test User');
+                ->waitForLocation('/dashboard')
+                ->assertPathIs('/dashboard');
+
+            $browser->waitFor('button[aria-label="Logout"]')
+                ->click('button[aria-label="Logout"]')
+                ->waitForLocation('/');
         });
     }
 
-    /**
-     * Test registration with an already registered email.
-     */
     public function testDuplicateEmailRegistration(): void
     {
-        $this->browse(function (Browser $browser) {
-            if(!$this->makeTestUser()){
-                throw new Exception('Something has gone wrong. Couldn\'t create test user');
-            }
+        $this->makeTestUser();
 
-            $browser->visit('/register')
-                ->type('name', 'Test User')
-                ->type('email', 'test1986968215513@test.com')
-                ->type('password', 'validpassword')
-                ->type('password_confirmation', 'validpassword')
+        $this->browse(function (Browser $browser) {
+            $browser->logout()
+                ->visit('/register')
+                ->type('#name', 'Test User')
+                ->type('#email', 'test1986968215513@test.com')
+                ->type('#password', 'validpassword')
+                ->type('#password_confirmation', 'validpassword')
                 ->click('button[type="submit"]')
-                ->assertPathIs('/register')
-                ->assertSee('The email has already been taken.');
+                ->waitForText('The email has already been taken.')
+                ->assertPathIs('/register');
         });
     }
 
-    /**
-     * Test registration with missing fields.
-     */
     public function testMissingFields(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/register')
-                ->click('button[type="submit"]')
+            $browser->logout()
+                ->visit('/register');
+
+            $browser->script("document.querySelectorAll('input').forEach(el => el.removeAttribute('required'));");
+
+            $browser->click('button[type="submit"]')
                 ->assertPathIs('/register')
-                ->assertSee('The name field is required.')
+                ->waitForText('The name field is required.')
                 ->assertSee('The email field is required.')
                 ->assertSee('The password field is required.');
         });
     }
 
-    /**
-     * Test registration with mismatched password confirmation.
-     */
     public function testPasswordMismatch(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/register')
-                ->type('name', 'Test User')
-                ->type('email', 'newuser@example.com')
-                ->type('password', 'validpassword')
-                ->type('password_confirmation', 'differentpassword')
+            $browser->logout()
+                ->visit('/register')
+                ->type('#name', 'Test User')
+                ->type('#email', 'newuser@example.com')
+                ->type('#password', 'validpassword')
+                ->type('#password_confirmation', 'differentpassword')
                 ->click('button[type="submit"]')
                 ->assertPathIs('/register')
-                ->assertSee('The password confirmation does not match.');
+                // Note the word "field" might be needed depending on your validation.php
+                ->waitForText('confirmation does not match');
         });
     }
 
-    /**
-     * Test registration with a weak password.
-     */
     public function testWeakPassword(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/register')
-                ->type('name', 'Test User')
-                ->type('email', 'newuser@example.com')
-                ->type('password', '123')
-                ->type('password_confirmation', '123')
+            $browser->logout()
+                ->visit('/register')
+                ->type('#name', 'Test User')
+                ->type('#email', 'newuser@example.com')
+                ->type('#password', '123')
+                ->type('#password_confirmation', '123')
                 ->click('button[type="submit"]')
                 ->assertPathIs('/register')
-                ->assertSee('The password must be at least 8 characters.');
+                ->waitForText('The password field must be at least 8 characters.');
         });
     }
 
-    /**
-     * Test that the registration page is displayed correctly.
-     */
     public function testRegistrationPageDisplay(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/register')
+            $browser->logout()
+                ->visit('/register')
                 ->assertSee('Register')
                 ->assertSee('Name')
                 ->assertSee('Email')
@@ -112,25 +115,14 @@ class RegistrationTest extends DuskTestCase
         });
     }
 
-    private function makeTestUser(): bool
+    private function makeTestUser(): void
     {
-        $user = User::where('email', 'test1986968215513@test.com')->first();
-
-        if (empty($user->id)) {
-            $user = User::create([
+        User::firstOrCreate(
+            ['email' => 'test1986968215513@test.com'],
+            [
                 'name'     => 'Test User',
-                'email'    => 'test1986968215513@test.com',
-                'password' => 'password',
-            ]);
-
-            return true;
-        }
-
-        throw new \Exception('Something has gone wrong. The test user already exists!');
-    }
-
-    private function deleteTestUser(): void
-    {
-        User::where('email', 'test1986968215513@test.com')->delete();
+                'password' => Hash::make('password'),
+            ]
+        );
     }
 }

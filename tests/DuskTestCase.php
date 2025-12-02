@@ -28,30 +28,25 @@ abstract class DuskTestCase extends BaseTestCase
     /**
      *Create the RemoteWebDriver instance.
     */
-    protected function driver(): RemoteWebDriver
+    protected function driver()
     {
-        $options = (new ChromeOptions)->addArguments([
+        $options = (new ChromeOptions)->addArguments(collect([
             '--window-size=1920,1080',
             '--disable-search-engine-choice-screen',
-            '--disable-gpu',
-        ]);
-
-        if (env('DUSK_DRIVER_URL')) {
-            $options->addArguments([
+        ])->unless($this->hasHeadlessDisabled(), function ($items) {
+            return $items->merge([
+                '--disable-gpu',
                 '--headless=new',
                 '--no-sandbox',
                 '--disable-dev-shm-usage',
             ]);
-
-            return RemoteWebDriver::create(
-                env('DUSK_DRIVER_URL'),
-                $options->toCapabilities()
-            );
-        }
+        })->all());
 
         return RemoteWebDriver::create(
-            'http://localhost:9515',
-            $options->toCapabilities()
+            $_ENV['DUSK_DRIVER_URL'] ?? 'http://localhost:9515',
+            DesiredCapabilities::chrome()->setCapability(
+                ChromeOptions::CAPABILITY, $options
+            )
         );
     }
 }
