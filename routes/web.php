@@ -81,24 +81,6 @@ Route::middleware('auth')->group(function () {
     }
 });
 
-Route::get('/debug-headers', function () {
-    echo "<pre>";
-    echo "<h1>Request Headers Sent to Laravel</h1>";
-    print_r(request()->server());
-    echo "</pre>";
-});
-
-Route::get('/debug-live', function (Request $request) {
-    dd([
-        'APP_URL from config' => config('app.url'),
-        'Request Scheme' => $request->getScheme(),
-        'Request Port' => $request->getPort(),
-        'Is Request Secure?' => $request->isSecure(),
-        'Generated Asset URL' => asset('test.js'),
-        'SERVER Superglobal' => $_SERVER,
-    ]);
-});
-
 require __DIR__.'/auth.php';
 
 
