@@ -51,27 +51,20 @@ abstract class DuskTestCase extends BaseTestCase
      * @param  Collection  $browsers
      * @return void
      */
-    protected function captureFailuresFor($browsers): void
+    protected function captureFailuresFor($browsers)
     {
         $browsers->each(function ($browser, $key) {
-            try {
-                $logs = $browser->driver->manage()->getLog('browser');
-                if (!empty($logs)) {
-                    echo "\n\n--- BROWSER CONSOLE LOGS ({$key}) ---\n";
-                    foreach ($logs as $log) {
-                        echo "[{$log['level']}] {$log['message']}\n";
-                    }
-                    echo "------------------------------------------\n\n";
-                }
-            } catch (\Throwable $e) {
-                // Ignore log capture errors
+            $source = $browser->driver->getPageSource();
+            if ($source) {
+                echo "\n--- PAGE SOURCE START ({$key}) ---\n";
+                echo substr($source, 0, 500);
+                echo "\n... (truncated) ...\n";
+                echo "--- PAGE SOURCE END ---\n";
             }
 
             $description = $this->toString();
             $filename = str_replace(['\\', ':', ' '], '_', $description);
-
             $browser->screenshot('failure-'.$filename.'-'.$key);
         });
     }
-
 }
