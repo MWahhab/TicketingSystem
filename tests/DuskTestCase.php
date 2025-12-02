@@ -5,6 +5,7 @@ namespace Tests;
 use Facebook\WebDriver\Chrome\ChromeOptions;
 use Facebook\WebDriver\Remote\DesiredCapabilities;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
+use Illuminate\Support\Collection;
 use Laravel\Dusk\TestCase as BaseTestCase;
 use PHPUnit\Framework\Attributes\BeforeClass;
 
@@ -43,4 +44,34 @@ abstract class DuskTestCase extends BaseTestCase
             60000
         );
     }
+
+    /**
+     * Capture the failures for the given browsers.
+     *
+     * @param  Collection  $browsers
+     * @return void
+     */
+    protected function captureFailuresFor($browsers): void
+    {
+        $browsers->each(function ($browser, $key) {
+            try {
+                $logs = $browser->driver->manage()->getLog('browser');
+                if (!empty($logs)) {
+                    echo "\n\n--- BROWSER CONSOLE LOGS ({$key}) ---\n";
+                    foreach ($logs as $log) {
+                        echo "[{$log['level']}] {$log['message']}\n";
+                    }
+                    echo "------------------------------------------\n\n";
+                }
+            } catch (\Throwable $e) {
+                // Ignore log capture errors
+            }
+
+            $description = $this->toString();
+            $filename = str_replace(['\\', ':', ' '], '_', $description);
+
+            $browser->screenshot('failure-'.$filename.'-'.$key);
+        });
+    }
+
 }
