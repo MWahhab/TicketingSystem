@@ -3,6 +3,7 @@
 namespace Tests\Browser;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
@@ -13,123 +14,127 @@ class LoginTest extends DuskTestCase
      */
     public function testSuccessfulLoginAndLogout(): void
     {
-        $this->browse(function (Browser $browser) {
-            $browser->visit('/login')
-                ->waitForText('Email')
-                ->assertSee('Password')
-                ->assertSee('Remember me')
-                ->assertSee('Forgot your password?')
-                ->assertSee('LOG IN');
+        $this->makeLoginTestUser();
 
-            if (!$this->makeLoginTestUser()) {
-                throw new \Exception('Something has gone wrong. Couldn\'t create test user');
-            }
+        try {
+            $this->browse(function (Browser $browser) {
+                $browser->logout()
+                ->visit('/login')
+                    ->waitForText('Log in')
+                    ->assertSee('Email')
+                    ->assertSee('Password')
+                    ->assertSee('Remember me')
+                    ->assertSee('Forgot your password?')
+                    ->assertSee('Log in');
 
-            $browser->type('email', 'test1986968215513@test.com')
-                ->type('password', 'password')
-                ->click('button[type="submit"]')
-                ->pause(2000)
-                ->screenshot('what_happened_login')
-                ->assertPathIs('/dashboard');
+                $browser->type('input[name="email"]', 'test1986968215513@test.com')
+                    ->type('input[name="password"]', 'password')
+                    ->click('button[type="submit"]')
+                    ->waitForLocation('/dashboard')
+                    ->assertPathIs('/dashboard');
 
-            $browser->press("Test User")
-                ->press("Log Out")
-                ->pause(2000)
-                ->screenshot('what_happened_logout')
-                ->assertPathIs("/");
-
+                $browser->waitFor('button[aria-label="Logout"]')
+                ->click('button[aria-label="Logout"]')
+                ->waitForLocation('/');
+            });
+        } finally {
             $this->deleteLoginTestUser();
-        });
+        }
     }
 
-    /**
-     * Test login with invalid credentials.
-     */
     public function testInvalidLogin(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/login')
-                ->type('email', 'invaliduser@example.com')
-                ->type('password', 'wrongpassword')
+            $browser->logout()
+            ->visit('/login')
+                ->waitForText('Log in')
+                ->type('input[name="email"]', 'invaliduser@example.com')
+                ->type('input[name="password"]', 'wrongpassword')
                 ->click('button[type="submit"]')
-                ->assertPathIs('/login')
-                ->assertSee('These credentials do not match our records.');
+                ->waitForText('These credentials do not match our records.')
+                ->assertPathIs('/login');
         });
     }
 
-    /**
-     * Test login with missing email and password.
-     */
     public function testMissingFields(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/login')
-                ->click('button[type="submit"]')
+            $browser->logout()
+            ->visit('/login')
+                ->waitForText('Log in');
+
+            $browser->script("document.querySelectorAll('input').forEach(el => el.removeAttribute('required'));");
+
+            $browser->click('button[type="submit"]')
                 ->assertPathIs('/login')
-                ->assertSee('The email field is required.')
+                ->waitForText('The email field is required.')
                 ->assertSee('The password field is required.');
         });
     }
 
-    /**
-     * Test login with valid email but missing password.
-     */
     public function testMissingPassword(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/login')
-                ->type('email', 'validuser@example.com')
+            $browser->logout()
+            ->visit('/login')
+                ->waitForText('Log in');
+
+            $browser->script("document.querySelectorAll('input').forEach(el => el.removeAttribute('required'));");
+
+            $browser->type('input[name="email"]', 'validuser@example.com')
                 ->click('button[type="submit"]')
                 ->assertPathIs('/login')
-                ->assertSee('The password field is required.');
+                ->waitForText('The password field is required.');
         });
     }
 
-    /**
-     * Test login with valid password but missing email.
-     */
     public function testMissingEmail(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/login')
-                ->type('password', 'validpassword')
+            $browser->logout()
+            ->visit('/login')
+                ->waitForText('Log in');
+
+            $browser->script("document.querySelectorAll('input').forEach(el => el.removeAttribute('required'));");
+
+            $browser->type('input[name="password"]', 'validpassword')
                 ->click('button[type="submit"]')
                 ->assertPathIs('/login')
-                ->assertSee('The email field is required.');
+                ->waitForText('The email field is required.');
+        });
+    }
+
+    public function testLoginPageDisplay(): void
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->logout()
+            ->visit('/login')
+                ->waitForText('Log in')
+                ->assertSee('Log in')
+                ->assertSee('Email')
+                ->assertSee('Password')
+                ->assertSee('Remember me');
         });
     }
 
     /**
-     * Test that the login page is displayed correctly.
+     * Helper: Create a user for testing.
+     * Uses firstOrCreate to avoid duplicates and Hash for password security.
      */
-    public function testLoginPageDisplay(): void
+    private function makeLoginTestUser(): void
     {
-        $this->browse(function (Browser $browser) {
-            $browser->visit('/login')
-                ->assertSee('Login')
-                ->assertSee('Email')
-                ->assertSee('Password')
-                ->assertSee('Remember Me');
-        });
-    }
-
-    private function makeLoginTestUser(): bool
-    {
-        $user = User::where('email', 'test1986968215513@test.com')->first();
-
-        if (empty($user->id)) {
-            $user = User::create([
+        User::firstOrCreate(
+            ['email' => 'test1986968215513@test.com'],
+            [
                 'name'     => 'Test User',
-                'email'    => 'test1986968215513@test.com',
-                'password' => 'password',
-            ]);
-
-            return true;
-        }
-
-        throw new \Exception('Something has gone wrong. The test user already exists!');
+                'password' => Hash::make('password'),
+            ]
+        );
     }
 
+    /**
+     * Helper: Delete the test user.
+     */
     private function deleteLoginTestUser(): void
     {
         User::where('email', 'test1986968215513@test.com')->delete();
