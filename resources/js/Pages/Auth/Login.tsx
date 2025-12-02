@@ -39,6 +39,7 @@ export default function Login({ status, canResetPassword }: { status?: string; c
                                 </Label>
                                 <Input
                                     id="email"
+                                    name="email"
                                     type="email"
                                     value={data.email}
                                     onChange={(e) => setData("email", e.target.value)}
@@ -46,6 +47,7 @@ export default function Login({ status, canResetPassword }: { status?: string; c
                                     required
                                 />
                             </div>
+                            {errors.email && <div className="text-red-500 text-sm">{errors.email}</div>}
 
                             <div className="space-y-2">
                                 <Label htmlFor="password" className="text-gray-200">
@@ -53,6 +55,7 @@ export default function Login({ status, canResetPassword }: { status?: string; c
                                 </Label>
                                 <Input
                                     id="password"
+                                    name="password"
                                     type="password"
                                     value={data.password}
                                     onChange={(e) => setData("password", e.target.value)}
@@ -60,6 +63,7 @@ export default function Login({ status, canResetPassword }: { status?: string; c
                                     required
                                 />
                             </div>
+                            {errors.password && <div className="text-red-500 text-sm">{errors.password}</div>}
 
                             <div className="flex items-center space-x-2">
                                 <Checkbox

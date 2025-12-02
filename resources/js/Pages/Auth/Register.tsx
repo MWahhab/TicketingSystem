@@ -37,6 +37,7 @@ export default function Register() {
                                 </Label>
                                 <Input
                                     id="name"
+                                    name="name"
                                     type="text"
                                     value={data.name}
                                     onChange={(e) => setData("name", e.target.value)}
@@ -44,6 +45,7 @@ export default function Register() {
                                     required
                                 />
                             </div>
+                            {errors.name && <div className="text-red-500 text-sm">{errors.name}</div>}
 
                             <div className="space-y-2">
                                 <Label htmlFor="email" className="text-gray-200">
@@ -51,6 +53,7 @@ export default function Register() {
                                 </Label>
                                 <Input
                                     id="email"
+                                    name="email"
                                     type="email"
                                     value={data.email}
                                     onChange={(e) => setData("email", e.target.value)}
@@ -58,6 +61,7 @@ export default function Register() {
                                     required
                                 />
                             </div>
+                            {errors.email && <div className="text-red-500 text-sm">{errors.email}</div>}
 
                             <div className="space-y-2">
                                 <Label htmlFor="password" className="text-gray-200">
@@ -65,6 +69,7 @@ export default function Register() {
                                 </Label>
                                 <Input
                                     id="password"
+                                    name="password"
                                     type="password"
                                     value={data.password}
                                     onChange={(e) => setData("password", e.target.value)}
@@ -72,6 +77,7 @@ export default function Register() {
                                     required
                                 />
                             </div>
+                            {errors.password && <div className="text-red-500 text-sm">{errors.password}</div>}
 
                             <div className="space-y-2">
                                 <Label htmlFor="password_confirmation" className="text-gray-200">
@@ -79,6 +85,7 @@ export default function Register() {
                                 </Label>
                                 <Input
                                     id="password_confirmation"
+                                    name="password_confirmation"
                                     type="password"
                                     value={data.password_confirmation}
                                     onChange={(e) => setData("password_confirmation", e.target.value)}
@@ -86,6 +93,7 @@ export default function Register() {
                                     required
                                 />
                             </div>
+                            {errors.password_confirmation && <div className="text-red-500 text-sm">{errors.password_confirmation}</div>}
 
                             <Button type="submit" disabled={processing} className="w-full bg-white text-black hover:bg-gray-100">
                                 Register
