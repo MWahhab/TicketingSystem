@@ -8,7 +8,7 @@ use Laravel\Dusk\Browser;
 use Mockery\Exception;
 use Tests\DuskTestCase;
 
-class BoardInteractionTest extends DuskTestCase
+class BoardInteractionTest
 {
     /**
      * Test a successful board creation
