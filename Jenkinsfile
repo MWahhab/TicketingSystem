@@ -8,8 +8,8 @@ spec:
   containers:
   - name: dependency-installer
     image: lorisleiva/laravel-docker:8.4
-    command: ["cat"]
-    tty: true
+    # We use sleep infinity to keep the pod alive safely
+    command: ["sleep", "infinity"]
     resources:
       limits:
         memory: "2Gi"
@@ -114,65 +114,100 @@ pipeline {
             agent {
                 kubernetes { yaml podYaml }
             }
-            steps {
-                git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
+            stages {
+                stage('Setup Environment') {
+                    steps {
+                        git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
+                        container('dependency-installer') {
+                            sh script: 'git config --global --add safe.directory "*"', label: 'Git Config'
+                            sh script: 'cp .env.example .env', label: 'Copy .env'
 
-                container('dependency-installer') {
-                    sh 'git config --global --add safe.directory "*"'
+                            sh script: 'sed -i "s|^APP_URL=.*|APP_URL=http://127.0.0.1:8000|g" .env', label: 'Set APP_URL'
+                            sh script: 'sed -i "s|^ASSET_URL=.*|ASSET_URL=http://127.0.0.1:8000|g" .env', label: 'Set ASSET_URL'
+                            sh script: 'sed -i "s|^VITE_APP_URL=.*|VITE_APP_URL=http://127.0.0.1:8000|g" .env', label: 'Set VITE_APP_URL'
 
-                    sh 'cp .env.example .env'
+                            sh script: 'echo "APP_NAME=Laravel" >> .env', label: 'Env: App Name'
+                            sh script: 'echo "VITE_APP_NAME=Laravel" >> .env', label: 'Env: Vite Name'
+                            sh script: 'echo "REVERB_APP_KEY=dusk-test-key" >> .env', label: 'Env: Reverb Key'
+                            sh script: 'echo "REVERB_HOST=127.0.0.1" >> .env', label: 'Env: Reverb Host'
+                            sh script: 'echo "REVERB_PORT=8080" >> .env', label: 'Env: Reverb Port'
+                            sh script: 'echo "REVERB_SCHEME=http" >> .env', label: 'Env: Reverb Scheme'
+                            sh script: 'echo "VITE_REVERB_APP_KEY=dusk-test-key" >> .env', label: 'Env: Vite Reverb Key'
+                            sh script: 'echo "VITE_REVERB_HOST=127.0.0.1" >> .env', label: 'Env: Vite Reverb Host'
+                            sh script: 'echo "VITE_REVERB_PORT=8080" >> .env', label: 'Env: Vite Reverb Port'
+                            sh script: 'echo "VITE_REVERB_SCHEME=http" >> .env', label: 'Env: Vite Reverb Scheme'
 
-                    sh 'sed -i "s|^APP_URL=.*|APP_URL=http://127.0.0.1:8000|g" .env'
-                    sh 'sed -i "s|^ASSET_URL=.*|ASSET_URL=http://127.0.0.1:8000|g" .env'
-                    sh 'sed -i "s|^VITE_APP_URL=.*|VITE_APP_URL=http://127.0.0.1:8000|g" .env'
+                            sh script: 'sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" .env', label: 'Env: DB Connection'
+                            sh script: 'sed -i "s/^# DB_HOST=.*/DB_HOST=127.0.0.1/" .env', label: 'Env: DB Host'
+                            sh script: 'sed -i "s/^# DB_PORT=.*/DB_PORT=3306/" .env', label: 'Env: DB Port'
+                            sh script: 'sed -i "s/^# DB_DATABASE=.*/DB_DATABASE=laravel_testing/" .env', label: 'Env: DB Name'
+                            sh script: 'sed -i "s/^# DB_USERNAME=.*/DB_USERNAME=root/" .env', label: 'Env: DB User'
+                            sh script: 'sed -i "s/^# DB_PASSWORD=.*/DB_PASSWORD=root/" .env', label: 'Env: DB Password'
 
-                    sh 'echo "APP_NAME=Laravel" >> .env'
-                    sh 'echo "VITE_APP_NAME=Laravel" >> .env'
-                    sh 'echo "REVERB_APP_KEY=dusk-test-key" >> .env'
-                    sh 'echo "REVERB_HOST=127.0.0.1" >> .env'
-                    sh 'echo "REVERB_PORT=8080" >> .env'
-                    sh 'echo "REVERB_SCHEME=http" >> .env'
-                    sh 'echo "VITE_REVERB_APP_KEY=dusk-test-key" >> .env'
-                    sh 'echo "VITE_REVERB_HOST=127.0.0.1" >> .env'
-                    sh 'echo "VITE_REVERB_PORT=8080" >> .env'
-                    sh 'echo "VITE_REVERB_SCHEME=http" >> .env'
+                            sh script: 'sed -i "s|^REDIS_HOST=.*|REDIS_HOST=127.0.0.1|g" .env', label: 'Env: Redis Host'
+                            sh script: 'sed -i "s|^REDIS_PORT=.*|REDIS_PORT=6379|g" .env', label: 'Env: Redis Port'
+                            sh script: 'sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=null|g" .env', label: 'Env: Redis Password'
 
-                    sh 'sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" .env'
-                    sh 'sed -i "s/^# DB_HOST=.*/DB_HOST=127.0.0.1/" .env'
-                    sh 'sed -i "s/^# DB_PORT=.*/DB_PORT=3306/" .env'
-                    sh 'sed -i "s/^# DB_DATABASE=.*/DB_DATABASE=laravel_testing/" .env'
-                    sh 'sed -i "s/^# DB_USERNAME=.*/DB_USERNAME=root/" .env'
-                    sh 'sed -i "s/^# DB_PASSWORD=.*/DB_PASSWORD=root/" .env'
+                            sh script: 'echo "DEBUGBAR_ENABLED=false" >> .env', label: 'Env: Disable Debugbar'
+                            sh script: 'echo "APP_DEBUG=false" >> .env', label: 'Env: Disable Debug'
+                            sh script: 'echo "LOG_CHANNEL=single" >> .env', label: 'Env: Log Channel'
 
-                    sh 'sed -i "s|^REDIS_HOST=.*|REDIS_HOST=127.0.0.1|g" .env'
-                    sh 'sed -i "s|^REDIS_PORT=.*|REDIS_PORT=6379|g" .env'
-                    sh 'sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=null|g" .env'
-                    // --------------------------
+                            sh script: 'chmod -R 777 public', label: 'Perms: Public'
+                            sh script: 'chmod -R 777 storage bootstrap/cache', label: 'Perms: Storage'
+                            sh script: 'touch storage/logs/laravel.log && chmod 777 storage/logs/laravel.log', label: 'Perms: Log File'
+                        }
+                    }
+                }
 
-                    sh 'echo "DEBUGBAR_ENABLED=false" >> .env'
-                    sh 'echo "APP_DEBUG=false" >> .env'
-                    sh 'echo "LOG_CHANNEL=single" >> .env'
+                stage('Install Backend') {
+                    steps {
+                        container('dependency-installer') {
+                            sh script: 'composer install --no-interaction --prefer-dist', label: 'Composer Install'
+                            sh script: 'php artisan config:clear', label: 'Config Clear'
+                        }
+                    }
+                }
 
-                    sh 'chmod -R 777 public'
-                    sh 'chmod -R 777 storage bootstrap/cache'
-                    sh 'touch storage/logs/laravel.log && chmod 777 storage/logs/laravel.log'
+                stage('Install Frontend') {
+                    steps {
+                        container('dependency-installer') {
+                            sh script: 'npm install', label: 'NPM Install'
+                            sh script: 'npm run build', label: 'Vite Build'
+                            sh script: 'chmod -R 777 public/build', label: 'Perms: Build Folder'
+                        }
+                    }
+                }
 
-                    sh 'composer install --no-interaction --prefer-dist'
-                    sh 'php artisan config:clear'
+                // ----------------------------------------------------
+                // SPLIT STAGES START HERE
+                // ----------------------------------------------------
 
-                    sh 'npm install'
-                    sh 'npm run build'
+                stage('Unit Tests') {
+                    steps {
+                        container('dependency-installer') {
+                            sh script: 'php artisan key:generate', label: 'Key Gen'
+                            sh script: 'php artisan migrate --force', label: 'DB Migrate'
 
-                    sh 'chmod -R 777 public/build'
+                            // Runs tests/Unit and tests/Feature (excludes Browser by default in most setups)
+                            sh script: 'php artisan test', label: 'Run PHPUnit'
+                        }
+                    }
+                }
 
-                    sh 'php artisan key:generate'
-                    sh 'php artisan migrate --force'
+                stage('Dusk Tests') {
+                    steps {
+                        container('dependency-installer') {
+                            // 1. Start Server for Dusk
+                            sh script: 'APP_URL=http://127.0.0.1:8000 php artisan serve --host=0.0.0.0 --port=8000 > serve.log 2>&1 &', label: 'Start Server'
+                            sh script: 'sleep 10', label: 'Wait for Server'
 
-                    sh 'php artisan test'
+                            // 2. Configure PHPUnit for Dusk specifics
+                            sh script: 'sed -i "s/<phpunit/<phpunit failOnWarning=\\"false\\"/g" phpunit.xml', label: 'Config: Ignore Warnings'
 
-                    sh 'APP_URL=http://127.0.0.1:8000 php artisan serve --host=0.0.0.0 --port=8000 > serve.log 2>&1 &'
-
-                    sh 'sleep 10'
+                            // 3. Run Dusk
+                            sh script: 'vendor/bin/phpunit tests/Browser', label: 'Run Dusk Tests'
+                        }
+                    }
                 }
             }
         }
@@ -186,7 +221,7 @@ pipeline {
 
                 container('kaniko') {
                     echo "Building Base..."
-                    sh """
+                    sh script: """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/base/Dockerfile \
                         --cache=false \
@@ -194,7 +229,7 @@ pipeline {
                         --destination ${DOCKER_USER}/base:${IMAGE_TAG} \
                         --destination ${DOCKER_USER}/base:latest \
                         --destination ${DOCKER_USER}/base:k8s
-                    """
+                    """, label: 'Kaniko: Build Base'
                 }
             }
         }
@@ -208,22 +243,21 @@ pipeline {
                 container('dependency-installer') {
                     echo "Injecting .env..."
                     withCredentials([file(credentialsId: 'prod-env-file', variable: 'ENV_FILE')]) {
-                        sh 'cp $ENV_FILE .env'
+                        sh script: 'cp $ENV_FILE .env', label: 'Inject Prod Env'
                     }
                     echo "Compiling Assets..."
 
-                    sh 'git config --global --add safe.directory "*"'
+                    sh script: 'git config --global --add safe.directory "*"', label: 'Git Config'
 
-                    sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
+                    sh script: 'composer install --no-interaction --prefer-dist --optimize-autoloader', label: 'Composer Prod'
 
-                    sh 'npm install'
-                    sh 'npm run build'
+                    sh script: 'npm install', label: 'NPM Install'
+                    sh script: 'npm run build', label: 'Vite Build'
                 }
 
                 container('kaniko') {
                     echo "Building App..."
-                    // IMPORTANT: We pass build-arg BASE_IMAGE here to link to the base we just built
-                    sh """
+                    sh script: """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/app/Dockerfile \
                         --build-arg BASE_IMAGE=${DOCKER_USER}/base:${IMAGE_TAG} \
@@ -232,7 +266,7 @@ pipeline {
                         --destination ${DOCKER_USER}/app:${IMAGE_TAG} \
                         --destination ${DOCKER_USER}/app:latest \
                         --destination ${DOCKER_USER}/app:k8s
-                    """
+                    """, label: 'Kaniko: Build App'
                 }
             }
         }
@@ -245,14 +279,14 @@ pipeline {
 
                 container('kaniko') {
                     echo "Building Nginx..."
-                    sh """
+                    sh script: """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/nginx/Dockerfile \
                         --cache=false \
                         --single-snapshot \
                         --destination ${DOCKER_USER}/nginx:${IMAGE_TAG} \
                         --destination ${DOCKER_USER}/nginx:latest
-                    """
+                    """, label: 'Kaniko: Build Nginx'
                 }
             }
         }
@@ -265,7 +299,7 @@ pipeline {
 
                 container('kaniko') {
                     echo "Building n8n..."
-                    sh """
+                    sh script: """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/n8n/Dockerfile \
                         --cache=false \
@@ -273,7 +307,7 @@ pipeline {
                         --ignore-path=/usr/local/lib/node_modules \
                         --destination ${DOCKER_USER}/n8n:${IMAGE_TAG} \
                         --destination ${DOCKER_USER}/n8n:latest
-                    """
+                    """, label: 'Kaniko: Build n8n'
                 }
             }
         }
