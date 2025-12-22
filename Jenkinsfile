@@ -106,7 +106,12 @@ pipeline {
 
     environment {
         DOCKER_USER = 'deampuleadd'
-        IMAGE_TAG = "${BUILD_NUMBER}"
+
+        IMAGE_TAG = "${env.TAG_NAME ?: env.BUILD_NUMBER}"
+
+        ARGOCD_SERVER = "argocd-server.argocd.svc.cluster.local"
+        APP_NAME = "ticketing-system"
+        ARGOCD_AUTH_TOKEN = credentials('argocd-token')
     }
 
     stages {
@@ -117,7 +122,8 @@ pipeline {
             stages {
                 stage('Setup Environment') {
                     steps {
-                        git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
+                        checkout scm
+
                         container('dependency-installer') {
                             sh script: 'git config --global --add safe.directory "*"', label: 'Git Config'
                             sh script: 'cp .env.example .env', label: 'Copy .env'
@@ -178,17 +184,11 @@ pipeline {
                     }
                 }
 
-                // ----------------------------------------------------
-                // SPLIT STAGES START HERE
-                // ----------------------------------------------------
-
                 stage('Unit Tests') {
                     steps {
                         container('dependency-installer') {
                             sh script: 'php artisan key:generate', label: 'Key Gen'
                             sh script: 'php artisan migrate --force', label: 'DB Migrate'
-
-                            // Runs tests/Unit and tests/Feature (excludes Browser by default in most setups)
                             sh script: 'php artisan test', label: 'Run PHPUnit'
                         }
                     }
@@ -197,14 +197,9 @@ pipeline {
                 stage('Dusk Tests') {
                     steps {
                         container('dependency-installer') {
-                            // 1. Start Server for Dusk
                             sh script: 'APP_URL=http://127.0.0.1:8000 php artisan serve --host=0.0.0.0 --port=8000 > serve.log 2>&1 &', label: 'Start Server'
                             sh script: 'sleep 10', label: 'Wait for Server'
-
-                            // 2. Configure PHPUnit for Dusk specifics
                             sh script: 'sed -i "s/<phpunit/<phpunit failOnWarning=\\"false\\"/g" phpunit.xml', label: 'Config: Ignore Warnings'
-
-                            // 3. Run Dusk
                             sh script: 'vendor/bin/phpunit tests/Browser', label: 'Run Dusk Tests'
                         }
                     }
@@ -217,10 +212,10 @@ pipeline {
                 kubernetes { yaml podYaml }
             }
             steps {
-                git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
+                checkout scm
 
                 container('kaniko') {
-                    echo "Building Base..."
+                    echo "Building Base with tag: ${IMAGE_TAG}"
                     sh script: """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/base/Dockerfile \
@@ -239,24 +234,21 @@ pipeline {
                 kubernetes { yaml podYaml }
             }
             steps {
-                git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
+                checkout scm
                 container('dependency-installer') {
                     echo "Injecting .env..."
                     withCredentials([file(credentialsId: 'prod-env-file', variable: 'ENV_FILE')]) {
                         sh script: 'cp $ENV_FILE .env', label: 'Inject Prod Env'
                     }
                     echo "Compiling Assets..."
-
                     sh script: 'git config --global --add safe.directory "*"', label: 'Git Config'
-
                     sh script: 'composer install --no-interaction --prefer-dist --optimize-autoloader', label: 'Composer Prod'
-
                     sh script: 'npm install', label: 'NPM Install'
                     sh script: 'npm run build', label: 'Vite Build'
                 }
 
                 container('kaniko') {
-                    echo "Building App..."
+                    echo "Building App with tag: ${IMAGE_TAG}"
                     sh script: """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/app/Dockerfile \
@@ -275,10 +267,9 @@ pipeline {
                 kubernetes { yaml podYaml }
             }
             steps {
-                git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
-
+                checkout scm
                 container('kaniko') {
-                    echo "Building Nginx..."
+                    echo "Building Nginx with tag: ${IMAGE_TAG}"
                     sh script: """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/nginx/Dockerfile \
@@ -295,10 +286,9 @@ pipeline {
                 kubernetes { yaml podYaml }
             }
             steps {
-                git branch: 'master', credentialsId: '3a91b7f3-dddb-445f-a990-45a1491485c1', url: 'https://github.com/lolmeherti/TicketingSystem.git'
-
+                checkout scm
                 container('kaniko') {
-                    echo "Building n8n..."
+                    echo "Building n8n with tag: ${IMAGE_TAG}"
                     sh script: """
                     /kaniko/executor --context `pwd` \
                         --dockerfile `pwd`/buildDeployFiles/n8n/Dockerfile \
@@ -308,6 +298,43 @@ pipeline {
                         --destination ${DOCKER_USER}/n8n:${IMAGE_TAG} \
                         --destination ${DOCKER_USER}/n8n:latest
                     """, label: 'Kaniko: Build n8n'
+                }
+            }
+        }
+
+        stage('Deploy to ArgoCD') {
+            when {
+                buildingTag()
+            }
+            agent {
+                kubernetes { yaml podYaml }
+            }
+            steps {
+                container('dependency-installer') {
+                    script {
+                        echo "Deploying version ${IMAGE_TAG} to ArgoCD..."
+
+                        sh "curl -sSL -k -o argocd https://${ARGOCD_SERVER}/download/argocd-linux-amd64"
+                        sh "chmod +x argocd"
+
+                        sh """
+                           ./argocd app set ${APP_NAME} \
+                             --server ${ARGOCD_SERVER} \
+                             --auth-token ${ARGOCD_AUTH_TOKEN} \
+                             --insecure \
+                             --kustomize-image deampuleadd/app=${IMAGE_TAG} \
+                             --kustomize-image deampuleadd/nginx=${IMAGE_TAG} \
+                             --kustomize-image deampuleadd/n8n=${IMAGE_TAG}
+                        """
+
+                        sh """
+                           ./argocd app sync ${APP_NAME} \
+                             --server ${ARGOCD_SERVER} \
+                             --auth-token ${ARGOCD_AUTH_TOKEN} \
+                             --insecure \
+                             --prune
+                        """
+                    }
                 }
             }
         }
